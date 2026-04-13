@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:sql_conn/sql_conn.dart';
 import '../config/constants.dart';
+import 'error_logger.dart';
 
 /// Conexión a SQL Server via jTDS (JDBC) — requiere VPN activa.
 class SqlService {
@@ -60,14 +61,17 @@ class SqlService {
             'Host: ${AppConfig.sqlHost}:${AppConfig.sqlPort}\n'
             'Instance: ${AppConfig.sqlInstance}\n'
             'DB: ${AppConfig.sqlDb} | User: ${AppConfig.sqlUser}';
+        ErrorLogger.log('SqlService', lastError);
       }
       return ok;
     } on SqlConnException catch (e) {
       lastError = 'jTDS error: ${e.message}';
+      ErrorLogger.log('SqlService', lastError);
       _connected = false;
       return false;
     } catch (e) {
       lastError = 'Error inesperado: $e';
+      ErrorLogger.log('SqlService', lastError);
       _connected = false;
       return false;
     }

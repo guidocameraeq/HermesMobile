@@ -6,6 +6,7 @@ import '../services/scorecard_service.dart';
 import '../services/calculator_service.dart';
 import '../widgets/metric_card.dart';
 import '../widgets/month_selector.dart';
+import '../widgets/skeleton_card.dart';
 import 'drilldowns/facturacion_drilldown.dart';
 import 'drilldowns/tasa_conversion_drilldown.dart';
 import 'drilldowns/foco_drilldown.dart';
@@ -183,15 +184,12 @@ class _ScorecardTabState extends State<ScorecardTab>
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(color: AppColors.primary),
-            SizedBox(height: 16),
-            Text('Cargando scorecard...', style: AppTextStyles.caption),
-          ],
-        ),
+      return ListView(
+        children: const [
+          SkeletonCard(),
+          SkeletonCard(),
+          SkeletonCard(),
+        ],
       );
     }
 

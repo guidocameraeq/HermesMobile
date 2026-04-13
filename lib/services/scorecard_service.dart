@@ -1,13 +1,14 @@
 import '../models/scorecard_item.dart';
-import '../config/constants.dart';
 import 'pg_service.dart';
 import 'sql_service.dart';
 import 'calculator_service.dart';
+import 'error_logger.dart';
 
 class ScorecardService {
   /// Carga el scorecard completo para el vendedor/mes/año.
   /// Primero trae los targets de Supabase (sin VPN),
   /// luego calcula los valores reales desde SQL Server (requiere VPN).
+  /// Si SQL falla, muestra las metas con indicador "sin conexión".
   static Future<List<ScorecardItem>> loadScorecard(
     String vendedor,
     int mes,
@@ -36,13 +37,12 @@ class ScorecardService {
     final sqlOk = await SqlService.connect();
 
     if (!sqlOk) {
-      final err = SqlService.lastError.isNotEmpty
-          ? SqlService.lastError
-          : 'No se pudo conectar al SQL Server (${AppConfig.sqlHost}:${AppConfig.sqlPort})';
+      // Degradación elegante: mostramos las metas sin datos reales
       for (final item in items) {
-        item.error = true;
         item.cargado = true;
-        item.formula = err;
+        item.error = false;       // NO es error — es falta de VPN
+        item.valorReal = 0;
+        item.formula = 'Sin conexión al servidor — activá la VPN';
       }
       return items;
     }
@@ -66,6 +66,7 @@ class ScorecardService {
         item.error = true;
         item.cargado = true;
         item.formula = 'Error: ${e.toString()}';
+        ErrorLogger.log('Scorecard', '${item.nombre}: $e');
       }
     });
 

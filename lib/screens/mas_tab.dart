@@ -4,6 +4,7 @@ import '../models/session.dart';
 import '../services/auth_service.dart';
 import '../services/pg_service.dart';
 import '../services/update_service.dart';
+import '../services/error_logger.dart';
 import 'login_screen.dart';
 
 class MasTab extends StatefulWidget {
@@ -291,6 +292,46 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
               ],
             ),
           ),
+
+          // ── Errores recientes ────────────────────────────────
+          if (ErrorLogger.recent.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: AppCardStyle.base(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(child: Text('Errores recientes', style: AppTextStyles.title)),
+                      GestureDetector(
+                        onTap: () => setState(() => ErrorLogger.clear()),
+                        child: const Text('Limpiar', style: TextStyle(
+                          color: AppColors.textMuted, fontSize: 11)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ...ErrorLogger.recent.take(5).map((e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(e.timeStr, style: AppTextStyles.muted),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text('${e.source}: ${e.message}',
+                            style: const TextStyle(color: AppColors.danger, fontSize: 11),
+                            maxLines: 2, overflow: TextOverflow.ellipsis),
+                        ),
+                      ],
+                    ),
+                  )),
+                ],
+              ),
+            ),
+          ],
 
           const SizedBox(height: 24),
 
