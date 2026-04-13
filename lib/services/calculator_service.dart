@@ -176,28 +176,56 @@ class CalculatorService {
     return (val, 'SUM($etiq) artículos foco: [$arts${articulos.length > 3 ? "..." : ""}]');
   }
 
+  // ── Pendientes: suma desde fydvtsPedidos ──────────────────────────────────
+  static Future<double> _getPendiente(String vendedor, String col) async {
+    final rows = await SqlService.query(
+      '''SELECT SUM($col) AS PendVal
+         FROM [EQ-DBGA].[dbo].[fydvtsPedidos]
+         WHERE Estado = 'Pendiente' AND CantidadPendiente > 0
+           AND VendedorNombre = ?''',
+      [vendedor],
+    );
+    return double.tryParse(rows.firstOrNull?['PendVal']?.toString() ?? '0') ?? 0.0;
+  }
+
   // ── Dispatcher ────────────────────────────────────────────────────────────
   static Future<(double, String)> calcular(
-    String funcionId, String vendedor, int mes, int anio, String paramsJson,
-  ) async {
+    String funcionId, String vendedor, int mes, int anio, String paramsJson, {
+    bool inclPendientes = false,
+  }) async {
     Map<String, dynamic> params = {};
     try { params = json.decode(paramsJson) as Map<String, dynamic>; } catch (_) {}
 
-    switch (funcionId) {
-      case 'facturacion':
-        return calcFacturacion(vendedor, mes, anio, params);
-      case 'aperturas':
-        return calcAperturas(vendedor, mes, anio, params);
-      case 'tasa_conversion':
-        return calcTasaConversion(vendedor, mes, anio, params);
-      case 'reactivacion':
-        return calcReactivacion(vendedor, mes, anio, params);
-      case 'foco_unidades':
-      case 'incorporaciones':
-        return calcFocoUnidades(vendedor, mes, anio, params);
-      default:
-        return (0.0, 'Función "$funcionId" no soportada en mobile.');
+    var (valor, formula) = switch (funcionId) {
+      'facturacion' => await calcFacturacion(vendedor, mes, anio, params),
+      'aperturas' => await calcAperturas(vendedor, mes, anio, params),
+      'tasa_conversion' => await calcTasaConversion(vendedor, mes, anio, params),
+      'reactivacion' => await calcReactivacion(vendedor, mes, anio, params),
+      'foco_unidades' || 'incorporaciones' => await calcFocoUnidades(vendedor, mes, anio, params),
+      _ => (0.0, 'Función "$funcionId" no soportada en mobile.'),
+    };
+
+    // Agregar pendientes si corresponde
+    if (inclPendientes && valor > 0) {
+      double pend = 0;
+      switch (funcionId) {
+        case 'facturacion':
+          pend = await _getPendiente(vendedor, 'SubTotalNetoPendienteLocal');
+          break;
+        case 'foco_unidades':
+        case 'incorporaciones':
+          final modo = params['modo'] ?? 'unidades';
+          final col = modo == 'importe' ? 'SubTotalNetoPendienteLocal' : 'CantidadPendiente';
+          pend = await _getPendiente(vendedor, col);
+          break;
+      }
+      if (pend > 0) {
+        valor += pend;
+        formula += ' + Pend (${_fmt(pend)})';
+      }
     }
+
+    return (valor, formula);
   }
 
   static String _fmt(double v) {

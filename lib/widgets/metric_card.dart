@@ -4,12 +4,14 @@ import '../services/calculator_service.dart';
 
 class MetricCard extends StatelessWidget {
   final ScorecardItem item;
-  final double ritmo; // ritmo esperado del mes (0.0–1.0)
+  final double ritmo;
+  final VoidCallback? onTap;
 
   const MetricCard({
     super.key,
     required this.item,
     required this.ritmo,
+    this.onTap,
   });
 
   Color _semaphoreColor() {
@@ -33,7 +35,9 @@ class MetricCard extends StatelessWidget {
     final color = _semaphoreColor();
     final pctLogro = item.pctLogro.clamp(0.0, 1.5);
 
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: const Color(0xFF1C2333),
@@ -143,6 +147,7 @@ class MetricCard extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }

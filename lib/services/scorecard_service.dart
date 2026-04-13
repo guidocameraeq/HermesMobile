@@ -11,8 +11,9 @@ class ScorecardService {
   static Future<List<ScorecardItem>> loadScorecard(
     String vendedor,
     int mes,
-    int anio,
-  ) async {
+    int anio, {
+    bool inclPendientes = false,
+  }) async {
     // 1. Traer asignaciones de Supabase
     final asigs = await PgService.getAsignaciones(vendedor, mes, anio);
 
@@ -55,6 +56,7 @@ class ScorecardService {
           mes,
           anio,
           item.paramsJson,
+          inclPendientes: inclPendientes,
         );
         item.valorReal = valor;
         item.formula = formula;

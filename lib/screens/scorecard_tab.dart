@@ -6,6 +6,11 @@ import '../services/scorecard_service.dart';
 import '../services/calculator_service.dart';
 import '../widgets/metric_card.dart';
 import '../widgets/month_selector.dart';
+import 'drilldowns/facturacion_drilldown.dart';
+import 'drilldowns/tasa_conversion_drilldown.dart';
+import 'drilldowns/foco_drilldown.dart';
+import 'drilldowns/aperturas_drilldown.dart';
+import 'drilldowns/reactivacion_drilldown.dart';
 
 class ScorecardTab extends StatefulWidget {
   const ScorecardTab({super.key});
@@ -20,6 +25,7 @@ class _ScorecardTabState extends State<ScorecardTab>
   bool _loading = true;
   String _errorMsg = '';
   DateTime _lastUpdate = DateTime.now();
+  bool _inclPend = false;
 
   late int _mes;
   late int _anio;
@@ -58,6 +64,7 @@ class _ScorecardTabState extends State<ScorecardTab>
         Session.current.vendedorNombre,
         _mes,
         _anio,
+        inclPendientes: _inclPend,
       );
 
       if (!mounted) return;
@@ -86,6 +93,34 @@ class _ScorecardTabState extends State<ScorecardTab>
     }
   }
 
+  void _openDrilldown(ScorecardItem item) {
+    final vendedor = Session.current.vendedorNombre;
+    Widget? screen;
+
+    switch (item.funcionId) {
+      case 'facturacion':
+        screen = FacturacionDrilldown(vendedor: vendedor, mes: _mes, anio: _anio);
+        break;
+      case 'tasa_conversion':
+        screen = TasaConversionDrilldown(vendedor: vendedor, mes: _mes, anio: _anio);
+        break;
+      case 'foco_unidades':
+      case 'incorporaciones':
+        screen = FocoDrilldown(vendedor: vendedor, mes: _mes, anio: _anio, paramsJson: item.paramsJson);
+        break;
+      case 'aperturas':
+        screen = AperturasDrilldown(vendedor: vendedor, mes: _mes, anio: _anio);
+        break;
+      case 'reactivacion':
+        screen = ReactivacionDrilldown(vendedor: vendedor, mes: _mes, anio: _anio, paramsJson: item.paramsJson);
+        break;
+    }
+
+    if (screen != null) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => screen!));
+    }
+  }
+
   String _fmtTime(DateTime dt) {
     return '${dt.hour.toString().padLeft(2, '0')}:'
         '${dt.minute.toString().padLeft(2, '0')}';
@@ -109,6 +144,21 @@ class _ScorecardTabState extends State<ScorecardTab>
           ],
         ),
         actions: [
+          // Toggle pendientes
+          Tooltip(
+            message: _inclPend ? 'Mostrando + Pendientes' : 'Solo Facturado',
+            child: IconButton(
+              icon: Icon(
+                _inclPend ? Icons.inventory_2 : Icons.inventory_2_outlined,
+                color: _inclPend ? AppColors.accent : AppColors.textMuted,
+                size: 20,
+              ),
+              onPressed: () {
+                setState(() => _inclPend = !_inclPend);
+                _load();
+              },
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh, color: AppColors.textMuted),
             onPressed: _loading ? null : _load,
@@ -182,7 +232,11 @@ class _ScorecardTabState extends State<ScorecardTab>
       child: ListView(
         children: [
           _RitmoBar(ritmo: _ritmo),
-          ..._items.map((item) => MetricCard(item: item, ritmo: _ritmo)),
+          ..._items.map((item) => MetricCard(
+                item: item,
+                ritmo: _ritmo,
+                onTap: item.cargado && !item.error ? () => _openDrilldown(item) : null,
+              )),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
