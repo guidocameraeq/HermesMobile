@@ -3,6 +3,7 @@ import '../config/theme.dart';
 import '../models/session.dart';
 import '../services/auth_service.dart';
 import '../services/pg_service.dart';
+import '../services/update_service.dart';
 import 'login_screen.dart';
 
 class MasTab extends StatefulWidget {
@@ -17,8 +18,65 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
   bool _sendingFeedback = false;
   String _feedbackMsg = '';
 
+  // Updates
+  ReleaseInfo? _updateAvailable;
+  bool _checkingUpdate = false;
+  bool _downloading = false;
+  double _downloadProgress = 0;
+  String _appVersion = '...';
+
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+    _checkUpdate();
+  }
+
+  Future<void> _loadVersion() async {
+    final v = await UpdateService.currentVersion();
+    if (mounted) setState(() => _appVersion = v);
+  }
+
+  Future<void> _checkUpdate() async {
+    setState(() => _checkingUpdate = true);
+    final release = await UpdateService.checkForUpdate();
+    if (mounted) {
+      setState(() {
+        _updateAvailable = release;
+        _checkingUpdate = false;
+      });
+    }
+  }
+
+  Future<void> _downloadUpdate() async {
+    if (_updateAvailable == null) return;
+    setState(() {
+      _downloading = true;
+      _downloadProgress = 0;
+    });
+
+    final ok = await UpdateService.downloadAndInstall(
+      _updateAvailable!,
+      onProgress: (p) {
+        if (mounted) setState(() => _downloadProgress = p);
+      },
+    );
+
+    if (mounted) {
+      setState(() => _downloading = false);
+      if (!ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo instalar la actualización'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    }
+  }
 
   void _logout() {
     AuthService.logout();
@@ -80,6 +138,9 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // ── Banner de actualización ────────────────────────────
+          if (_updateAvailable != null) _buildUpdateBanner(),
+
           // ── Perfil ──────────────────────────────────────────
           Container(
             padding: const EdgeInsets.all(16),
@@ -94,9 +155,7 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
                         ? session.vendedorNombre[0].toUpperCase()
                         : '?',
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                      color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
@@ -107,10 +166,7 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
                     children: [
                       Text(session.vendedorNombre, style: AppTextStyles.title),
                       const SizedBox(height: 2),
-                      Text(
-                        'Rol: ${session.role}',
-                        style: AppTextStyles.caption,
-                      ),
+                      Text('Rol: ${session.role}', style: AppTextStyles.caption),
                     ],
                   ),
                 ),
@@ -120,18 +176,44 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
 
           const SizedBox(height: 16),
 
-          // ── Info de la app ────────────────────────────────────
+          // ── Info de la app + buscar actualizaciones ────────────
           Container(
             padding: const EdgeInsets.all(16),
             decoration: AppCardStyle.base(),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Hermes Mobile', style: AppTextStyles.title),
-                SizedBox(height: 8),
-                _InfoRow(label: 'Versión', value: '1.0.0'),
-                _InfoRow(label: 'Build', value: '1'),
-                _InfoRow(label: 'Plataforma', value: 'Android'),
+                const Text('Hermes Mobile', style: AppTextStyles.title),
+                const SizedBox(height: 8),
+                _InfoRow(label: 'Versión', value: 'v$_appVersion'),
+                const _InfoRow(label: 'Plataforma', value: 'Android'),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _checkingUpdate ? null : _checkUpdate,
+                    icon: _checkingUpdate
+                        ? const SizedBox(
+                            width: 16, height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
+                          )
+                        : const Icon(Icons.system_update, size: 18),
+                    label: Text(_checkingUpdate
+                        ? 'Buscando...'
+                        : _updateAvailable != null
+                            ? 'Actualización disponible'
+                            : 'Estás al día'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _updateAvailable != null ? AppColors.success : AppColors.textMuted,
+                      side: BorderSide(
+                        color: _updateAvailable != null
+                            ? AppColors.success.withOpacity(0.5)
+                            : AppColors.border,
+                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -196,15 +278,12 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
                     child: _sendingFeedback
                         ? const SizedBox(
                             width: 18, height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
                         : const Text('Enviar'),
                   ),
@@ -225,15 +304,79 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.danger,
                 side: BorderSide(color: AppColors.danger.withOpacity(0.5)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
           ),
 
           const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUpdateBanner() {
+    final release = _updateAvailable!;
+    final sizeMb = (release.apkSize / 1024 / 1024).toStringAsFixed(1);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.success.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.success.withOpacity(0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.system_update, color: AppColors.success, size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Nueva versión: ${release.tagName}',
+                  style: AppTextStyles.title.copyWith(color: AppColors.success),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(release.name, style: AppTextStyles.caption),
+          Text('$sizeMb MB', style: AppTextStyles.muted),
+          const SizedBox(height: 12),
+
+          if (_downloading) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: _downloadProgress,
+                minHeight: 8,
+                backgroundColor: AppColors.border,
+                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.success),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Descargando... ${(_downloadProgress * 100).toStringAsFixed(0)}%',
+              style: AppTextStyles.muted,
+            ),
+          ] else
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _downloadUpdate,
+                icon: const Icon(Icons.download, size: 18),
+                label: const Text('Descargar e instalar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.success,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
         ],
       ),
     );
