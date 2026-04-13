@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import 'scorecard_screen.dart';
+import '../services/analytics_service.dart';
+import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -31,9 +32,10 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (result.ok) {
+      AnalyticsService.track('login', modulo: 'auth');
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const ScorecardScreen()),
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     } else {
       setState(() {

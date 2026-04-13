@@ -89,6 +89,12 @@ class PgService {
     }).toList();
   }
 
+  /// Ejecuta un INSERT/UPDATE/DELETE (no retorna filas).
+  static Future<void> execute(String sql, Map<String, Object?> params) async {
+    final conn = await _getConn();
+    await conn.execute(Sql.named(sql), parameters: params);
+  }
+
   static Future<void> close() async {
     await _conn?.close();
     _conn = null;
