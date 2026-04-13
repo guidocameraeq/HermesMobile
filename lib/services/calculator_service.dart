@@ -176,6 +176,57 @@ class CalculatorService {
     return (val, 'SUM($etiq) artículos foco: [$arts${articulos.length > 3 ? "..." : ""}]');
   }
 
+  // ── Incorporaciones Cargas ─────────────────────────────────────────────────
+  static Future<(double, String)> calcIncorporacionesCargas(
+    String vendedor, int mes, int anio, Map<String, dynamic> params) async {
+
+    final List conjuntos = params['conjuntos'] ?? [];
+    if (conjuntos.isEmpty) {
+      return (0.0, 'Sin conjuntos/cargas configurados. Ver desktop.');
+    }
+
+    int total = 0;
+    final detalles = <String>[];
+
+    for (final conj in conjuntos) {
+      final conjCod = conj.toString().replaceAll("'", "''");
+
+      // Clientes que compraron esta carga en el mes actual
+      final rowsMes = await SqlService.query(
+        '''SELECT DISTINCT ClienteCodigo
+           FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
+           WHERE ConjuntoCodigo = '$conjCod'
+             AND NumeraTipoTipo = 2205
+             AND YEAR(Fecha) = ? AND MONTH(Fecha) = ?
+             AND VendedorNombre = ?''',
+        [anio, mes, vendedor],
+      );
+      if (rowsMes.isEmpty) continue;
+      final clientesMes = rowsMes.map((r) => r['ClienteCodigo']?.toString()).toSet();
+
+      // Clientes que compraron esta carga ANTES del mes actual
+      final rowsHist = await SqlService.query(
+        '''SELECT DISTINCT ClienteCodigo
+           FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
+           WHERE ConjuntoCodigo = '$conjCod'
+             AND NumeraTipoTipo = 2205
+             AND Fecha < DATEFROMPARTS(?, ?, 1)''',
+        [anio, mes],
+      );
+      final clientesHist = rowsHist.map((r) => r['ClienteCodigo']?.toString()).toSet();
+
+      final nuevos = clientesMes.difference(clientesHist).length;
+      total += nuevos;
+      if (nuevos > 0) detalles.add('$conjCod: $nuevos nuevos');
+    }
+
+    var formula = 'Incorporaciones: $total (cargas a clientes nuevos)';
+    if (detalles.isNotEmpty) {
+      formula += '\n${detalles.take(5).join(", ")}';
+    }
+    return (total.toDouble(), formula);
+  }
+
   // ── Pendientes: suma desde fydvtsPedidos ──────────────────────────────────
   static Future<double> _getPendiente(String vendedor, String col) async {
     final rows = await SqlService.query(
@@ -202,6 +253,7 @@ class CalculatorService {
       'tasa_conversion' => await calcTasaConversion(vendedor, mes, anio, params),
       'reactivacion' => await calcReactivacion(vendedor, mes, anio, params),
       'foco_unidades' || 'incorporaciones' => await calcFocoUnidades(vendedor, mes, anio, params),
+      'incorporaciones_cargas' => await calcIncorporacionesCargas(vendedor, mes, anio, params),
       _ => (0.0, 'Función "$funcionId" no soportada en mobile.'),
     };
 

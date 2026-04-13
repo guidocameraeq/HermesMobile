@@ -58,7 +58,7 @@ class PgService {
                m.descripcion,
                m.tipo_dato,
                m.funcion_id,
-               m.params_json
+               COALESCE(a.params_override, m.params_json) AS params_json
         FROM asignaciones a
         JOIN metricas_pool m ON a.metrica_id = m.id
         WHERE a.vendedor_nombre = @vendedor
