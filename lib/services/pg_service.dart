@@ -54,7 +54,7 @@ class PgService {
       Sql.named('''
         SELECT a.id, a.valor_meta,
                m.id        AS metrica_id,
-               m.nombre,
+               COALESCE(a.alias, m.nombre) AS nombre,
                m.descripcion,
                m.tipo_dato,
                m.funcion_id,
