@@ -107,15 +107,14 @@ class _PedidoDetailState extends State<PedidoDetailScreen> {
                           const SizedBox(width: 8),
                           if (label == 'Pendiente')
                             Expanded(child: _TotalBox(
-                              label: 'Pendiente',
+                              label: 'Monto pendiente',
                               value: '\$ ${_fmt(montoPend)}',
                               color: AppColors.success,
                             ))
                           else
                             Expanded(child: _TotalBox(
-                              label: 'Aplicado',
-                              value: '${cantAplic.toStringAsFixed(0)} / ${cantTotal.toStringAsFixed(0)} uds',
-                              color: AppColors.primary,
+                              label: 'Artículos',
+                              value: '${_lineas.length} items',
                             )),
                         ],
                       ),
@@ -124,6 +123,31 @@ class _PedidoDetailState extends State<PedidoDetailScreen> {
                 ),
 
                 const SizedBox(height: 16),
+
+                // Disclaimer para cerrados
+                if (label == 'Cerrado') ...[
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.textMuted.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline, color: AppColors.textMuted, size: 16),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Pedido cerrado. La facturación real puede diferir '
+                            'del pedido original (sujeto a disponibilidad de stock).',
+                            style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
 
                 // Líneas de artículos
                 Text('Artículos del pedido', style: AppTextStyles.title),
@@ -134,11 +158,7 @@ class _PedidoDetailState extends State<PedidoDetailScreen> {
                   final codigo = l['ArticuloCodigo']?.toString() ?? '';
                   final linea = l['LineaNombre']?.toString() ?? '';
                   final cant = double.tryParse(l['Cantidad']?.toString() ?? '0') ?? 0;
-                  final aplic = double.tryParse(l['CantidadAplicada']?.toString() ?? '0') ?? 0;
-                  final pend = double.tryParse(l['CantidadPendiente']?.toString() ?? '0') ?? 0;
-                  final precio = double.tryParse(l['Precio']?.toString() ?? '0') ?? 0;
                   final subTotal = double.tryParse(l['SubTotalNetoPedidoLocal']?.toString() ?? '0') ?? 0;
-                  final pctCumpl = cant > 0 ? (aplic / cant) : 0.0;
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 6),
@@ -163,35 +183,9 @@ class _PedidoDetailState extends State<PedidoDetailScreen> {
                                 style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        // Barra de cumplimiento
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(3),
-                                child: LinearProgressIndicator(
-                                  value: pctCumpl.clamp(0, 1).toDouble(),
-                                  minHeight: 6,
-                                  backgroundColor: AppColors.border,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    pctCumpl >= 1 ? AppColors.primary : AppColors.success,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              '${aplic.toStringAsFixed(0)}/${cant.toStringAsFixed(0)}',
-                              style: AppTextStyles.muted,
-                            ),
-                          ],
-                        ),
-                        if (pend > 0) ...[
-                          const SizedBox(height: 4),
-                          Text('Pendiente: ${pend.toStringAsFixed(0)} uds  ·  \$ ${_fmt(precio)} c/u',
-                              style: const TextStyle(color: AppColors.warning, fontSize: 11)),
-                        ],
+                        const SizedBox(height: 4),
+                        Text('${cant.toStringAsFixed(0)} uds',
+                            style: AppTextStyles.muted),
                       ],
                     ),
                   );

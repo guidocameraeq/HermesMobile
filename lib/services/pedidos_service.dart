@@ -47,22 +47,22 @@ class PedidosService {
                     THEN Numero END) AS Pendientes,
               SUM(CASE WHEN Estado = 'Pendiente'
                     THEN SubTotalNetoPendienteLocal ELSE 0 END) AS MontoPendiente,
-              SUM(CASE WHEN Estado IN ('Cancelado','Anulado')
-                    THEN SubTotalNetoPedidoLocal ELSE 0 END) AS MontoFacturado
+              COUNT(DISTINCT CASE WHEN Estado IN ('Cancelado','Anulado')
+                    THEN Numero END) AS Cerrados
          FROM [EQ-DBGA].[dbo].[fydvtsPedidos]
          WHERE VendedorNombre = ?
            AND YEAR(Fecha) = ? AND MONTH(Fecha) = ?''',
       [vendedor, anio, mes],
     );
     if (rows.isEmpty) {
-      return {'TotalPedidos': 0, 'Pendientes': 0, 'MontoPendiente': 0.0, 'MontoFacturado': 0.0};
+      return {'TotalPedidos': 0, 'Pendientes': 0, 'MontoPendiente': 0.0, 'Cerrados': 0};
     }
     final r = rows.first;
     return {
       'TotalPedidos': int.tryParse(r['TotalPedidos']?.toString() ?? '0') ?? 0,
       'Pendientes': int.tryParse(r['Pendientes']?.toString() ?? '0') ?? 0,
       'MontoPendiente': double.tryParse(r['MontoPendiente']?.toString() ?? '0') ?? 0.0,
-      'MontoFacturado': double.tryParse(r['MontoFacturado']?.toString() ?? '0') ?? 0.0,
+      'Cerrados': int.tryParse(r['Cerrados']?.toString() ?? '0') ?? 0,
     };
   }
 
@@ -81,13 +81,11 @@ class PedidosService {
   /// Interpreta el estado para el vendedor.
   static String estadoLabel(String estado, double cantPendiente) {
     if (estado == 'Pendiente') return 'Pendiente';
-    if (estado == 'Anulado' && cantPendiente > 0) return 'Parcial';
-    return 'Facturado';
+    return 'Cerrado';
   }
 
   static int estadoColor(String estado, double cantPendiente) {
     if (estado == 'Pendiente') return 0xFF10B981; // verde
-    if (estado == 'Anulado' && cantPendiente > 0) return 0xFFF59E0B; // naranja
-    return 0xFF2563EB; // azul
+    return 0xFF64748B; // gris neutro
   }
 }

@@ -58,7 +58,7 @@ class _PedidosState extends State<PedidosScreen> {
 
       // Filtro estado
       if (_filtro == 'Pendientes' && label != 'Pendiente') return false;
-      if (_filtro == 'Facturados' && label == 'Pendiente') return false;
+      if (_filtro == 'Cerrados' && label != 'Cerrado') return false;
 
       // Búsqueda
       if (_search.isNotEmpty) {
@@ -132,31 +132,23 @@ class _PedidosState extends State<PedidosScreen> {
   }
 
   Widget _buildKpis() {
-    final totalPedidos = _kpis['TotalPedidos'] ?? 0;
     final pendientes = _kpis['Pendientes'] ?? 0;
     final montoPend = _kpis['MontoPendiente'] as double? ?? 0;
-    final montoFact = _kpis['MontoFacturado'] as double? ?? 0;
+    final cerrados = _kpis['Cerrados'] ?? 0;
 
     return Row(
       children: [
         Expanded(child: KpiCard(
-          label: 'Pedidos',
-          value: '$totalPedidos',
-          subtitle: '$pendientes pendientes',
-          icon: Icons.inventory_2,
-        )),
-        const SizedBox(width: 8),
-        Expanded(child: KpiCard(
-          label: 'Pendiente',
-          value: '\$ ${_fmt(montoPend)}',
-          valueColor: montoPend > 0 ? AppColors.success : AppColors.textMuted,
+          label: 'Pendientes',
+          value: '$pendientes',
+          subtitle: '\$ ${_fmt(montoPend)}',
+          valueColor: pendientes > 0 ? AppColors.success : AppColors.textMuted,
           icon: Icons.hourglass_bottom,
         )),
         const SizedBox(width: 8),
         Expanded(child: KpiCard(
-          label: 'Facturado',
-          value: '\$ ${_fmt(montoFact)}',
-          valueColor: AppColors.primary,
+          label: 'Cerrados',
+          value: '$cerrados',
           icon: Icons.check_circle_outline,
         )),
       ],
@@ -189,7 +181,7 @@ class _PedidosState extends State<PedidosScreen> {
             const SizedBox(width: 6),
             _chip('Pendientes'),
             const SizedBox(width: 6),
-            _chip('Facturados'),
+            _chip('Cerrados'),
             const Spacer(),
             Text('${_filtered.length} pedidos', style: AppTextStyles.muted),
           ],
