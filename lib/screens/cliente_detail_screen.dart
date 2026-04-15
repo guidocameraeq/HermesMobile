@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../models/cliente.dart';
 import '../services/clientes_service.dart';
+import '../services/lineas_service.dart';
+import 'lineas_analysis_screen.dart';
 
 class ClienteDetailScreen extends StatefulWidget {
   final Cliente cliente;
@@ -15,6 +17,8 @@ class _ClienteDetailState extends State<ClienteDetailScreen> {
   List<Map<String, dynamic>> _evolucion = [];
   List<Map<String, dynamic>> _facturas = [];
   List<Map<String, dynamic>> _saldoDocs = [];
+  int _lineasCompra = 0;
+  int _lineasTotal = 0;
   bool _loading = true;
 
   static const _meses = [
@@ -34,12 +38,16 @@ class _ClienteDetailState extends State<ClienteDetailScreen> {
       ClientesService.evolucionMensual(widget.cliente.codigo),
       ClientesService.ultimasFacturas(widget.cliente.codigo),
       ClientesService.saldoDetalle(widget.cliente.codigo),
+      LineasService.resumen(widget.cliente.codigo),
     ]);
     if (!mounted) return;
+    final lineasRes = results[3] as (int, int);
     setState(() {
-      _evolucion = results[0];
-      _facturas = results[1];
-      _saldoDocs = results[2];
+      _evolucion = results[0] as List<Map<String, dynamic>>;
+      _facturas = results[1] as List<Map<String, dynamic>>;
+      _saldoDocs = results[2] as List<Map<String, dynamic>>;
+      _lineasCompra = lineasRes.$1;
+      _lineasTotal = lineasRes.$2;
       _loading = false;
     });
   }
@@ -64,11 +72,15 @@ class _ClienteDetailState extends State<ClienteDetailScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   _buildHeader(c),
+                  const SizedBox(height: 12),
+                  _buildQuickActions(c),
                   const SizedBox(height: 16),
                   if (widget.cliente.saldo > 0) ...[
                     _buildSaldoCard(),
                     const SizedBox(height: 16),
                   ],
+                  _buildLineasResumen(c),
+                  const SizedBox(height: 16),
                   _buildEvolucion(),
                   const SizedBox(height: 16),
                   _buildFacturas(),
@@ -80,6 +92,78 @@ class _ClienteDetailState extends State<ClienteDetailScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildQuickActions(Cliente c) {
+    return Row(
+      children: [
+        Expanded(
+          child: _QuickActionBtn(
+            icon: Icons.category,
+            label: 'Análisis de líneas',
+            onTap: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => LineasAnalysisScreen(
+                clienteCodigo: c.codigo,
+                clienteNombre: c.nombre,
+              ),
+            )),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLineasResumen(Cliente c) {
+    if (_lineasTotal == 0) return const SizedBox.shrink();
+    final oportunidades = _lineasTotal - _lineasCompra;
+
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(
+        builder: (_) => LineasAnalysisScreen(
+          clienteCodigo: c.codigo,
+          clienteNombre: c.nombre,
+        ),
+      )),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: oportunidades > 0
+                ? AppColors.warning.withOpacity(0.3)
+                : AppColors.success.withOpacity(0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              oportunidades > 0 ? Icons.lightbulb_outline : Icons.check_circle,
+              color: oportunidades > 0 ? AppColors.warning : AppColors.success,
+              size: 22,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Líneas de producto: $_lineasCompra de $_lineasTotal',
+                    style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  if (oportunidades > 0)
+                    Text(
+                      '$oportunidades líneas sin explorar',
+                      style: const TextStyle(color: AppColors.warning, fontSize: 11),
+                    ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 20),
+          ],
+        ),
+      ),
     );
   }
 
@@ -395,5 +479,41 @@ class _ClienteDetailState extends State<ClienteDetailScreen> {
       buf.write(s[i]);
     }
     return neg ? '-${buf.toString()}' : buf.toString();
+  }
+}
+
+class _QuickActionBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _QuickActionBtn({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: AppColors.primary, size: 16),
+            const SizedBox(width: 8),
+            Text(label, style: const TextStyle(
+              color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
   }
 }
