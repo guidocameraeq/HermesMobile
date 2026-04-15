@@ -6,9 +6,11 @@ import '../services/pg_service.dart';
 import '../services/update_service.dart';
 import '../services/error_logger.dart';
 import '../services/visitas_service.dart';
+import '../services/pedidos_service.dart';
 import 'login_screen.dart';
 import 'visita_cliente_picker.dart';
 import 'mis_visitas_screen.dart';
+import 'pedidos_screen.dart';
 
 class MasTab extends StatefulWidget {
   const MasTab({super.key});
@@ -32,6 +34,9 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
   // Visitas
   int _visitasHoy = 0;
 
+  // Pedidos
+  int _pedidosPend = 0;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -41,6 +46,7 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
     _loadVersion();
     _checkUpdate();
     _loadVisitasHoy();
+    _loadPedidosPend();
   }
 
   Future<void> _loadVersion() async {
@@ -52,6 +58,14 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
     try {
       final count = await VisitasService.conteoHoy();
       if (mounted) setState(() => _visitasHoy = count);
+    } catch (_) {}
+  }
+
+  Future<void> _loadPedidosPend() async {
+    try {
+      final count = await PedidosService.conteoPendientes(
+          Session.current.vendedorNombre);
+      if (mounted) setState(() => _pedidosPend = count);
     } catch (_) {}
   }
 
@@ -182,6 +196,26 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
                       MaterialPageRoute(builder: (_) => const MisVisitasScreen())),
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // ── Pedidos ─────────────────────────────────────────
+          Row(
+            children: [
+              Expanded(
+                child: _MenuTile(
+                  icon: Icons.inventory_2_outlined,
+                  label: 'Pedidos',
+                  color: AppColors.primary,
+                  badge: _pedidosPend > 0 ? '$_pedidosPend pend.' : null,
+                  onTap: () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const PedidosScreen())),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Espacio para futuro tile (Embudo, etc.)
+              const Expanded(child: SizedBox()),
             ],
           ),
           const SizedBox(height: 16),
