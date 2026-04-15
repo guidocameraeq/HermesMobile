@@ -5,7 +5,10 @@ import '../services/auth_service.dart';
 import '../services/pg_service.dart';
 import '../services/update_service.dart';
 import '../services/error_logger.dart';
+import '../services/visitas_service.dart';
 import 'login_screen.dart';
+import 'visita_cliente_picker.dart';
+import 'mis_visitas_screen.dart';
 
 class MasTab extends StatefulWidget {
   const MasTab({super.key});
@@ -26,6 +29,9 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
   double _downloadProgress = 0;
   String _appVersion = '...';
 
+  // Visitas
+  int _visitasHoy = 0;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -34,11 +40,19 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
     super.initState();
     _loadVersion();
     _checkUpdate();
+    _loadVisitasHoy();
   }
 
   Future<void> _loadVersion() async {
     final v = await UpdateService.currentVersion();
     if (mounted) setState(() => _appVersion = v);
+  }
+
+  Future<void> _loadVisitasHoy() async {
+    try {
+      final count = await VisitasService.conteoHoy();
+      if (mounted) setState(() => _visitasHoy = count);
+    } catch (_) {}
   }
 
   Future<void> _checkUpdate() async {
@@ -141,6 +155,36 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
         children: [
           // ── Banner de actualización ────────────────────────────
           if (_updateAvailable != null) _buildUpdateBanner(),
+
+          // ── Visitas ─────────────────────────────────────────
+          Row(
+            children: [
+              Expanded(
+                child: _MenuTile(
+                  icon: Icons.add_location_alt,
+                  label: 'Registrar visita',
+                  color: AppColors.success,
+                  onTap: () async {
+                    await Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => const VisitaClientePickerScreen()));
+                    _loadVisitasHoy();
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _MenuTile(
+                  icon: Icons.location_on,
+                  label: 'Mis visitas',
+                  color: AppColors.accent,
+                  badge: _visitasHoy > 0 ? '$_visitasHoy hoy' : null,
+                  onTap: () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const MisVisitasScreen())),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
 
           // ── Perfil ──────────────────────────────────────────
           Container(
@@ -439,6 +483,51 @@ class _InfoRow extends StatelessWidget {
           Text(label, style: AppTextStyles.caption),
           Text(value, style: AppTextStyles.muted),
         ],
+      ),
+    );
+  }
+}
+
+class _MenuTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final String? badge;
+  final VoidCallback onTap;
+
+  const _MenuTile({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+    this.badge,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.25)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 8),
+            Text(label, style: TextStyle(
+              color: color, fontSize: 12, fontWeight: FontWeight.w600),
+              textAlign: TextAlign.center,
+            ),
+            if (badge != null) ...[
+              const SizedBox(height: 4),
+              Text(badge!, style: AppTextStyles.muted),
+            ],
+          ],
+        ),
       ),
     );
   }

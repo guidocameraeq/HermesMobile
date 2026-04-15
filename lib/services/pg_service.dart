@@ -95,6 +95,21 @@ class PgService {
     await conn.execute(Sql.named(sql), parameters: params);
   }
 
+  /// Ejecuta un SELECT genérico contra Supabase. Retorna lista de maps.
+  static Future<List<Map<String, dynamic>>> query(
+    String sql, [Map<String, Object?>? params,]
+  ) async {
+    final conn = await _getConn();
+    final result = await conn.execute(
+      Sql.named(sql),
+      parameters: params ?? {},
+    );
+    return result.map((row) {
+      final cols = row.toColumnMap();
+      return Map<String, dynamic>.from(cols);
+    }).toList();
+  }
+
   static Future<void> close() async {
     await _conn?.close();
     _conn = null;

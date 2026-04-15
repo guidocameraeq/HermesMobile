@@ -2,11 +2,16 @@ import 'sql_service.dart';
 
 /// Análisis de líneas de producto por cliente.
 /// Usa JOIN fydvtsEstadisticas + fydgnrArticulos para obtener LineaNombre.
+/// Solo líneas vendibles: Producción propia, tercerizada e importado.
 class LineasService {
   // Cache de todas las líneas (cambian muy poco)
   static List<String>? _todasCache;
 
-  /// Todas las líneas de producto activas del catálogo.
+  // Solo productos vendibles (no insumos, MP, exhibidores, etc.)
+  static const _marcasVendibles =
+      "('Produccion propia', 'Produccion tercerizada', 'Importado')";
+
+  /// Todas las líneas de producto vendibles y activas del catálogo.
   static Future<List<String>> todasLasLineas() async {
     if (_todasCache != null) return _todasCache!;
 
@@ -15,6 +20,8 @@ class LineasService {
          FROM [EQ-DBGA].[dbo].[fydgnrArticulos] a
          WHERE a.LineaNombre IS NOT NULL AND a.LineaNombre != ''
            AND a.LineaNombre != '-'
+           AND a.MarcaNombre IN $_marcasVendibles
+           AND a.EstadoBaja = 'Activo'
          ORDER BY a.LineaNombre''',
     );
 
@@ -40,6 +47,7 @@ class LineasService {
          WHERE e.ClienteCodigo = ?
            AND e.NumeraTipoTipo IN (2205, 2206)
            AND e.Fecha >= DATEADD(MONTH, -12, GETDATE())
+           AND a.MarcaNombre IN $_marcasVendibles
          GROUP BY a.LineaNombre
          ORDER BY SUM(CASE WHEN e.NumeraTipoTipo = 2205 THEN e.SubTotalNetoLocal
                            WHEN e.NumeraTipoTipo = 2206 THEN -ABS(e.SubTotalNetoLocal)
