@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../services/sql_service.dart';
+import 'oportunidades_cargas_screen.dart';
 
 class IncorporacionesCargasDrilldown extends StatefulWidget {
   final String vendedor;
@@ -21,7 +22,6 @@ class IncorporacionesCargasDrilldown extends StatefulWidget {
 class _State extends State<IncorporacionesCargasDrilldown> {
   List<Map<String, dynamic>> _computaron = [];
   List<Map<String, dynamic>> _noComputaron = [];
-  List<Map<String, dynamic>> _oportunidades = [];
   List<String> _conjuntos = [];
   bool _loading = true;
 
@@ -48,10 +48,11 @@ class _State extends State<IncorporacionesCargasDrilldown> {
     for (final conj in _conjuntos) {
       final conjCod = conj.replaceAll("'", "''");
 
-      // Clientes que compraron esta carga este mes
+      // Clientes que compraron esta carga este mes + nombre de la carga
       final rowsMes = await SqlService.query(
         '''SELECT DISTINCT e.ClienteCodigo,
               MAX(c.ClienteNombre) AS ClienteNombre,
+              MAX(e.ConjuntoNombre) AS CargaNombre,
               MAX(e.Fecha) AS Fecha
            FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas] e
            LEFT JOIN [EQ-DBGA].[dbo].[fydvtsClientesXLinea] c
@@ -75,10 +76,12 @@ class _State extends State<IncorporacionesCargasDrilldown> {
 
       for (final r in rowsMes) {
         final cli = r['ClienteCodigo']?.toString() ?? '';
+        final cargaNombre = r['CargaNombre']?.toString() ?? conjCod;
         final entry = {
           'ClienteNombre': r['ClienteNombre']?.toString() ?? cli,
           'ClienteCodigo': cli,
-          'Carga': conjCod,
+          'CargaNombre': cargaNombre,
+          'CargaCodigo': conjCod,
           'Fecha': r['Fecha']?.toString().split(' ').first ?? '',
         };
         if (histSet.contains(cli)) {
@@ -89,25 +92,10 @@ class _State extends State<IncorporacionesCargasDrilldown> {
       }
     }
 
-    // Oportunidades: clientes activos que NO tienen ninguna de las cargas
-    final conjPhs = _conjuntos.map((c) => "'${c.replaceAll("'", "''")}'").join(',');
-    final rowsOport = await SqlService.query(
-      '''SELECT c.ClienteCodigo, c.ClienteNombre
-         FROM [EQ-DBGA].[dbo].[fydvtsClientesXLinea] c
-         WHERE c.VendedorNombre = ? AND c.ClienteSituacion = 'Activo normal'
-           AND c.ClienteCodigo NOT IN (
-               SELECT DISTINCT ClienteCodigo FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
-               WHERE ConjuntoCodigo IN ($conjPhs) AND NumeraTipoTipo = 2205
-           )
-         ORDER BY c.ClienteNombre''',
-      [widget.vendedor],
-    );
-
     if (!mounted) return;
     setState(() {
       _computaron = computaron;
       _noComputaron = noComputaron;
-      _oportunidades = rowsOport;
       _loading = false;
     });
   }
@@ -115,7 +103,7 @@ class _State extends State<IncorporacionesCargasDrilldown> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 2,
       child: Scaffold(
         backgroundColor: AppColors.bg,
         appBar: AppBar(
@@ -125,11 +113,9 @@ class _State extends State<IncorporacionesCargasDrilldown> {
             indicatorColor: AppColors.primary,
             labelColor: AppColors.textPrimary,
             unselectedLabelColor: AppColors.textMuted,
-            labelStyle: const TextStyle(fontSize: 12),
             tabs: [
               Tab(text: 'Nuevos (${_computaron.length})'),
               Tab(text: 'Repetidos (${_noComputaron.length})'),
-              Tab(text: 'Oportunidad (${_oportunidades.length})'),
             ],
           ),
         ),
@@ -137,11 +123,44 @@ class _State extends State<IncorporacionesCargasDrilldown> {
             ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
             : _conjuntos.isEmpty
                 ? const Center(child: Text('Sin conjuntos configurados', style: AppTextStyles.caption))
-                : TabBarView(children: [
-                    _buildList(_computaron, AppColors.success, Icons.check_circle),
-                    _buildList(_noComputaron, AppColors.textMuted, Icons.replay),
-                    _buildOportunidades(),
-                  ]),
+                : Column(
+                    children: [
+                      Expanded(
+                        child: TabBarView(children: [
+                          _buildList(_computaron, AppColors.success, Icons.check_circle),
+                          _buildList(_noComputaron, AppColors.textMuted, Icons.replay),
+                        ]),
+                      ),
+                      // Botón Oportunidades
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton.icon(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => OportunidadesCargasScreen(
+                                  vendedor: widget.vendedor,
+                                  conjuntos: _conjuntos,
+                                ),
+                              ),
+                            ),
+                            icon: const Icon(Icons.lightbulb_outline, size: 20),
+                            label: const Text('Ver Oportunidades',
+                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.warning,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              elevation: 0,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
       ),
     );
   }
@@ -167,54 +186,29 @@ class _State extends State<IncorporacionesCargasDrilldown> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(r['ClienteNombre']?.toString() ?? '', style: AppTextStyles.body),
-                    Text('Carga: ${r['Carga']}  ·  ${r['Fecha']}', style: AppTextStyles.muted),
+                    Text(r['ClienteNombre']?.toString() ?? '',
+                        style: AppTextStyles.body, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            r['CargaNombre']?.toString() ?? '',
+                            style: const TextStyle(color: AppColors.accent, fontSize: 10, fontWeight: FontWeight.bold),
+                            maxLines: 1, overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(r['Fecha']?.toString() ?? '', style: AppTextStyles.muted),
+                      ],
+                    ),
                   ],
                 ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildOportunidades() {
-    if (_oportunidades.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.celebration, color: AppColors.success, size: 48),
-            SizedBox(height: 12),
-            Text('Todos los clientes activos ya tienen estas cargas',
-                style: AppTextStyles.caption),
-          ],
-        ),
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: _oportunidades.length,
-      itemBuilder: (_, i) {
-        final r = _oportunidades[i];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.all(12),
-          decoration: AppCardStyle.base(borderColor: AppColors.warning),
-          child: Row(
-            children: [
-              Icon(Icons.lightbulb_outline, color: AppColors.warning.withOpacity(0.8), size: 18),
-              const SizedBox(width: 10),
-              Expanded(child: Text(r['ClienteNombre']?.toString() ?? '', style: AppTextStyles.body)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text('Sin cargas', style: TextStyle(
-                    color: AppColors.warning, fontSize: 10, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
