@@ -27,9 +27,33 @@ class ScorecardItem {
     this.error = false,
   });
 
+  // ── ABS tag: [ABS:clientes_cubiertos:cartera_total] ──────────
+  // Cuando la fórmula contiene este tag, mostramos valores absolutos
+  // en vez del porcentaje crudo. Usado por tasa_conversion.
+
+  static final _absRegex = RegExp(r'\[ABS:(\d+):(\d+)\]');
+
+  (int cubiertos, int cartera)? get _absValues {
+    final match = _absRegex.firstMatch(formula);
+    if (match == null) return null;
+    return (int.parse(match.group(1)!), int.parse(match.group(2)!));
+  }
+
+  /// Fórmula limpia (sin el tag [ABS:...] que es interno)
+  String get formulaDisplay {
+    return formula.replaceAll(_absRegex, '').trim();
+  }
+
   /// % de logro (0.0 a 1.0+). Ej: 0.74 = 74%
   double get pctLogro {
     if (valorMeta <= 0) return 0.0;
+    // Para tasa_conversion con ABS: calcular % sobre meta absoluta
+    final abs = _absValues;
+    if (abs != null && tipoDato == '%') {
+      final metaAbsoluta = abs.$2 * valorMeta / 100; // cartera * meta% / 100
+      if (metaAbsoluta <= 0) return 0.0;
+      return abs.$1 / metaAbsoluta; // cubiertos / meta_absoluta
+    }
     return valorReal / valorMeta;
   }
 
@@ -37,6 +61,11 @@ class ScorecardItem {
   String get valorRealFmt {
     if (!cargado) return '...';
     if (error) return 'Error';
+    // Si tiene ABS, mostrar clientes absolutos
+    final abs = _absValues;
+    if (abs != null && tipoDato == '%') {
+      return '${abs.$1} clientes';
+    }
     switch (tipoDato) {
       case r'$':
         return '\$ ${_fmtNum(valorReal)}';
@@ -49,6 +78,12 @@ class ScorecardItem {
 
   /// Formatea el valor meta según el tipo de dato
   String get valorMetaFmt {
+    // Si tiene ABS, convertir meta% a clientes absolutos
+    final abs = _absValues;
+    if (abs != null && tipoDato == '%') {
+      final metaClientes = (abs.$2 * valorMeta / 100).round();
+      return '$metaClientes clientes';
+    }
     switch (tipoDato) {
       case r'$':
         return '\$ ${_fmtNum(valorMeta)}';
@@ -60,7 +95,6 @@ class ScorecardItem {
   }
 
   String _fmtNum(double v) {
-    // Formatea con puntos de miles: 1234567 -> 1.234.567
     final parts = v.toStringAsFixed(0).split('');
     final buf = StringBuffer();
     final len = parts.length;

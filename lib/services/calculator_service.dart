@@ -155,7 +155,9 @@ class CalculatorService {
     final totalCubiertos = fact + pendExtra;
     final tc = (totalCubiertos / cartera) * 100;
     final pendStr = pendExtra > 0 ? ' + ${pendExtra.toStringAsFixed(0)} en pedido' : '';
-    return (tc, 'Cobertura: ${fact.toStringAsFixed(0)}$pendStr de ${cartera.toStringAsFixed(0)} activos.');
+    return (tc,
+        'Cobertura: ${fact.toStringAsFixed(0)}$pendStr de ${cartera.toStringAsFixed(0)} activos.\n'
+        '[ABS:${totalCubiertos.toStringAsFixed(0)}:${cartera.toStringAsFixed(0)}]');
   }
 
   // ── Reactivación de Cuentas ───────────────────────────────────────────────

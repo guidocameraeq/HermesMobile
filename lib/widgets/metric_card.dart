@@ -132,10 +132,10 @@ class MetricCard extends StatelessWidget {
             ),
 
             // ── Fórmula / nota ──────────────────────────────────
-            if (item.formula.isNotEmpty) ...[
+            if (item.formulaDisplay.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
-                item.formula,
+                item.formulaDisplay,
                 style: const TextStyle(
                   color: Color(0xFF94A3B8),
                   fontSize: 11,
