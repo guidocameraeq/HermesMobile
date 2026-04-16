@@ -7,23 +7,23 @@ class VentasService {
   /// Retorna { facActual, facAnterior, facYoY, meta }.
   static Future<Map<String, double>> getKpis(
       String vendedor, int mes, int anio) async {
-    // Mes actual
-    final facActual = await _facturacionMes(vendedor, mes, anio);
+    // 3 queries independientes → ejecutar en paralelo
+    final results = await Future.wait([
+      _facturacionMes(vendedor, mes, anio),
+      _facturacionMes(vendedor, mes, anio - 1),
+      PgService.getAsignaciones(vendedor, mes, anio).catchError((_) => <Map<String, dynamic>>[]),
+    ]);
 
-    // Mismo mes año anterior
-    final facYoY = await _facturacionMes(vendedor, mes, anio - 1);
-
-    // Meta del mes (desde Supabase — asignación de facturación)
+    final facActual = results[0] as double;
+    final facYoY = results[1] as double;
+    final asigs = results[2] as List<Map<String, dynamic>>;
     double meta = 0;
-    try {
-      final asigs = await PgService.getAsignaciones(vendedor, mes, anio);
-      for (final a in asigs) {
-        if (a['funcion_id'] == 'facturacion') {
-          meta = a['valor_meta'] as double;
-          break;
-        }
+    for (final a in asigs) {
+      if (a['funcion_id'] == 'facturacion') {
+        meta = a['valor_meta'] as double;
+        break;
       }
-    } catch (_) {}
+    }
 
     return {
       'facActual': facActual,
@@ -57,41 +57,37 @@ class VentasService {
   /// Retorna { actual: [{mes, anio, monto}], anterior: [{mes, anio, monto}] }
   static Future<Map<String, List<Map<String, dynamic>>>> getEvolucion(
       String vendedor, int mes, int anio) async {
-    // Últimos 6 meses del año actual/reciente
-    final rowsActual = await SqlService.query(
-      '''SELECT YEAR(Fecha) AS Anio, MONTH(Fecha) AS Mes,
-              SUM(CASE WHEN NumeraTipoTipo = 2205 THEN SubTotalNetoLocal
-                       WHEN NumeraTipoTipo = 2206 THEN -ABS(SubTotalNetoLocal)
-                       ELSE 0 END) AS Monto
-         FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
-         WHERE NumeraTipoTipo IN (2205, 2206)
-           AND VendedorNombre = ?
-           AND Fecha >= DATEADD(MONTH, -5, DATEFROMPARTS(?, ?, 1))
-           AND Fecha < DATEADD(MONTH, 1, DATEFROMPARTS(?, ?, 1))
-         GROUP BY YEAR(Fecha), MONTH(Fecha)
-         ORDER BY Anio, Mes''',
-      [vendedor, anio, mes, anio, mes],
-    );
-
-    // Mismos 6 meses del año anterior
-    final rowsAnterior = await SqlService.query(
-      '''SELECT YEAR(Fecha) AS Anio, MONTH(Fecha) AS Mes,
-              SUM(CASE WHEN NumeraTipoTipo = 2205 THEN SubTotalNetoLocal
-                       WHEN NumeraTipoTipo = 2206 THEN -ABS(SubTotalNetoLocal)
-                       ELSE 0 END) AS Monto
-         FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
-         WHERE NumeraTipoTipo IN (2205, 2206)
-           AND VendedorNombre = ?
-           AND Fecha >= DATEADD(MONTH, -5, DATEFROMPARTS(?, ?, 1))
-           AND Fecha < DATEADD(MONTH, 1, DATEFROMPARTS(?, ?, 1))
-         GROUP BY YEAR(Fecha), MONTH(Fecha)
-         ORDER BY Anio, Mes''',
-      [vendedor, anio - 1, mes, anio - 1, mes],
-    );
+    // 2 queries independientes → ejecutar en paralelo
+    final results = await Future.wait([
+      SqlService.query(
+        '''SELECT YEAR(Fecha) AS Anio, MONTH(Fecha) AS Mes,
+                SUM(CASE WHEN NumeraTipoTipo = 2205 THEN SubTotalNetoLocal
+                         WHEN NumeraTipoTipo = 2206 THEN -ABS(SubTotalNetoLocal)
+                         ELSE 0 END) AS Monto
+           FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
+           WHERE NumeraTipoTipo IN (2205, 2206) AND VendedorNombre = ?
+             AND Fecha >= DATEADD(MONTH, -5, DATEFROMPARTS(?, ?, 1))
+             AND Fecha < DATEADD(MONTH, 1, DATEFROMPARTS(?, ?, 1))
+           GROUP BY YEAR(Fecha), MONTH(Fecha) ORDER BY Anio, Mes''',
+        [vendedor, anio, mes, anio, mes],
+      ),
+      SqlService.query(
+        '''SELECT YEAR(Fecha) AS Anio, MONTH(Fecha) AS Mes,
+                SUM(CASE WHEN NumeraTipoTipo = 2205 THEN SubTotalNetoLocal
+                         WHEN NumeraTipoTipo = 2206 THEN -ABS(SubTotalNetoLocal)
+                         ELSE 0 END) AS Monto
+           FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
+           WHERE NumeraTipoTipo IN (2205, 2206) AND VendedorNombre = ?
+             AND Fecha >= DATEADD(MONTH, -5, DATEFROMPARTS(?, ?, 1))
+             AND Fecha < DATEADD(MONTH, 1, DATEFROMPARTS(?, ?, 1))
+           GROUP BY YEAR(Fecha), MONTH(Fecha) ORDER BY Anio, Mes''',
+        [vendedor, anio - 1, mes, anio - 1, mes],
+      ),
+    ]);
 
     return {
-      'actual': rowsActual,
-      'anterior': rowsAnterior,
+      'actual': results[0],
+      'anterior': results[1],
     };
   }
 }

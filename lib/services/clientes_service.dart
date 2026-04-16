@@ -5,32 +5,34 @@ import 'sql_service.dart';
 class ClientesService {
   /// Lista de clientes del vendedor con última compra y saldo CxC.
   static Future<List<Cliente>> getClientes(String vendedor) async {
-    // 1. Clientes del vendedor con última compra
-    final rowsClientes = await SqlService.query(
-      '''SELECT c.ClienteCodigo, c.ClienteNombre, c.ClienteCategoria,
-              c.ClienteSituacion, c.LocalidadNombre, c.ProvinciaNombre,
-              MAX(e.Fecha) AS UltimaCompra
-         FROM [EQ-DBGA].[dbo].[fydvtsClientesXLinea] c
-         LEFT JOIN [EQ-DBGA].[dbo].[fydvtsEstadisticas] e
-            ON e.ClienteCodigo = c.ClienteCodigo
-           AND e.NumeraTipoTipo = 2205
-         WHERE c.VendedorNombre = ?
-         GROUP BY c.ClienteCodigo, c.ClienteNombre, c.ClienteCategoria,
-                  c.ClienteSituacion, c.LocalidadNombre, c.ProvinciaNombre
-         ORDER BY c.ClienteNombre''',
-      [vendedor],
-    );
-
-    // 2. Saldos CxC agrupados por cliente
-    final rowsSaldos = await SqlService.query(
-      '''SELECT ClienteCodigo,
-              SUM(ImpPendiente) AS Saldo,
-              MAX(Atraso) AS MaxAtraso
-         FROM [EQ-DBGA].[dbo].[fydvtsCtasCtes]
-         WHERE VendedorNombre = ? AND ImpPendiente > 0
-         GROUP BY ClienteCodigo''',
-      [vendedor],
-    );
+    // 2 queries independientes → ejecutar en paralelo
+    final results = await Future.wait([
+      SqlService.query(
+        '''SELECT c.ClienteCodigo, c.ClienteNombre, c.ClienteCategoria,
+                c.ClienteSituacion, c.LocalidadNombre, c.ProvinciaNombre,
+                MAX(e.Fecha) AS UltimaCompra
+           FROM [EQ-DBGA].[dbo].[fydvtsClientesXLinea] c
+           LEFT JOIN [EQ-DBGA].[dbo].[fydvtsEstadisticas] e
+              ON e.ClienteCodigo = c.ClienteCodigo
+             AND e.NumeraTipoTipo = 2205
+           WHERE c.VendedorNombre = ?
+           GROUP BY c.ClienteCodigo, c.ClienteNombre, c.ClienteCategoria,
+                    c.ClienteSituacion, c.LocalidadNombre, c.ProvinciaNombre
+           ORDER BY c.ClienteNombre''',
+        [vendedor],
+      ),
+      SqlService.query(
+        '''SELECT ClienteCodigo,
+                SUM(ImpPendiente) AS Saldo,
+                MAX(Atraso) AS MaxAtraso
+           FROM [EQ-DBGA].[dbo].[fydvtsCtasCtes]
+           WHERE VendedorNombre = ? AND ImpPendiente > 0
+           GROUP BY ClienteCodigo''',
+        [vendedor],
+      ),
+    ]);
+    final rowsClientes = results[0];
+    final rowsSaldos = results[1];
 
     // Index saldos por código
     final saldoMap = <String, (double saldo, int atraso)>{};

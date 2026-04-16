@@ -35,7 +35,8 @@ class CalculatorService {
     String vendedor, int mes, int anio, Map<String, dynamic> params, {
     bool inclPend = false,
   }) async {
-    final rows = await SqlService.query(
+    // Lanzar queries en paralelo
+    final baseFut = SqlService.query(
       '''SELECT NumeraTipoTipo, SUM(SubTotalNetoLocal) AS Total
          FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
          WHERE NumeraTipoTipo IN (2205, 2206)
@@ -43,8 +44,14 @@ class CalculatorService {
          GROUP BY NumeraTipoTipo''',
       [anio, mes, vendedor],
     );
+    final pendFut = inclPend
+        ? _getPendiente(vendedor, 'SubTotalNetoPendienteLocal')
+        : Future.value(0.0);
 
-    if (rows.isEmpty) return (0.0, 'Sin datos');
+    final rows = await baseFut;
+    final pend = await pendFut;
+
+    if (rows.isEmpty && pend <= 0) return (0.0, 'Sin datos');
     double totalF = 0, totalNC = 0;
     for (final r in rows) {
       final tipo = int.tryParse(r['NumeraTipoTipo'].toString()) ?? 0;
@@ -55,12 +62,9 @@ class CalculatorService {
     var resultado = totalF - totalNC;
     var formula = 'Facturas (\$ ${_fmt(totalF)}) − NC (\$ ${_fmt(totalNC)})';
 
-    if (inclPend) {
-      final pend = await _getPendiente(vendedor, 'SubTotalNetoPendienteLocal');
-      if (pend > 0) {
-        resultado += pend;
-        formula += ' + Pend (\$ ${_fmt(pend)})';
-      }
+    if (inclPend && pend > 0) {
+      resultado += pend;
+      formula += ' + Pend (\$ ${_fmt(pend)})';
     }
     return (resultado, formula);
   }
@@ -117,27 +121,24 @@ class CalculatorService {
     String vendedor, int mes, int anio, Map<String, dynamic> params, {
     bool inclPend = false,
   }) async {
-    final rowsActivos = await SqlService.query(
-      '''SELECT COUNT(DISTINCT ClienteCodigo) AS Total
-         FROM [EQ-DBGA].[dbo].[fydvtsClientesXLinea]
-         WHERE ClienteSituacion = 'Activo normal' AND VendedorNombre = ?''',
-      [vendedor],
-    );
-    final cartera = double.tryParse(rowsActivos.firstOrNull?['Total']?.toString() ?? '0') ?? 0.0;
-    if (cartera <= 0) return (0.0, 'Cartera activa 0.');
-
-    final rowsVentas = await SqlService.query(
-      '''SELECT COUNT(DISTINCT ClienteCodigo) AS Facturados
-         FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
-         WHERE YEAR(Fecha) = ? AND MONTH(Fecha) = ?
-           AND NumeraTipoTipo = 2205 AND VendedorNombre = ?''',
-      [anio, mes, vendedor],
-    );
-    final fact = double.tryParse(rowsVentas.firstOrNull?['Facturados']?.toString() ?? '0') ?? 0.0;
-
-    double pendExtra = 0;
+    // 2-3 queries independientes → ejecutar en paralelo
+    final futures = <Future<List<Map<String, dynamic>>>>[
+      SqlService.query(
+        '''SELECT COUNT(DISTINCT ClienteCodigo) AS Total
+           FROM [EQ-DBGA].[dbo].[fydvtsClientesXLinea]
+           WHERE ClienteSituacion = 'Activo normal' AND VendedorNombre = ?''',
+        [vendedor],
+      ),
+      SqlService.query(
+        '''SELECT COUNT(DISTINCT ClienteCodigo) AS Facturados
+           FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
+           WHERE YEAR(Fecha) = ? AND MONTH(Fecha) = ?
+             AND NumeraTipoTipo = 2205 AND VendedorNombre = ?''',
+        [anio, mes, vendedor],
+      ),
+    ];
     if (inclPend) {
-      final rowsP = await SqlService.query(
+      futures.add(SqlService.query(
         '''SELECT COUNT(DISTINCT p.ClienteCodigo) AS PendClientes
            FROM [EQ-DBGA].[dbo].[fydvtsPedidos] p
            WHERE p.Estado = 'Pendiente' AND p.CantidadPendiente > 0
@@ -148,8 +149,16 @@ class CalculatorService {
                    AND NumeraTipoTipo = 2205 AND VendedorNombre = ?
              )''',
         [vendedor, anio, mes, vendedor],
-      );
-      pendExtra = double.tryParse(rowsP.firstOrNull?['PendClientes']?.toString() ?? '0') ?? 0;
+      ));
+    }
+
+    final results = await Future.wait(futures);
+    final cartera = double.tryParse(results[0].firstOrNull?['Total']?.toString() ?? '0') ?? 0.0;
+    if (cartera <= 0) return (0.0, 'Cartera activa 0.');
+    final fact = double.tryParse(results[1].firstOrNull?['Facturados']?.toString() ?? '0') ?? 0.0;
+    double pendExtra = 0;
+    if (inclPend && results.length > 2) {
+      pendExtra = double.tryParse(results[2].firstOrNull?['PendClientes']?.toString() ?? '0') ?? 0;
     }
 
     final totalCubiertos = fact + pendExtra;
@@ -258,57 +267,70 @@ class CalculatorService {
     final List conjuntos = params['conjuntos'] ?? [];
     if (conjuntos.isEmpty) return (0.0, 'Sin conjuntos/cargas configurados. Ver desktop.');
 
-    int total = 0;
-    final detalles = <String>[];
+    final conjPhs = conjuntos.map((c) => "'${c.toString().replaceAll("'", "''")}'").join(',');
 
-    for (final conj in conjuntos) {
-      final conjCod = conj.toString().replaceAll("'", "''");
+    // 1 query batch: pares (cliente, conjunto) del MES actual
+    final rowsMesFut = SqlService.query(
+      '''SELECT DISTINCT ClienteCodigo, ConjuntoCodigo
+         FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
+         WHERE ConjuntoCodigo IN ($conjPhs) AND NumeraTipoTipo = 2205
+           AND YEAR(Fecha) = ? AND MONTH(Fecha) = ? AND VendedorNombre = ?''',
+      [anio, mes, vendedor],
+    );
 
-      final rowsMes = await SqlService.query(
-        '''SELECT DISTINCT ClienteCodigo
-           FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
-           WHERE ConjuntoCodigo = '$conjCod' AND NumeraTipoTipo = 2205
-             AND YEAR(Fecha) = ? AND MONTH(Fecha) = ? AND VendedorNombre = ?''',
-        [anio, mes, vendedor],
-      );
-      if (rowsMes.isEmpty) continue;
-      final clientesMes = rowsMes.map((r) => r['ClienteCodigo']?.toString()).toSet();
+    // 1 query batch: pares (cliente, conjunto) HISTÓRICOS
+    final rowsHistFut = SqlService.query(
+      '''SELECT DISTINCT ClienteCodigo, ConjuntoCodigo
+         FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
+         WHERE ConjuntoCodigo IN ($conjPhs) AND NumeraTipoTipo = 2205
+           AND Fecha < DATEFROMPARTS(?, ?, 1)''',
+      [anio, mes],
+    );
 
-      final rowsHist = await SqlService.query(
-        '''SELECT DISTINCT ClienteCodigo
-           FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
-           WHERE ConjuntoCodigo = '$conjCod' AND NumeraTipoTipo = 2205
-             AND Fecha < DATEFROMPARTS(?, ?, 1)''',
-        [anio, mes],
-      );
-      final clientesHist = rowsHist.map((r) => r['ClienteCodigo']?.toString()).toSet();
+    // Ejecutar en paralelo
+    final results = await Future.wait([rowsMesFut, rowsHistFut]);
+    final rowsMes = results[0];
+    final rowsHist = results[1];
 
-      final nuevos = clientesMes.difference(clientesHist).length;
-      total += nuevos;
-      if (nuevos > 0) detalles.add('$conjCod: $nuevos nuevos');
+    // Index histórico: set de "cliente|conjunto"
+    final histSet = <String>{};
+    for (final r in rowsHist) {
+      histSet.add('${r['ClienteCodigo']}|${r['ConjuntoCodigo']}');
     }
 
-    // Pendientes: clientes con pedido de cargas que nunca compraron
+    // Contar nuevos por conjunto (client-side)
+    int total = 0;
+    final detalles = <String>[];
+    final porConj = <String, int>{};
+    for (final r in rowsMes) {
+      final cli = r['ClienteCodigo']?.toString() ?? '';
+      final conj = r['ConjuntoCodigo']?.toString() ?? '';
+      if (!histSet.contains('$cli|$conj')) {
+        porConj[conj] = (porConj[conj] ?? 0) + 1;
+        total++;
+      }
+    }
+    for (final e in porConj.entries) {
+      detalles.add('${e.key}: ${e.value} nuevos');
+    }
+
+    // Pendientes: 1 query batch
     if (inclPend) {
-      for (final conj in conjuntos) {
-        final conjCod = conj.toString().replaceAll("'", "''");
-        final rowsP = await SqlService.query(
-          '''SELECT DISTINCT p.ClienteCodigo
-             FROM [EQ-DBGA].[dbo].[fydvtsPedidos] p
-             WHERE p.Estado = 'Pendiente' AND p.CantidadPendiente > 0
-               AND p.ConjuntoCodigo = '$conjCod' AND p.VendedorNombre = ?
-               AND NOT EXISTS (
-                   SELECT 1 FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas] e
-                   WHERE e.ClienteCodigo = p.ClienteCodigo
-                     AND e.ConjuntoCodigo = '$conjCod' AND e.NumeraTipoTipo = 2205
-               )''',
-          [vendedor],
-        );
-        final pendNuevos = rowsP.length;
-        if (pendNuevos > 0) {
-          total += pendNuevos;
-          detalles.add('+$pendNuevos en pedido');
-        }
+      final rowsP = await SqlService.query(
+        '''SELECT DISTINCT p.ClienteCodigo, p.ConjuntoCodigo
+           FROM [EQ-DBGA].[dbo].[fydvtsPedidos] p
+           WHERE p.Estado = 'Pendiente' AND p.CantidadPendiente > 0
+             AND p.ConjuntoCodigo IN ($conjPhs) AND p.VendedorNombre = ?
+             AND NOT EXISTS (
+                 SELECT 1 FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas] e
+                 WHERE e.ClienteCodigo = p.ClienteCodigo
+                   AND e.ConjuntoCodigo = p.ConjuntoCodigo AND e.NumeraTipoTipo = 2205
+             )''',
+        [vendedor],
+      );
+      if (rowsP.isNotEmpty) {
+        total += rowsP.length;
+        detalles.add('+${rowsP.length} en pedido');
       }
     }
 
