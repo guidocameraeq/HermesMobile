@@ -12,6 +12,8 @@ import 'drilldowns/tasa_conversion_drilldown.dart';
 import 'drilldowns/foco_drilldown.dart';
 import 'drilldowns/aperturas_drilldown.dart';
 import 'drilldowns/reactivacion_drilldown.dart';
+import 'drilldowns/activaciones_drilldown.dart';
+import 'drilldowns/incorporaciones_cargas_drilldown.dart';
 
 class ScorecardTab extends StatefulWidget {
   const ScorecardTab({super.key});
@@ -114,6 +116,12 @@ class _ScorecardTabState extends State<ScorecardTab>
         break;
       case 'reactivacion':
         screen = ReactivacionDrilldown(vendedor: vendedor, mes: _mes, anio: _anio, paramsJson: item.paramsJson);
+        break;
+      case 'incorporaciones_cargas':
+        screen = IncorporacionesCargasDrilldown(vendedor: vendedor, mes: _mes, anio: _anio, paramsJson: item.paramsJson);
+        break;
+      case 'activaciones':
+        screen = ActivacionesDrilldown(vendedor: vendedor, mes: _mes, anio: _anio);
         break;
     }
 
