@@ -6,7 +6,7 @@ import '../../services/sql_service.dart';
 /// NO compraron cada una de esas cargas.
 class OportunidadesCargasScreen extends StatefulWidget {
   final String vendedor;
-  final List<String> conjuntos; // códigos disponibles
+  final List<String> conjuntos;
 
   const OportunidadesCargasScreen({
     super.key,
@@ -19,12 +19,10 @@ class OportunidadesCargasScreen extends StatefulWidget {
 }
 
 class _State extends State<OportunidadesCargasScreen> {
-  // Paso 1: selección de cargas
-  Map<String, String> _cargasDisponibles = {}; // código → nombre
+  Map<String, String> _cargasDisponibles = {};
   Set<String> _seleccionadas = {};
   bool _loadingCargas = true;
 
-  // Paso 2: resultados
   List<_ClienteOportunidad> _resultados = [];
   bool _buscando = false;
   bool _buscado = false;
@@ -38,16 +36,26 @@ class _State extends State<OportunidadesCargasScreen> {
   Future<void> _loadNombresCargas() async {
     setState(() => _loadingCargas = true);
 
-    // Buscar nombres de cada conjunto
+    // UNA sola query para todos los nombres de conjuntos
+    final phs = widget.conjuntos
+        .map((c) => "'${c.replaceAll("'", "''")}'")
+        .join(',');
+    final rows = await SqlService.query(
+      '''SELECT DISTINCT ConjuntoCodigo, ConjuntoNombre
+         FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
+         WHERE ConjuntoCodigo IN ($phs)
+           AND ConjuntoNombre IS NOT NULL''',
+    );
+
     final mapa = <String, String>{};
-    for (final cod in widget.conjuntos) {
-      final codEsc = cod.replaceAll("'", "''");
-      final rows = await SqlService.query(
-        '''SELECT TOP 1 ConjuntoNombre
-           FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
-           WHERE ConjuntoCodigo = '$codEsc' AND ConjuntoNombre IS NOT NULL''',
-      );
-      mapa[cod] = rows.firstOrNull?['ConjuntoNombre']?.toString() ?? cod;
+    for (final r in rows) {
+      final cod = r['ConjuntoCodigo']?.toString() ?? '';
+      final nom = r['ConjuntoNombre']?.toString() ?? cod;
+      if (cod.isNotEmpty) mapa[cod] = nom;
+    }
+    // Agregar los que no se encontraron con su código como nombre
+    for (final c in widget.conjuntos) {
+      mapa.putIfAbsent(c, () => c);
     }
 
     if (!mounted) return;
@@ -61,42 +69,56 @@ class _State extends State<OportunidadesCargasScreen> {
     if (_seleccionadas.isEmpty) return;
     setState(() { _buscando = true; _resultados = []; });
 
-    // Por cada carga seleccionada, buscar clientes que NUNCA la compraron
-    final Map<String, List<String>> clientesFaltantes = {}; // clienteCodigo → [cargas que le faltan]
-    final Map<String, String> clienteNombres = {};
+    // UNA sola query: todos los clientes activos del vendedor
+    final rowsCartera = await SqlService.query(
+      '''SELECT DISTINCT ClienteCodigo, ClienteNombre
+         FROM [EQ-DBGA].[dbo].[fydvtsClientesXLinea]
+         WHERE VendedorNombre = ? AND ClienteSituacion = 'Activo normal'
+         ORDER BY ClienteNombre''',
+      [widget.vendedor],
+    );
 
-    for (final cod in _seleccionadas) {
-      final codEsc = cod.replaceAll("'", "''");
-      final cargaNombre = _cargasDisponibles[cod] ?? cod;
+    // UNA sola query: todos los pares (cliente, conjunto) que compraron alguna vez
+    final selPhs = _seleccionadas
+        .map((c) => "'${c.replaceAll("'", "''")}'")
+        .join(',');
+    final rowsComprados = await SqlService.query(
+      '''SELECT DISTINCT ClienteCodigo, ConjuntoCodigo
+         FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
+         WHERE ConjuntoCodigo IN ($selPhs)
+           AND NumeraTipoTipo = 2205
+           AND VendedorNombre = ?''',
+      [widget.vendedor],
+    );
 
-      // Clientes activos del vendedor que NO compraron esta carga
-      final rows = await SqlService.query(
-        '''SELECT c.ClienteCodigo, c.ClienteNombre
-           FROM [EQ-DBGA].[dbo].[fydvtsClientesXLinea] c
-           WHERE c.VendedorNombre = ? AND c.ClienteSituacion = 'Activo normal'
-             AND c.ClienteCodigo NOT IN (
-                 SELECT DISTINCT ClienteCodigo
-                 FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
-                 WHERE ConjuntoCodigo = '$codEsc' AND NumeraTipoTipo = 2205
-             )
-           ORDER BY c.ClienteNombre''',
-        [widget.vendedor],
-      );
+    // Index: qué conjuntos compró cada cliente
+    final compradosPorCliente = <String, Set<String>>{};
+    for (final r in rowsComprados) {
+      final cli = r['ClienteCodigo']?.toString() ?? '';
+      final conj = r['ConjuntoCodigo']?.toString() ?? '';
+      compradosPorCliente.putIfAbsent(cli, () => {}).add(conj);
+    }
 
-      for (final r in rows) {
-        final cli = r['ClienteCodigo']?.toString() ?? '';
-        clienteNombres[cli] = r['ClienteNombre']?.toString() ?? cli;
-        clientesFaltantes.putIfAbsent(cli, () => []).add(cargaNombre);
+    // Calcular faltantes por cliente
+    final resultados = <_ClienteOportunidad>[];
+    for (final r in rowsCartera) {
+      final cli = r['ClienteCodigo']?.toString() ?? '';
+      final nombre = r['ClienteNombre']?.toString() ?? cli;
+      final compradas = compradosPorCliente[cli] ?? {};
+      final faltantes = _seleccionadas
+          .where((c) => !compradas.contains(c))
+          .map((c) => _cargasDisponibles[c] ?? c)
+          .toList();
+
+      if (faltantes.isNotEmpty) {
+        resultados.add(_ClienteOportunidad(
+          codigo: cli, nombre: nombre, cargasFaltantes: faltantes,
+        ));
       }
     }
 
-    // Convertir a lista ordenada por cantidad de cargas faltantes (más faltantes primero)
-    final resultados = clientesFaltantes.entries.map((e) => _ClienteOportunidad(
-      codigo: e.key,
-      nombre: clienteNombres[e.key] ?? e.key,
-      cargasFaltantes: e.value,
-    )).toList()
-      ..sort((a, b) => b.cargasFaltantes.length.compareTo(a.cargasFaltantes.length));
+    // Ordenar por más cargas faltantes primero
+    resultados.sort((a, b) => b.cargasFaltantes.length.compareTo(a.cargasFaltantes.length));
 
     if (!mounted) return;
     setState(() {
@@ -118,9 +140,7 @@ class _State extends State<OportunidadesCargasScreen> {
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : Column(
               children: [
-                // Selector de cargas
                 _buildSelector(),
-                // Botón buscar
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: SizedBox(
@@ -135,7 +155,7 @@ class _State extends State<OportunidadesCargasScreen> {
                       label: Text(
                         _buscando
                             ? 'Buscando...'
-                            : 'Buscar oportunidades (${_seleccionadas.length} cargas)',
+                            : 'Buscar (${_seleccionadas.length} cargas)',
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       style: ElevatedButton.styleFrom(
@@ -147,20 +167,16 @@ class _State extends State<OportunidadesCargasScreen> {
                     ),
                   ),
                 ),
-                // Resultados
-                if (_buscado) ...[
+                if (_buscado)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     child: Row(
                       children: [
                         Text('${_resultados.length} clientes con oportunidad',
                             style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)),
-                        const Spacer(),
-                        Text('Ordenado por cargas faltantes', style: AppTextStyles.muted),
                       ],
                     ),
                   ),
-                ],
                 Expanded(
                   child: _buscado
                       ? _resultados.isEmpty
@@ -184,7 +200,7 @@ class _State extends State<OportunidadesCargasScreen> {
                           child: Text(
                             _seleccionadas.isEmpty
                                 ? 'Seleccioná al menos una carga'
-                                : 'Tocá "Buscar oportunidades"',
+                                : 'Tocá "Buscar"',
                             style: AppTextStyles.muted,
                           ),
                         ),
@@ -216,6 +232,7 @@ class _State extends State<OportunidadesCargasScreen> {
                     } else {
                       _seleccionadas = _cargasDisponibles.keys.toSet();
                     }
+                    _buscado = false;
                   });
                 },
                 child: Text(
@@ -245,11 +262,7 @@ class _State extends State<OportunidadesCargasScreen> {
                     selected: selected,
                     onSelected: (v) {
                       setState(() {
-                        if (v) {
-                          _seleccionadas.add(e.key);
-                        } else {
-                          _seleccionadas.remove(e.key);
-                        }
+                        if (v) _seleccionadas.add(e.key); else _seleccionadas.remove(e.key);
                         _buscado = false;
                       });
                     },
@@ -313,8 +326,7 @@ class _State extends State<OportunidadesCargasScreen> {
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: AppColors.danger.withOpacity(0.2)),
               ),
-              child: Text(
-                carga,
+              child: Text(carga,
                 style: const TextStyle(color: AppColors.danger, fontSize: 10),
                 maxLines: 1, overflow: TextOverflow.ellipsis,
               ),

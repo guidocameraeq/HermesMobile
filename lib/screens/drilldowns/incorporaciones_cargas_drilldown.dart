@@ -42,53 +42,57 @@ class _State extends State<IncorporacionesCargasDrilldown> {
     }
     setState(() => _loading = true);
 
+    final conjPhs = _conjuntos.map((c) => "'${c.replaceAll("'", "''")}'").join(',');
+
+    // Query 1: clientes que compraron CUALQUIERA de las cargas ESTE MES (batch)
+    final rowsMes = await SqlService.query(
+      '''SELECT DISTINCT e.ClienteCodigo, e.ConjuntoCodigo,
+            MAX(c.ClienteNombre) AS ClienteNombre,
+            MAX(e.ConjuntoNombre) AS CargaNombre,
+            MAX(e.Fecha) AS Fecha
+         FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas] e
+         LEFT JOIN [EQ-DBGA].[dbo].[fydvtsClientesXLinea] c
+            ON c.ClienteCodigo = e.ClienteCodigo
+         WHERE e.ConjuntoCodigo IN ($conjPhs) AND e.NumeraTipoTipo = 2205
+           AND YEAR(e.Fecha) = ? AND MONTH(e.Fecha) = ?
+           AND e.VendedorNombre = ?
+         GROUP BY e.ClienteCodigo, e.ConjuntoCodigo''',
+      [widget.anio, widget.mes, widget.vendedor],
+    );
+
+    // Query 2: clientes que compraron CUALQUIERA de las cargas ANTES (histórico, batch)
+    final rowsHist = await SqlService.query(
+      '''SELECT DISTINCT ClienteCodigo, ConjuntoCodigo
+         FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
+         WHERE ConjuntoCodigo IN ($conjPhs) AND NumeraTipoTipo = 2205
+           AND Fecha < DATEFROMPARTS(?, ?, 1)''',
+      [widget.anio, widget.mes],
+    );
+
+    // Index histórico: set de "clienteCodigo|conjuntoCodigo"
+    final histSet = <String>{};
+    for (final r in rowsHist) {
+      histSet.add('${r['ClienteCodigo']}|${r['ConjuntoCodigo']}');
+    }
+
+    // Clasificar
     final computaron = <Map<String, dynamic>>[];
     final noComputaron = <Map<String, dynamic>>[];
 
-    for (final conj in _conjuntos) {
-      final conjCod = conj.replaceAll("'", "''");
-
-      // Clientes que compraron esta carga este mes + nombre de la carga
-      final rowsMes = await SqlService.query(
-        '''SELECT DISTINCT e.ClienteCodigo,
-              MAX(c.ClienteNombre) AS ClienteNombre,
-              MAX(e.ConjuntoNombre) AS CargaNombre,
-              MAX(e.Fecha) AS Fecha
-           FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas] e
-           LEFT JOIN [EQ-DBGA].[dbo].[fydvtsClientesXLinea] c
-              ON c.ClienteCodigo = e.ClienteCodigo
-           WHERE e.ConjuntoCodigo = '$conjCod' AND e.NumeraTipoTipo = 2205
-             AND YEAR(e.Fecha) = ? AND MONTH(e.Fecha) = ?
-             AND e.VendedorNombre = ?
-           GROUP BY e.ClienteCodigo''',
-        [widget.anio, widget.mes, widget.vendedor],
-      );
-
-      // Clientes que compraron esta carga ANTES
-      final rowsHist = await SqlService.query(
-        '''SELECT DISTINCT ClienteCodigo
-           FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas]
-           WHERE ConjuntoCodigo = '$conjCod' AND NumeraTipoTipo = 2205
-             AND Fecha < DATEFROMPARTS(?, ?, 1)''',
-        [widget.anio, widget.mes],
-      );
-      final histSet = rowsHist.map((r) => r['ClienteCodigo']?.toString()).toSet();
-
-      for (final r in rowsMes) {
-        final cli = r['ClienteCodigo']?.toString() ?? '';
-        final cargaNombre = r['CargaNombre']?.toString() ?? conjCod;
-        final entry = {
-          'ClienteNombre': r['ClienteNombre']?.toString() ?? cli,
-          'ClienteCodigo': cli,
-          'CargaNombre': cargaNombre,
-          'CargaCodigo': conjCod,
-          'Fecha': r['Fecha']?.toString().split(' ').first ?? '',
-        };
-        if (histSet.contains(cli)) {
-          noComputaron.add(entry);
-        } else {
-          computaron.add(entry);
-        }
+    for (final r in rowsMes) {
+      final cli = r['ClienteCodigo']?.toString() ?? '';
+      final conj = r['ConjuntoCodigo']?.toString() ?? '';
+      final entry = {
+        'ClienteNombre': r['ClienteNombre']?.toString() ?? cli,
+        'ClienteCodigo': cli,
+        'CargaNombre': r['CargaNombre']?.toString() ?? conj,
+        'CargaCodigo': conj,
+        'Fecha': r['Fecha']?.toString().split(' ').first ?? '',
+      };
+      if (histSet.contains('$cli|$conj')) {
+        noComputaron.add(entry);
+      } else {
+        computaron.add(entry);
       }
     }
 
@@ -131,7 +135,6 @@ class _State extends State<IncorporacionesCargasDrilldown> {
                           _buildList(_noComputaron, AppColors.textMuted, Icons.replay),
                         ]),
                       ),
-                      // Botón Oportunidades
                       Padding(
                         padding: const EdgeInsets.all(16),
                         child: SizedBox(
