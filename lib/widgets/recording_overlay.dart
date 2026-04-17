@@ -39,6 +39,7 @@ class _RecordingOverlayState extends State<RecordingOverlay>
   Timer? _timer;
   double _amplitude = 0;
   StreamSubscription? _ampSub;
+  bool _completed = false; // evita doble cleanup
 
   @override
   void initState() {
@@ -68,27 +69,35 @@ class _RecordingOverlayState extends State<RecordingOverlay>
   }
 
   Future<void> _stop() async {
+    if (_completed) return;
+    _completed = true;
     HapticFeedback.lightImpact();
     _timer?.cancel();
     await _ampSub?.cancel();
     final path = await WhisperService.stop();
     if (!mounted) return;
-    Navigator.pop(context, path);
+    Navigator.of(context).pop(path);
   }
 
   Future<void> _cancel() async {
+    if (_completed) return;
+    _completed = true;
     HapticFeedback.lightImpact();
     _timer?.cancel();
     await _ampSub?.cancel();
     await WhisperService.cancel();
     if (!mounted) return;
-    Navigator.pop(context, null);
+    Navigator.of(context).pop();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     _ampSub?.cancel();
+    // Si se cerró por back/gesto sin usar Listo/Cancelar, limpiar grabación
+    if (!_completed) {
+      WhisperService.cancel();
+    }
     super.dispose();
   }
 
@@ -100,49 +109,43 @@ class _RecordingOverlayState extends State<RecordingOverlay>
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (_, __) => _cancel(),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Pulso animado reactivo al audio
-              _PulseCircle(amplitude: _amplitude),
-              const SizedBox(height: 40),
-              Text(_timeStr, style: const TextStyle(
-                color: Colors.white, fontSize: 36,
-                fontWeight: FontWeight.w300, letterSpacing: 2,
-              )),
-              const SizedBox(height: 8),
-              const Text('Grabando...',
-                  style: TextStyle(color: Colors.white60, fontSize: 13)),
-              const SizedBox(height: 60),
-              // Botones
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _RoundBtn(
-                    icon: Icons.close,
-                    color: AppColors.danger,
-                    small: true,
-                    label: 'Cancelar',
-                    onTap: _cancel,
-                  ),
-                  const SizedBox(width: 32),
-                  _RoundBtn(
-                    icon: Icons.check,
-                    color: AppColors.success,
-                    small: false,
-                    label: 'Listo',
-                    onTap: _stop,
-                  ),
-                ],
-              ),
-            ],
-          ),
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _PulseCircle(amplitude: _amplitude),
+            const SizedBox(height: 40),
+            Text(_timeStr, style: const TextStyle(
+              color: Colors.white, fontSize: 36,
+              fontWeight: FontWeight.w300, letterSpacing: 2,
+            )),
+            const SizedBox(height: 8),
+            const Text('Grabando...',
+                style: TextStyle(color: Colors.white60, fontSize: 13)),
+            const SizedBox(height: 60),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _RoundBtn(
+                  icon: Icons.close,
+                  color: AppColors.danger,
+                  small: true,
+                  label: 'Cancelar',
+                  onTap: _cancel,
+                ),
+                const SizedBox(width: 32),
+                _RoundBtn(
+                  icon: Icons.check,
+                  color: AppColors.success,
+                  small: false,
+                  label: 'Listo',
+                  onTap: _stop,
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
