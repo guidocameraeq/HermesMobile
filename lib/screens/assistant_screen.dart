@@ -3,6 +3,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../config/theme.dart';
 import '../models/session.dart';
 import '../services/assistant_service.dart';
+import '../services/actividades_service.dart';
 
 class AssistantScreen extends StatefulWidget {
   const AssistantScreen({super.key});
@@ -132,24 +133,37 @@ class _AssistantState extends State<AssistantScreen> {
     });
   }
 
-  void _confirmAction(AssistantAction action) {
-    // POC: solo mostrar snackbar. Futuro: INSERT en actividades + notificación
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Actividad registrada: ${action.accionLabel}'
-          '${action.tieneCliente ? " — ${action.clienteResuelto!.nombre}" : ""}',
+  Future<void> _confirmAction(AssistantAction action) async {
+    try {
+      await ActividadesService.registrar(
+        clienteCodigo: action.clienteResuelto?.codigo ?? '',
+        clienteNombre: action.clienteResuelto?.nombre ?? action.clienteMatch ?? '',
+        tipo: action.accion,
+        descripcion: action.nota,
+        fechaProgramada: action.cuando,
+        origen: 'hermes_flash',
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Actividad guardada: ${action.accionLabel}'
+            '${action.tieneCliente ? " — ${action.clienteResuelto!.nombre}" : ""}',
+          ),
+          backgroundColor: AppColors.success,
+          duration: const Duration(seconds: 3),
         ),
-        backgroundColor: AppColors.success,
-        duration: const Duration(seconds: 3),
-      ),
-    );
-    setState(() {
-      _messages.add(_ChatMessage(
-        isUser: false,
-        text: 'Listo, actividad confirmada.',
-      ));
-    });
+      );
+      setState(() {
+        _messages.add(_ChatMessage(isUser: false, text: 'Guardado en la historia del cliente.'));
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al guardar: $e'), backgroundColor: AppColors.danger),
+      );
+    }
     _scrollToBottom();
   }
 

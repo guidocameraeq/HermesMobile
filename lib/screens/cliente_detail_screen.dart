@@ -3,6 +3,10 @@ import '../config/theme.dart';
 import '../models/cliente.dart';
 import '../services/clientes_service.dart';
 import '../services/lineas_service.dart';
+import '../services/actividades_service.dart';
+import '../services/visitas_service.dart';
+import '../widgets/historia_clinica.dart';
+import '../widgets/actividad_form_sheet.dart';
 import 'lineas_analysis_screen.dart';
 
 class ClienteDetailScreen extends StatefulWidget {
@@ -17,6 +21,7 @@ class _ClienteDetailState extends State<ClienteDetailScreen> {
   List<Map<String, dynamic>> _evolucion = [];
   List<Map<String, dynamic>> _facturas = [];
   List<Map<String, dynamic>> _saldoDocs = [];
+  List<TimelineEntry> _timeline = [];
   int _lineasCompra = 0;
   int _lineasTotal = 0;
   bool _loading = true;
@@ -39,15 +44,45 @@ class _ClienteDetailState extends State<ClienteDetailScreen> {
       ClientesService.ultimasFacturas(widget.cliente.codigo),
       ClientesService.saldoDetalle(widget.cliente.codigo),
       LineasService.resumen(widget.cliente.codigo),
+      ActividadesService.porCliente(widget.cliente.codigo),
+      VisitasService.visitasCliente(widget.cliente.codigo, limit: 10),
     ]);
     if (!mounted) return;
     final lineasRes = results[3] as (int, int);
+    final actividades = results[4] as List<Map<String, dynamic>>;
+    final visitas = results[5] as List<Map<String, dynamic>>;
+
+    // Construir timeline mezclado
+    final timeline = <TimelineEntry>[];
+    for (final a in actividades) {
+      final dt = a['created_at'];
+      timeline.add(TimelineEntry(
+        id: int.tryParse(a['id']?.toString() ?? ''),
+        tipo: a['tipo']?.toString() ?? 'otro',
+        descripcion: a['descripcion']?.toString(),
+        fecha: dt is DateTime ? dt : DateTime.tryParse(dt?.toString() ?? '') ?? DateTime.now(),
+        origen: a['origen']?.toString() ?? 'manual',
+        completada: a['completada'] == true,
+      ));
+    }
+    for (final v in visitas) {
+      final dt = v['created_at'];
+      timeline.add(TimelineEntry(
+        tipo: v['motivo']?.toString() ?? 'visita',
+        descripcion: v['notas']?.toString(),
+        fecha: dt is DateTime ? dt : DateTime.tryParse(dt?.toString() ?? '') ?? DateTime.now(),
+        origen: 'visita_gps',
+      ));
+    }
+    timeline.sort((a, b) => b.fecha.compareTo(a.fecha));
+
     setState(() {
       _evolucion = results[0] as List<Map<String, dynamic>>;
       _facturas = results[1] as List<Map<String, dynamic>>;
       _saldoDocs = results[2] as List<Map<String, dynamic>>;
       _lineasCompra = lineasRes.$1;
       _lineasTotal = lineasRes.$2;
+      _timeline = timeline;
       _loading = false;
     });
   }
@@ -81,6 +116,13 @@ class _ClienteDetailState extends State<ClienteDetailScreen> {
                   ],
                   _buildLineasResumen(c),
                   const SizedBox(height: 16),
+                  // Historia clínica
+                  HistoriaClinica(
+                    entries: _timeline.take(10).toList(),
+                    onVerMas: _timeline.length > 10 ? () {} : null,
+                    onCompletar: _completarActividad,
+                  ),
+                  const SizedBox(height: 16),
                   _buildEvolucion(),
                   const SizedBox(height: 16),
                   _buildFacturas(),
@@ -93,6 +135,24 @@ class _ClienteDetailState extends State<ClienteDetailScreen> {
               ),
             ),
     );
+  }
+
+  void _openActividadForm(Cliente c) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ActividadFormSheet(
+        clienteCodigo: c.codigo,
+        clienteNombre: c.nombre,
+        onSaved: _load,
+      ),
+    );
+  }
+
+  Future<void> _completarActividad(int id) async {
+    await ActividadesService.completar(id);
+    _load();
   }
 
   Widget _buildQuickActions(Cliente c) {
@@ -108,6 +168,14 @@ class _ClienteDetailState extends State<ClienteDetailScreen> {
                 clienteNombre: c.nombre,
               ),
             )),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _QuickActionBtn(
+            icon: Icons.add_circle_outline,
+            label: 'Cargar actividad',
+            onTap: () => _openActividadForm(c),
           ),
         ),
       ],
