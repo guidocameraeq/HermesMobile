@@ -8,13 +8,14 @@ import 'actividades_service.dart';
 
 /// Respuesta parseada del asistente IA.
 class AssistantAction {
-  final String tipo;        // actividad, consulta, otro
+  final String tipo;
   final String? clienteMatch;
-  final String accion;      // llamada, visita, propuesta, reunion, recordatorio, otro
-  final String? cuando;     // ISO 8601 datetime
+  final String accion;
+  final String? cuando;
   final String nota;
-  final String mensaje;     // respuesta amigable
-  final Cliente? clienteResuelto; // después del fuzzy match
+  final String mensaje;
+  final Cliente? clienteResuelto;
+  final int? actividadId; // para completar desde pendientes
 
   AssistantAction({
     required this.tipo,
@@ -24,9 +25,11 @@ class AssistantAction {
     required this.nota,
     required this.mensaje,
     this.clienteResuelto,
+    this.actividadId,
   });
 
   bool get esActividad => tipo == 'actividad';
+  bool get esPendiente => tipo == 'pendiente_item';
   bool get tieneCliente => clienteResuelto != null;
 
   String get cuandoFmt {
@@ -41,17 +44,30 @@ class AssistantAction {
     'llamada' => 'Llamada',
     'visita' => 'Visita',
     'propuesta' => 'Propuesta',
+    'presentacion' => 'Presentación',
     'reunion' => 'Reunión',
     'recordatorio' => 'Recordatorio',
     _ => accion,
   };
 }
 
-/// Servicio del asistente IA — llama a OpenAI y parsea la respuesta.
+/// Resultado que puede contener 1 o más acciones.
+class AssistantResult {
+  final String mensaje;
+  final List<AssistantAction> actions;
+
+  AssistantResult({required this.mensaje, required this.actions});
+
+  bool get tieneAcciones => actions.isNotEmpty;
+}
+
+/// Servicio del asistente IA — con historial de conversación.
 class AssistantService {
   static List<Cliente>? _clientesCache;
 
-  /// Carga la cartera de clientes del vendedor (se cachea).
+  // Historial de conversación (se mantiene mientras la pantalla está abierta)
+  static final List<Map<String, String>> _historial = [];
+
   static Future<List<Cliente>> _getClientes() async {
     _clientesCache ??= await ClientesService.getClientes(
       Session.current.vendedorNombre,
@@ -59,52 +75,58 @@ class AssistantService {
     return _clientesCache!;
   }
 
-  /// Limpia cache (si cambia de vendedor o se quiere refrescar).
   static void clearCache() => _clientesCache = null;
 
-  /// Arma el prompt del sistema con la cartera del vendedor.
+  /// Limpia el historial (al abrir la pantalla de nuevo).
+  static void resetConversation() => _historial.clear();
+
   static Future<String> _buildSystemPrompt() async {
     final clientes = await _getClientes();
     final vendedor = Session.current.vendedorNombre;
     final now = DateTime.now();
     final fecha = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final diaSemana = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'][now.weekday - 1];
 
-    // Lista de clientes compacta para el contexto
     final clientesStr = clientes
         .where((c) => c.esActivo)
         .map((c) => '${c.codigo}: ${c.nombre}')
         .join('\n');
 
-    return '''Sos Cronos, el asistente de agenda del vendedor. SOLO podés hacer 3 cosas:
-1. AGENDAR actividades y recordatorios ("recordame llamar a García mañana")
-2. LISTAR pendientes ("qué tengo pendiente")
-3. MARCAR como completada ("ya llamé a García")
+    return '''Sos Cronos, el asistente de agenda del vendedor. SOLO podés hacer estas cosas:
+1. AGENDAR actividades y recordatorios
+2. MARCAR como completada ("ya llamé a García")
 
-Para CUALQUIER otra cosa (preguntas, conversación, chistes, consultas de datos), respondé:
-{"tipo":"rechazo","accion":"otro","nota":"","mensaje":"Soy Cronos y solo puedo ayudarte con actividades y recordatorios. Decime qué tenés que hacer y te lo anoto."}
+Para CUALQUIER otra cosa, respondé:
+{"acciones":[],"mensaje":"Soy Cronos y solo puedo ayudarte con actividades y recordatorios."}
 
 El vendedor se llama: $vendedor
-Fecha y hora actual: $fecha ${now.hour}:${now.minute.toString().padLeft(2, '0')}
+Hoy es: $diaSemana $fecha ${now.hour}:${now.minute.toString().padLeft(2, '0')}
 
-Cartera de clientes del vendedor:
+Cartera de clientes:
 $clientesStr
 
-REGLAS:
-- Respondé SIEMPRE con JSON puro (sin backticks, sin markdown).
-- Si menciona un cliente, poné en "cliente_match" el texto que usó.
-- Interpretá fechas: "mañana" = fecha de mañana, "el lunes" = próximo lunes, etc.
-- Si falta info (ej: no dijo a qué cliente), preguntá con tipo "consulta".
-- Sé breve y amigable.
+REGLAS CRÍTICAS:
+1. Respondé SIEMPRE con JSON puro (sin backticks, sin markdown).
+2. Usá el campo "acciones" como ARRAY — puede tener 0, 1 o más acciones.
+3. Si el vendedor pide agendar MÚLTIPLES actividades, creá UNA acción por cada una en el array.
+4. Interpretá fechas: "mañana" = día siguiente, "el sábado" = próximo sábado, "los próximos 2 sábados" = 2 fechas.
+5. Si falta info (cliente, hora), preguntá con acciones vacías.
+6. Recordá el contexto de la conversación — si ya se mencionó un cliente, no lo vuelvas a pedir.
 
-Formato JSON:
-{"tipo":"actividad","cliente_match":"garcia","accion":"llamada","cuando":"2026-04-18T10:00:00","nota":"ver propuesta","mensaje":"Listo, te agendo llamar a García mañana a las 10."}
+Formato JSON (SIEMPRE este formato):
+{"acciones":[{"cliente_match":"garcia","accion":"llamada","cuando":"2026-04-18T16:00:00","nota":"ver propuesta"}],"mensaje":"Listo, te agendé la llamada."}
 
-Tipos de acción: llamada, visita, propuesta, presentacion, reunion, recordatorio
-Tipos de respuesta: actividad, consulta, pendientes, completar, rechazo''';
+Ejemplo con múltiples:
+{"acciones":[{"cliente_match":"garcia","accion":"llamada","cuando":"2026-04-19T16:00:00","nota":"seguimiento"},{"cliente_match":"garcia","accion":"llamada","cuando":"2026-04-26T16:00:00","nota":"seguimiento"}],"mensaje":"Te agendé 2 llamadas a García: sábado 19 y sábado 26."}
+
+Ejemplo preguntando info faltante:
+{"acciones":[],"mensaje":"¿A qué hora querés agendar la llamada?"}
+
+Tipos de acción: llamada, visita, propuesta, presentacion, reunion, recordatorio''';
   }
 
-  /// Detecta consultas de pendientes y las resuelve sin LLM.
-  static Future<AssistantAction?> _checkPendientes(String msg) async {
+  /// Detecta consultas de pendientes — devuelve resultado con tarjetas.
+  static Future<AssistantResult?> _checkPendientes(String msg) async {
     final q = msg.toLowerCase();
     final esPendientes = q.contains('pendiente') || q.contains('tengo que hacer') ||
         q.contains('mi agenda') || q.contains('qué tengo') || q.contains('que tengo') ||
@@ -114,48 +136,59 @@ Tipos de respuesta: actividad, consulta, pendientes, completar, rechazo''';
 
     final items = await ActividadesService.pendientes();
     if (items.isEmpty) {
-      return AssistantAction(
-        tipo: 'pendientes', accion: 'otro', nota: '',
+      return AssistantResult(
         mensaje: 'No tenés actividades pendientes. Todo al día.',
+        actions: [],
       );
     }
 
-    final buf = StringBuffer('Tenés ${items.length} actividades pendientes:\n\n');
+    // Crear una tarjeta por cada actividad pendiente
+    final actions = <AssistantAction>[];
     for (final item in items.take(10)) {
-      final tipo = item['tipo']?.toString() ?? '';
+      final id = int.tryParse(item['id']?.toString() ?? '');
+      final tipo = item['tipo']?.toString() ?? 'otro';
       final cliente = item['cliente_nombre']?.toString() ?? '';
+      final codigo = item['cliente_codigo']?.toString() ?? '';
       final desc = item['descripcion']?.toString() ?? '';
-      final fecha = item['fecha_programada'];
-      String fechaStr = '';
-      if (fecha != null) {
-        final dt = fecha is DateTime ? fecha : DateTime.tryParse(fecha.toString());
-        if (dt != null) {
-          final now = DateTime.now();
-          final diff = dt.difference(now);
-          if (diff.inDays == 0) fechaStr = ' (hoy ${dt.hour}:${dt.minute.toString().padLeft(2, '0')})';
-          else if (diff.inDays == 1) fechaStr = ' (mañana ${dt.hour}:${dt.minute.toString().padLeft(2, '0')})';
-          else fechaStr = ' (${dt.day}/${dt.month})';
-        }
-      }
-      buf.write('• ${tipo[0].toUpperCase()}${tipo.substring(1)}$fechaStr');
-      if (cliente.isNotEmpty) buf.write(' — $cliente');
-      if (desc.isNotEmpty) buf.write(': $desc');
-      buf.write('\n');
+      final fecha = item['fecha_programada']?.toString();
+
+      actions.add(AssistantAction(
+        tipo: 'pendiente_item',
+        accion: tipo,
+        clienteMatch: cliente,
+        cuando: fecha,
+        nota: desc,
+        mensaje: '',
+        actividadId: id,
+        clienteResuelto: cliente.isNotEmpty ? Cliente(
+          codigo: codigo, nombre: cliente, categoria: '', situacion: '',
+          localidad: '', provincia: '',
+        ) : null,
+      ));
     }
 
-    return AssistantAction(
-      tipo: 'pendientes', accion: 'otro', nota: '',
-      mensaje: buf.toString().trim(),
+    return AssistantResult(
+      mensaje: 'Tenés ${items.length} actividades pendientes:',
+      actions: actions,
     );
   }
 
-  /// Envía un mensaje al LLM y retorna la acción parseada.
-  static Future<AssistantAction> sendMessage(String userMessage) async {
-    // Detección pre-LLM: consulta de pendientes (no necesita IA)
+  /// Envía un mensaje al LLM con historial completo.
+  static Future<AssistantResult> sendMessage(String userMessage) async {
+    // Detección pre-LLM: pendientes
     final pendientesResult = await _checkPendientes(userMessage);
     if (pendientesResult != null) return pendientesResult;
 
+    // Agregar mensaje del usuario al historial
+    _historial.add({'role': 'user', 'content': userMessage});
+
     final systemPrompt = await _buildSystemPrompt();
+
+    // Armar mensajes con historial completo
+    final messages = <Map<String, String>>[
+      {'role': 'system', 'content': systemPrompt},
+      ..._historial,
+    ];
 
     final response = await http.post(
       Uri.parse('https://api.openai.com/v1/chat/completions'),
@@ -165,87 +198,71 @@ Tipos de respuesta: actividad, consulta, pendientes, completar, rechazo''';
       },
       body: json.encode({
         'model': AppConfig.openaiModel,
-        'messages': [
-          {'role': 'system', 'content': systemPrompt},
-          {'role': 'user', 'content': userMessage},
-        ],
+        'messages': messages,
         'temperature': 0.3,
-        'max_tokens': 300,
+        'max_tokens': 500,
       }),
     ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
-      throw Exception('Error OpenAI: ${response.statusCode} — ${response.body}');
+      throw Exception('Error OpenAI: ${response.statusCode}');
     }
 
     final data = json.decode(response.body);
     final content = data['choices'][0]['message']['content'] as String;
 
-    // Parsear JSON de la respuesta (puede venir con backticks)
+    // Guardar respuesta en historial
+    _historial.add({'role': 'assistant', 'content': content});
+
+    // Parsear JSON
     final jsonStr = content
-        .replaceAll('```json', '')
-        .replaceAll('```', '')
-        .trim();
+        .replaceAll('```json', '').replaceAll('```', '').trim();
 
     try {
       final parsed = json.decode(jsonStr) as Map<String, dynamic>;
+      final mensaje = parsed['mensaje']?.toString() ?? content;
+      final accionesList = parsed['acciones'] as List? ?? [];
 
-      // Fuzzy match del cliente
-      Cliente? clienteResuelto;
-      final clienteMatch = parsed['cliente_match']?.toString();
-      if (clienteMatch != null && clienteMatch.isNotEmpty) {
-        clienteResuelto = await _fuzzyMatchCliente(clienteMatch);
+      final actions = <AssistantAction>[];
+      for (final a in accionesList) {
+        final map = a as Map<String, dynamic>;
+        final clienteMatch = map['cliente_match']?.toString();
+        Cliente? clienteResuelto;
+        if (clienteMatch != null && clienteMatch.isNotEmpty) {
+          clienteResuelto = await _fuzzyMatchCliente(clienteMatch);
+        }
+
+        actions.add(AssistantAction(
+          tipo: 'actividad',
+          clienteMatch: clienteMatch,
+          accion: map['accion']?.toString() ?? 'otro',
+          cuando: map['cuando']?.toString(),
+          nota: map['nota']?.toString() ?? '',
+          mensaje: mensaje,
+          clienteResuelto: clienteResuelto,
+        ));
       }
 
-      return AssistantAction(
-        tipo: parsed['tipo']?.toString() ?? 'otro',
-        clienteMatch: clienteMatch,
-        accion: parsed['accion']?.toString() ?? 'otro',
-        cuando: parsed['cuando']?.toString(),
-        nota: parsed['nota']?.toString() ?? '',
-        mensaje: parsed['mensaje']?.toString() ?? content,
-        clienteResuelto: clienteResuelto,
-      );
+      return AssistantResult(mensaje: mensaje, actions: actions);
     } catch (_) {
-      // Si no puede parsear JSON, devolver como mensaje conversacional
-      return AssistantAction(
-        tipo: 'otro',
-        accion: 'otro',
-        nota: '',
-        mensaje: content,
-      );
+      return AssistantResult(mensaje: content, actions: []);
     }
   }
 
-  /// Fuzzy match contra la cartera del vendedor.
-  /// Retorna el primer cliente que matchea, o null.
   static Future<Cliente?> _fuzzyMatchCliente(String query) async {
     final clientes = await _getClientes();
     final q = query.toLowerCase().trim();
 
-    // Match exacto por código
     final byCode = clientes.where((c) => c.codigo == q).toList();
     if (byCode.length == 1) return byCode.first;
 
-    // Match por nombre (contains)
     final matches = clientes.where((c) =>
         c.nombre.toLowerCase().contains(q) ||
         q.split(' ').every((word) => c.nombre.toLowerCase().contains(word))
     ).toList();
 
     if (matches.length == 1) return matches.first;
-    if (matches.isNotEmpty) return matches.first; // tomar el primero si hay varios
-
+    if (matches.isNotEmpty) return matches.first;
     return null;
-  }
-
-  /// Busca clientes que matchean (para cuando hay ambigüedad).
-  static Future<List<Cliente>> buscarClientes(String query) async {
-    final clientes = await _getClientes();
-    final q = query.toLowerCase().trim();
-    return clientes.where((c) =>
-        c.nombre.toLowerCase().contains(q) ||
-        c.codigo.toLowerCase().contains(q)
-    ).take(5).toList();
   }
 }

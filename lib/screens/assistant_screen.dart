@@ -26,11 +26,11 @@ class _AssistantState extends State<AssistantScreen> {
   @override
   void initState() {
     super.initState();
+    AssistantService.resetConversation(); // limpiar historial al abrir
     _initSpeech();
-    // Mensaje de bienvenida
     _messages.add(_ChatMessage(
       isUser: false,
-      text: 'Hola ${Session.current.vendedorNombre.split(' ').first}, soy tu asistente de agenda. '
+      text: 'Hola ${Session.current.vendedorNombre.split(' ').first}, soy Cronos, tu asistente de agenda. '
           'Decime qué tenés que hacer y te lo anoto.\n\n'
           'Podés escribir o usar el micrófono. Por ejemplo:\n'
           '"Recordame mañana a las 10 que llame a García"',
@@ -89,21 +89,22 @@ class _AssistantState extends State<AssistantScreen> {
     _scrollToBottom();
 
     try {
-      final action = await AssistantService.sendMessage(text);
+      final result = await AssistantService.sendMessage(text);
 
       if (!mounted) return;
 
-      if (action.esActividad) {
+      if (result.tieneAcciones) {
+        // Mensaje + tarjetas (1 o múltiples)
         setState(() {
           _messages.add(_ChatMessage(
             isUser: false,
-            text: action.mensaje,
-            action: action,
+            text: result.mensaje,
+            actions: result.actions,
           ));
         });
       } else {
         setState(() {
-          _messages.add(_ChatMessage(isUser: false, text: action.mensaje));
+          _messages.add(_ChatMessage(isUser: false, text: result.mensaje));
         });
       }
     } catch (e) {
@@ -135,33 +136,36 @@ class _AssistantState extends State<AssistantScreen> {
 
   Future<void> _confirmAction(AssistantAction action) async {
     try {
-      await ActividadesService.registrar(
-        clienteCodigo: action.clienteResuelto?.codigo ?? '',
-        clienteNombre: action.clienteResuelto?.nombre ?? action.clienteMatch ?? '',
-        tipo: action.accion,
-        descripcion: action.nota,
-        fechaProgramada: action.cuando,
-        origen: 'hermes_flash',
-      );
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Actividad guardada: ${action.accionLabel}'
-            '${action.tieneCliente ? " — ${action.clienteResuelto!.nombre}" : ""}',
+      if (action.esPendiente && action.actividadId != null) {
+        // Completar actividad existente
+        await ActividadesService.completar(action.actividadId!);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Actividad completada'), backgroundColor: AppColors.success),
+        );
+      } else {
+        // Crear nueva actividad
+        await ActividadesService.registrar(
+          clienteCodigo: action.clienteResuelto?.codigo ?? '',
+          clienteNombre: action.clienteResuelto?.nombre ?? action.clienteMatch ?? '',
+          tipo: action.accion,
+          descripcion: action.nota,
+          fechaProgramada: action.cuando,
+          origen: 'cronos',
+        );
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Agendado: ${action.accionLabel}'
+                '${action.tieneCliente ? " — ${action.clienteResuelto!.nombre}" : ""}'),
+            backgroundColor: AppColors.success,
           ),
-          backgroundColor: AppColors.success,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-      setState(() {
-        _messages.add(_ChatMessage(isUser: false, text: 'Guardado en la historia del cliente.'));
-      });
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al guardar: $e'), backgroundColor: AppColors.danger),
+        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.danger),
       );
     }
     _scrollToBottom();
@@ -271,9 +275,12 @@ class _AssistantState extends State<AssistantScreen> {
                 fontSize: 13,
               ),
             ),
-            if (msg.action != null) ...[
+            if (msg.actions != null && msg.actions!.isNotEmpty) ...[
               const SizedBox(height: 10),
-              _buildActionCard(msg.action!),
+              ...msg.actions!.map((a) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: _buildActionCard(a),
+              )),
             ],
           ],
         ),
@@ -309,8 +316,11 @@ class _AssistantState extends State<AssistantScreen> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () => _confirmAction(action),
-                  icon: const Icon(Icons.check, size: 16),
-                  label: const Text('Confirmar', style: TextStyle(fontSize: 13)),
+                  icon: Icon(action.esPendiente ? Icons.check_circle : Icons.check, size: 16),
+                  label: Text(
+                    action.esPendiente ? 'Completar' : 'Confirmar',
+                    style: const TextStyle(fontSize: 13),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.success,
                     foregroundColor: Colors.white,
@@ -414,13 +424,13 @@ class _AssistantState extends State<AssistantScreen> {
 class _ChatMessage {
   final bool isUser;
   final String text;
-  final AssistantAction? action;
+  final List<AssistantAction>? actions;
   final bool isError;
 
   _ChatMessage({
     required this.isUser,
     required this.text,
-    this.action,
+    this.actions,
     this.isError = false,
   });
 }
