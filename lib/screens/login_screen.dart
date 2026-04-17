@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/analytics_service.dart';
+import '../services/biometric_service.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -19,6 +20,97 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePass = true;
   String _errorMsg = '';
 
+  bool _bioHabilitado = false;
+  bool _bioDisponible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBio();
+  }
+
+  Future<void> _checkBio() async {
+    final disp = await BiometricService.disponible();
+    final hab = await BiometricService.habilitado();
+    if (!mounted) return;
+    setState(() {
+      _bioDisponible = disp;
+      _bioHabilitado = hab;
+    });
+    // Auto-trigger si está habilitado
+    if (disp && hab) {
+      _loginBiometrico();
+    }
+  }
+
+  Future<void> _loginBiometrico() async {
+    final ok = await BiometricService.autenticar();
+    if (!ok || !mounted) return;
+    final creds = await BiometricService.leerCredenciales();
+    if (creds == null || !mounted) return;
+    setState(() => _loading = true);
+
+    final result = await AuthService.login(creds.username, creds.password);
+    if (!mounted) return;
+
+    if (result.ok) {
+      AnalyticsService.track('login', modulo: 'auth_bio');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } else {
+      // Credenciales guardadas inválidas → borrarlas y pedir login normal
+      await BiometricService.deshabilitar();
+      setState(() {
+        _loading = false;
+        _bioHabilitado = false;
+        _errorMsg = 'Las credenciales guardadas no son válidas. Ingresá manualmente.';
+      });
+    }
+  }
+
+  Future<void> _preguntarHabilitarBio(String user, String pass) async {
+    if (!_bioDisponible) return;
+    if (await BiometricService.habilitado()) return;
+
+    final aceptar = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1C2333),
+        title: const Text(
+          '¿Usar huella digital?',
+          style: TextStyle(color: Color(0xFFF8FAFC)),
+        ),
+        content: const Text(
+          'Podés ingresar a Hermes con tu huella la próxima vez sin escribir usuario ni contraseña.',
+          style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Ahora no', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sí, activar'),
+          ),
+        ],
+      ),
+    );
+
+    if (aceptar == true) {
+      // Confirmar con huella antes de guardar
+      final ok = await BiometricService.autenticar(
+        motivo: 'Confirmá tu huella para activar el login biométrico',
+      );
+      if (ok) {
+        await BiometricService.habilitar(user, pass);
+      }
+    }
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -27,12 +119,16 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMsg = '';
     });
 
-    final result = await AuthService.login(_userCtrl.text, _passCtrl.text);
+    final user = _userCtrl.text;
+    final pass = _passCtrl.text;
+    final result = await AuthService.login(user, pass);
 
     if (!mounted) return;
 
     if (result.ok) {
       AnalyticsService.track('login', modulo: 'auth');
+      await _preguntarHabilitarBio(user, pass);
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -98,6 +194,43 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
 
                 const SizedBox(height: 40),
+
+                // ── Botón huella (si está habilitado) ──────────
+                if (_bioDisponible && _bioHabilitado) ...[
+                  GestureDetector(
+                    onTap: _loading ? null : _loginBiometrico,
+                    child: Container(
+                      width: 96,
+                      height: 96,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2563EB).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(48),
+                        border: Border.all(
+                          color: const Color(0xFF2563EB),
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.fingerprint,
+                        color: Color(0xFF2563EB),
+                        size: 56,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Ingresar con huella',
+                    style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 14),
+                  ),
+                  const SizedBox(height: 20),
+                  const Divider(color: Color(0xFF2D3748)),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'O usar contraseña',
+                    style: TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 // ── Campo Usuario ──────────────────────────────
                 TextFormField(

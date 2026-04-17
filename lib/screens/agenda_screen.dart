@@ -5,6 +5,7 @@ import '../models/session.dart';
 import '../services/actividades_service.dart';
 import '../services/clientes_service.dart';
 import '../widgets/actividad_form_sheet.dart';
+import 'actividad_detail_screen.dart';
 
 class AgendaScreen extends StatefulWidget {
   const AgendaScreen({super.key});
@@ -123,6 +124,17 @@ class _AgendaState extends State<AgendaScreen> {
                               item: item,
                               esHecha: _filtro == 'Hechas',
                               onCompletar: id != null ? () => _completar(id) : null,
+                              onTap: id != null
+                                  ? () async {
+                                      await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ActividadDetailScreen(actividadId: id),
+                                        ),
+                                      );
+                                      if (mounted) _load();
+                                    }
+                                  : null,
                             );
                           },
                         ),
@@ -158,8 +170,9 @@ class _ActividadTile extends StatelessWidget {
   final Map<String, dynamic> item;
   final bool esHecha;
   final VoidCallback? onCompletar;
+  final VoidCallback? onTap;
 
-  const _ActividadTile({required this.item, required this.esHecha, this.onCompletar});
+  const _ActividadTile({required this.item, required this.esHecha, this.onCompletar, this.onTap});
 
   IconData get _icon => switch (item['tipo']?.toString() ?? '') {
     'llamada' => Icons.phone,
@@ -193,7 +206,9 @@ class _ActividadTile extends StatelessWidget {
       }
     }
 
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: AppCardStyle.base(borderColor: esHecha ? AppColors.textMuted : _color),
@@ -252,6 +267,7 @@ class _ActividadTile extends StatelessWidget {
             ),
           ],
         ],
+      ),
       ),
     );
   }

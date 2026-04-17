@@ -8,6 +8,7 @@ import '../services/visitas_service.dart';
 import '../widgets/historia_clinica.dart';
 import '../widgets/actividad_form_sheet.dart';
 import 'lineas_analysis_screen.dart';
+import 'actividad_detail_screen.dart';
 
 class ClienteDetailScreen extends StatefulWidget {
   final Cliente cliente;
@@ -121,6 +122,15 @@ class _ClienteDetailState extends State<ClienteDetailScreen> {
                     entries: _timeline.take(10).toList(),
                     onVerMas: _timeline.length > 10 ? () {} : null,
                     onCompletar: _completarActividad,
+                    onTap: (id) async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ActividadDetailScreen(actividadId: id),
+                        ),
+                      );
+                      if (mounted) _load();
+                    },
                   ),
                   const SizedBox(height: 16),
                   _buildEvolucion(),

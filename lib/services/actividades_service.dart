@@ -72,6 +72,62 @@ class ActividadesService {
     );
   }
 
+  /// Reabrir (marcar como no completada).
+  static Future<void> reabrir(int id) async {
+    await PgService.execute(
+      'UPDATE actividades_cliente SET completada = FALSE, completada_at = NULL '
+      'WHERE id = @id AND vendedor_nombre = @vendedor',
+      {'id': id, 'vendedor': Session.current.vendedorNombre},
+    );
+  }
+
+  /// Actualizar descripción y/o fecha programada.
+  static Future<void> actualizar({
+    required int id,
+    String? descripcion,
+    String? fechaProgramada,
+  }) async {
+    final params = <String, Object?>{
+      'id': id,
+      'vendedor': Session.current.vendedorNombre,
+    };
+    final sets = <String>[];
+    if (descripcion != null) {
+      sets.add('descripcion = @desc');
+      params['desc'] = descripcion;
+    }
+    sets.add('fecha_programada = @fecha');
+    params['fecha'] = fechaProgramada;
+
+    if (sets.isEmpty) return;
+    await PgService.execute(
+      'UPDATE actividades_cliente SET ${sets.join(", ")} '
+      'WHERE id = @id AND vendedor_nombre = @vendedor',
+      params,
+    );
+  }
+
+  /// Eliminar actividad.
+  static Future<void> eliminar(int id) async {
+    await PgService.execute(
+      'DELETE FROM actividades_cliente '
+      'WHERE id = @id AND vendedor_nombre = @vendedor',
+      {'id': id, 'vendedor': Session.current.vendedorNombre},
+    );
+  }
+
+  /// Obtener una actividad por id.
+  static Future<Map<String, dynamic>?> porId(int id) async {
+    final rows = await PgService.query(
+      'SELECT id, cliente_codigo, cliente_nombre, tipo, descripcion, '
+      'fecha_programada, completada, completada_at, origen, created_at '
+      'FROM actividades_cliente '
+      'WHERE id = @id AND vendedor_nombre = @vendedor',
+      {'id': id, 'vendedor': Session.current.vendedorNombre},
+    );
+    return rows.firstOrNull;
+  }
+
   /// Conteo de pendientes (para badge).
   static Future<int> conteoPendientes() async {
     final rows = await PgService.query(

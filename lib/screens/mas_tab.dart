@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../models/session.dart';
 import '../services/auth_service.dart';
+import '../services/biometric_service.dart';
 import '../services/pg_service.dart';
 import '../services/update_service.dart';
 import '../services/error_logger.dart';
@@ -43,6 +44,10 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
   // Agenda
   int _actividadesPend = 0;
 
+  // Biometric
+  bool _bioHabilitado = false;
+  bool _bioDisponible = false;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -54,6 +59,32 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
     _loadVisitasHoy();
     _loadPedidosPend();
     _loadActividadesPend();
+    _loadBio();
+  }
+
+  Future<void> _loadBio() async {
+    final disp = await BiometricService.disponible();
+    final hab = await BiometricService.habilitado();
+    if (mounted) setState(() { _bioDisponible = disp; _bioHabilitado = hab; });
+  }
+
+  Future<void> _toggleBio() async {
+    if (_bioHabilitado) {
+      await BiometricService.deshabilitar();
+      if (!mounted) return;
+      setState(() => _bioHabilitado = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Huella desactivada'), backgroundColor: AppColors.textMuted),
+      );
+    } else {
+      // Para activar hace falta credenciales — sugerir logout+login
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cerrá sesión e ingresá con contraseña para activar la huella'),
+          backgroundColor: AppColors.accent,
+        ),
+      );
+    }
   }
 
   Future<void> _loadVersion() async {
@@ -121,8 +152,11 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
     }
   }
 
-  void _logout() {
+  void _logout() async {
+    // Al cerrar sesión, borrar credenciales biométricas guardadas.
+    await BiometricService.deshabilitar();
     AuthService.logout();
+    if (!mounted) return;
     Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (_) => false,
@@ -267,31 +301,70 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: AppCardStyle.base(),
-            child: Row(
+            child: Column(
               children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: AppColors.primary,
-                  child: Text(
-                    session.vendedorNombre.isNotEmpty
-                        ? session.vendedorNombre[0].toUpperCase()
-                        : '?',
-                    style: const TextStyle(
-                      color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold,
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: AppColors.primary,
+                      child: Text(
+                        session.vendedorNombre.isNotEmpty
+                            ? session.vendedorNombre[0].toUpperCase()
+                            : '?',
+                        style: const TextStyle(
+                          color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(session.vendedorNombre, style: AppTextStyles.title),
+                          const SizedBox(height: 2),
+                          Text('Rol: ${session.role}', style: AppTextStyles.caption),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                if (_bioDisponible) ...[
+                  const SizedBox(height: 12),
+                  const Divider(color: AppColors.border, height: 1),
+                  const SizedBox(height: 8),
+                  Row(
                     children: [
-                      Text(session.vendedorNombre, style: AppTextStyles.title),
-                      const SizedBox(height: 2),
-                      Text('Rol: ${session.role}', style: AppTextStyles.caption),
+                      Icon(
+                        _bioHabilitado ? Icons.fingerprint : Icons.fingerprint_outlined,
+                        color: _bioHabilitado ? AppColors.success : AppColors.textMuted,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Login con huella', style: AppTextStyles.body),
+                            Text(
+                              _bioHabilitado ? 'Activo' : 'Inactivo',
+                              style: TextStyle(
+                                color: _bioHabilitado ? AppColors.success : AppColors.textMuted,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: _bioHabilitado,
+                        onChanged: (_) => _toggleBio(),
+                        activeColor: AppColors.success,
+                      ),
                     ],
                   ),
-                ),
+                ],
               ],
             ),
           ),

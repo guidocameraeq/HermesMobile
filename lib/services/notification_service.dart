@@ -7,6 +7,14 @@ class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
 
+  /// Callback que ejecuta cuando el usuario toca una notificación.
+  /// Recibe el id (int) de la actividad a abrir.
+  static void Function(int actividadId)? onTap;
+
+  /// Si la app se abrió desde una notificación (cold start), guarda el id aquí
+  /// para que la UI lo consuma cuando esté lista.
+  static int? pendingActividadId;
+
   /// Inicializar al arrancar la app.
   static Future<void> init() async {
     if (_initialized) return;
@@ -18,7 +26,27 @@ class NotificationService {
 
     await _plugin.initialize(
       settings: const InitializationSettings(android: androidSettings),
+      onDidReceiveNotificationResponse: (resp) {
+        final payload = resp.payload;
+        if (payload == null) return;
+        final id = int.tryParse(payload);
+        if (id == null) return;
+        if (onTap != null) {
+          onTap!(id);
+        } else {
+          pendingActividadId = id;
+        }
+      },
     );
+
+    // Si la app se abrió tocando la notif mientras estaba cerrada:
+    final launch = await _plugin.getNotificationAppLaunchDetails();
+    if (launch?.didNotificationLaunchApp == true) {
+      final payload = launch?.notificationResponse?.payload;
+      if (payload != null) {
+        pendingActividadId = int.tryParse(payload);
+      }
+    }
 
     final android = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
@@ -58,6 +86,7 @@ class NotificationService {
       scheduledDate: tzDate,
       notificationDetails: const NotificationDetails(android: androidDetails),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      payload: '$id',
     );
   }
 

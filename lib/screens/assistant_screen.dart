@@ -17,6 +17,7 @@ class _AssistantState extends State<AssistantScreen> {
   final _textCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
   final _messages = <_ChatMessage>[];
+  final Set<AssistantAction> _confirmadas = {};
   bool _sending = false;
 
   // Speech to text
@@ -136,11 +137,13 @@ class _AssistantState extends State<AssistantScreen> {
   }
 
   Future<void> _confirmAction(AssistantAction action) async {
+    if (_confirmadas.contains(action)) return;
     try {
       if (action.esPendiente && action.actividadId != null) {
         // Completar actividad existente
         await ActividadesService.completar(action.actividadId!);
         if (!mounted) return;
+        setState(() => _confirmadas.add(action));
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Actividad completada'), backgroundColor: AppColors.success),
         );
@@ -170,6 +173,7 @@ class _AssistantState extends State<AssistantScreen> {
         }
 
         if (!mounted) return;
+        setState(() => _confirmadas.add(action));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Agendado: ${action.accionLabel}'
@@ -306,48 +310,78 @@ class _AssistantState extends State<AssistantScreen> {
   }
 
   Widget _buildActionCard(AssistantAction action) {
-    return Container(
+    final confirmada = _confirmadas.contains(action);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.bg,
+        color: confirmada ? AppColors.success.withOpacity(0.08) : AppColors.bg,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.accent.withOpacity(0.3)),
+        border: Border.all(
+          color: confirmada ? AppColors.success : AppColors.accent.withOpacity(0.3),
+          width: confirmada ? 1.5 : 1,
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          if (action.tieneCliente)
-            _actionRow(Icons.person, 'Cliente',
-                '${action.clienteResuelto!.nombre} (${action.clienteResuelto!.codigo})')
-          else if (action.clienteMatch != null)
-            _actionRow(Icons.person_search, 'Cliente',
-                '${action.clienteMatch} (no encontrado)'),
-          _actionRow(Icons.category, 'Acción', action.accionLabel),
-          if (action.cuando != null)
-            _actionRow(Icons.schedule, 'Cuándo', action.cuandoFmt),
-          if (action.nota.isNotEmpty)
-            _actionRow(Icons.note, 'Nota', action.nota),
-          const SizedBox(height: 10),
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _confirmAction(action),
-                  icon: Icon(action.esPendiente ? Icons.check_circle : Icons.check, size: 16),
-                  label: Text(
-                    action.esPendiente ? 'Completar' : 'Confirmar',
-                    style: const TextStyle(fontSize: 13),
+              if (action.tieneCliente)
+                _actionRow(Icons.person, 'Cliente',
+                    '${action.clienteResuelto!.nombre} (${action.clienteResuelto!.codigo})')
+              else if (action.clienteMatch != null)
+                _actionRow(Icons.person_search, 'Cliente',
+                    '${action.clienteMatch} (no encontrado)'),
+              _actionRow(Icons.category, 'Acción', action.accionLabel),
+              if (action.cuando != null)
+                _actionRow(Icons.schedule, 'Cuándo', action.cuandoFmt),
+              if (action.nota.isNotEmpty)
+                _actionRow(Icons.note, 'Nota', action.nota),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: confirmada ? null : () => _confirmAction(action),
+                      icon: Icon(
+                        confirmada
+                            ? Icons.check_circle
+                            : (action.esPendiente ? Icons.check_circle : Icons.check),
+                        size: 16,
+                      ),
+                      label: Text(
+                        confirmada
+                            ? (action.esPendiente ? 'Completada' : 'Agendada')
+                            : (action.esPendiente ? 'Completar' : 'Confirmar'),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.success,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: AppColors.success,
+                        disabledForegroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                    ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                  ),
-                ),
+                ],
               ),
             ],
           ),
+          if (confirmada)
+            Positioned(
+              top: 0, right: 0,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: AppColors.success,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check, color: Colors.white, size: 14),
+              ),
+            ),
         ],
       ),
     );

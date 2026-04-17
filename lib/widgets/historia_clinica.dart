@@ -61,12 +61,14 @@ class HistoriaClinica extends StatelessWidget {
   final List<TimelineEntry> entries;
   final VoidCallback? onVerMas;
   final void Function(int id)? onCompletar;
+  final void Function(int id)? onTap;
 
   const HistoriaClinica({
     super.key,
     required this.entries,
     this.onVerMas,
     this.onCompletar,
+    this.onTap,
   });
 
   @override
@@ -99,6 +101,7 @@ class HistoriaClinica extends StatelessWidget {
             onCompletar: e.id != null && !e.completada && onCompletar != null
                 ? () => onCompletar!(e.id!)
                 : null,
+            onTap: e.id != null && onTap != null ? () => onTap!(e.id!) : null,
           )),
           if (onVerMas != null) ...[
             const SizedBox(height: 8),
@@ -118,12 +121,16 @@ class HistoriaClinica extends StatelessWidget {
 class _TimelineTile extends StatelessWidget {
   final TimelineEntry entry;
   final VoidCallback? onCompletar;
+  final VoidCallback? onTap;
 
-  const _TimelineTile({required this.entry, this.onCompletar});
+  const _TimelineTile({required this.entry, this.onCompletar, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,6 +186,7 @@ class _TimelineTile extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
