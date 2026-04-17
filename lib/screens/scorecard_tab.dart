@@ -14,6 +14,7 @@ import 'drilldowns/aperturas_drilldown.dart';
 import 'drilldowns/reactivacion_drilldown.dart';
 import 'drilldowns/activaciones_drilldown.dart';
 import 'drilldowns/incorporaciones_cargas_drilldown.dart';
+import '../widgets/cuotas_grid.dart';
 
 class ScorecardTab extends StatefulWidget {
   const ScorecardTab({super.key});
@@ -251,7 +252,9 @@ class _ScorecardTabState extends State<ScorecardTab>
               textAlign: TextAlign.center,
             ),
           ),
-          const SizedBox(height: 16),
+          // Cuotas por cliente (carga bajo demanda)
+          CuotasGrid(mes: _mes, anio: _anio, inclPend: _inclPend),
+          const SizedBox(height: 32),
         ],
       ),
     );
