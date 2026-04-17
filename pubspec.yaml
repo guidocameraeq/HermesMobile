@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 2.9.0+25
+version: 3.0.0+26
 
 environment:
   sdk: ^3.11.3
@@ -48,12 +48,17 @@ dependencies:
   open_filex: ^4.7.0
   fl_chart: ^1.2.0
   geolocator: ^14.0.1
-  speech_to_text: ^7.3.0
+  record: ^5.1.2
   flutter_local_notifications: ^21.0.0
   timezone: ^0.11.0
   local_auth: ^2.3.0
   local_auth_android: ^1.0.46
   flutter_secure_storage: ^9.0.0
+
+# Android-only — record_linux 0.7.2 tiene API incompatible con platform_interface 1.5.
+dependency_overrides:
+  record_linux: ^1.0.0
+  record_windows: ^1.0.0
 
 dev_dependencies:
   flutter_test:
