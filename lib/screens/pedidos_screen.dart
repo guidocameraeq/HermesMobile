@@ -4,6 +4,7 @@ import '../models/session.dart';
 import '../services/pedidos_service.dart';
 import '../widgets/month_selector.dart';
 import '../widgets/kpi_card.dart';
+import '../widgets/mes_picker_sheet.dart';
 import 'pedido_detail_screen.dart';
 
 class PedidosScreen extends StatefulWidget {
@@ -75,6 +76,9 @@ class _PedidosState extends State<PedidosScreen> {
   Widget build(BuildContext context) {
     final filtered = _filtered;
 
+    final now = DateTime.now();
+    final esMesNoActual = _mes != now.month || _anio != now.year;
+
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
@@ -85,11 +89,48 @@ class _PedidosState extends State<PedidosScreen> {
             icon: const Icon(Icons.refresh, color: AppColors.textMuted),
             onPressed: _loading ? null : _load,
           ),
+          IconButton(
+            icon: Icon(Icons.calendar_month,
+                color: esMesNoActual ? AppColors.warning : AppColors.textMuted, size: 20),
+            tooltip: 'Cambiar mes',
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: AppColors.bgCard,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                builder: (_) => MesPickerSheet(
+                  mesActual: _mes, anioActual: _anio,
+                  onPicked: (m, a) { Navigator.pop(context); _onMonthChanged(m, a); },
+                ),
+              );
+            },
+          ),
         ],
       ),
       body: Column(
         children: [
-          MonthSelector(mes: _mes, anio: _anio, onChanged: _onMonthChanged),
+          if (esMesNoActual)
+            GestureDetector(
+              onTap: () => _onMonthChanged(now.month, now.year),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: AppColors.warning.withOpacity(0.15),
+                child: Row(children: [
+                  const Icon(Icons.history, color: AppColors.warning, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(
+                    'Viendo ${MonthSelector.mesNombre(_mes)} $_anio',
+                    style: const TextStyle(color: AppColors.warning, fontSize: 12, fontWeight: FontWeight.w600),
+                  )),
+                  const Text('Volver a actual',
+                      style: TextStyle(color: AppColors.warning, fontSize: 11,
+                          decoration: TextDecoration.underline)),
+                ]),
+              ),
+            ),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -115,6 +156,7 @@ class _PedidosState extends State<PedidosScreen> {
                               builder: (_) => PedidoDetailScreen(
                                 numero: p['Numero']?.toString() ?? '',
                                 cliente: p['Cliente']?.toString() ?? '',
+                                clienteCodigo: p['ClienteCodigo']?.toString(),
                                 fecha: p['Fecha']?.toString() ?? '',
                                 estado: p['Estado']?.toString() ?? '',
                                 cantPendiente: double.tryParse(p['CantPendiente']?.toString() ?? '0') ?? 0,

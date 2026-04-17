@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../services/sql_service.dart';
+import '../../services/cliente_router.dart';
 
 /// Pantalla de oportunidades: elegís cargas → te muestra qué clientes
 /// NO compraron cada una de esas cargas.
@@ -285,7 +286,9 @@ class _State extends State<OportunidadesCargasScreen> {
   }
 
   Widget _buildResultTile(_ClienteOportunidad cli) {
-    return Container(
+    return InkWell(
+      onTap: () => ClienteRouter.open(context, cli.codigo, nombre: cli.nombre),
+      child: Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
       decoration: AppCardStyle.base(borderColor: AppColors.warning),
@@ -333,6 +336,7 @@ class _State extends State<OportunidadesCargasScreen> {
             )).toList(),
           ),
         ],
+      ),
       ),
     );
   }

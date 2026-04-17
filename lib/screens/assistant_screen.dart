@@ -5,6 +5,7 @@ import '../models/session.dart';
 import '../services/assistant_service.dart';
 import '../services/actividades_service.dart';
 import '../services/notification_service.dart';
+import '../widgets/app_drawer.dart';
 
 class AssistantScreen extends StatefulWidget {
   const AssistantScreen({super.key});
@@ -204,6 +205,7 @@ class _AssistantState extends State<AssistantScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
+      drawer: const AppDrawer(currentTab: 1),
       appBar: AppBar(
         backgroundColor: AppColors.bgSidebar,
         title: const Row(
@@ -213,6 +215,7 @@ class _AssistantState extends State<AssistantScreen> {
             Text('Cronos', style: AppTextStyles.title),
           ],
         ),
+        actions: const [AppBarAvatar()],
       ),
       body: Column(
         children: [

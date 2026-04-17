@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../services/actividades_service.dart';
 import '../services/notification_service.dart';
+import '../services/cliente_router.dart';
 
 class ActividadDetailScreen extends StatefulWidget {
   final int actividadId;
@@ -290,33 +291,51 @@ class _State extends State<ActividadDetailScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               // Header con tipo + cliente
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: _color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: _color.withOpacity(0.3)),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 56, height: 56,
-                      decoration: BoxDecoration(
-                        color: _color.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(28),
+              GestureDetector(
+                onTap: _clienteCodigo.isNotEmpty
+                    ? () => ClienteRouter.open(context, _clienteCodigo, nombre: _cliente)
+                    : null,
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: _color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: _color.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 56, height: 56,
+                        decoration: BoxDecoration(
+                          color: _color.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                        child: Icon(_icon, color: _color, size: 28),
                       ),
-                      child: Icon(_icon, color: _color, size: 28),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '${_tipo[0].toUpperCase()}${_tipo.substring(1)}'.toUpperCase(),
-                      style: TextStyle(color: _color, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(_cliente, style: AppTextStyles.body, textAlign: TextAlign.center),
-                    if (_clienteCodigo.isNotEmpty)
-                      Text('Código: $_clienteCodigo', style: AppTextStyles.muted),
-                  ],
+                      const SizedBox(height: 12),
+                      Text(
+                        '${_tipo[0].toUpperCase()}${_tipo.substring(1)}'.toUpperCase(),
+                        style: TextStyle(color: _color, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(_cliente, style: AppTextStyles.body, textAlign: TextAlign.center),
+                      if (_clienteCodigo.isNotEmpty) ...[
+                        Text('Código: $_clienteCodigo', style: AppTextStyles.muted),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('Abrir ficha del cliente',
+                                style: TextStyle(
+                                    color: _color, fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    decoration: TextDecoration.underline)),
+                            Icon(Icons.chevron_right, color: _color, size: 16),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
 

@@ -6,6 +6,8 @@ import '../services/drilldown_service.dart';
 import '../widgets/kpi_card.dart';
 import '../widgets/sales_chart.dart';
 import '../widgets/month_selector.dart';
+import '../widgets/mes_picker_sheet.dart';
+import '../services/cliente_router.dart';
 
 class VentasTab extends StatefulWidget {
   const VentasTab({super.key});
@@ -79,27 +81,42 @@ class _VentasTabState extends State<VentasTab>
   Widget build(BuildContext context) {
     super.build(context);
 
+    final now = DateTime.now();
+    final esMesNoActual = _mes != now.month || _anio != now.year;
+
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         backgroundColor: AppColors.bgSidebar,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(Session.current.vendedorNombre, style: AppTextStyles.title),
-            const Text('Ventas', style: AppTextStyles.caption),
-          ],
-        ),
+        title: const Text('Ventas', style: AppTextStyles.title),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: AppColors.textMuted),
             onPressed: _loading ? null : _load,
           ),
+          IconButton(
+            icon: Icon(Icons.calendar_month,
+                color: esMesNoActual ? AppColors.warning : AppColors.textMuted, size: 20),
+            tooltip: 'Cambiar mes',
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: AppColors.bgCard,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                builder: (_) => MesPickerSheet(
+                  mesActual: _mes, anioActual: _anio,
+                  onPicked: (m, a) { Navigator.pop(context); _onMonthChanged(m, a); },
+                ),
+              );
+            },
+          ),
         ],
       ),
       body: Column(
         children: [
-          MonthSelector(mes: _mes, anio: _anio, onChanged: _onMonthChanged),
+          if (esMesNoActual) _bannerMesViendo(),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -122,6 +139,33 @@ class _VentasTabState extends State<VentasTab>
                   ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _bannerMesViendo() {
+    return GestureDetector(
+      onTap: () {
+        final now = DateTime.now();
+        _onMonthChanged(now.month, now.year);
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        color: AppColors.warning.withOpacity(0.15),
+        child: Row(
+          children: [
+            const Icon(Icons.history, color: AppColors.warning, size: 16),
+            const SizedBox(width: 8),
+            Expanded(child: Text(
+              'Viendo ${MonthSelector.mesNombre(_mes)} $_anio',
+              style: const TextStyle(color: AppColors.warning, fontSize: 12, fontWeight: FontWeight.w600),
+            )),
+            const Text('Volver a actual',
+                style: TextStyle(color: AppColors.warning, fontSize: 11,
+                    decoration: TextDecoration.underline)),
+          ],
+        ),
       ),
     );
   }
@@ -204,27 +248,39 @@ class _VentasTabState extends State<VentasTab>
               final c = entry.value;
               final monto = double.tryParse(c['Monto']?.toString() ?? '0') ?? 0;
               final facturas = c['Facturas']?.toString() ?? '0';
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 22,
-                      child: Text('${i + 1}', style: TextStyle(
-                        color: i < 3 ? AppColors.accent : AppColors.textMuted,
-                        fontSize: 12, fontWeight: FontWeight.bold,
-                      )),
-                    ),
-                    Expanded(
-                      child: Text(c['Cliente']?.toString() ?? '',
-                          style: AppTextStyles.caption, maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                    ),
-                    Text('$facturas fc', style: AppTextStyles.muted),
-                    const SizedBox(width: 8),
-                    Text('\$ ${_fmt(monto)}',
-                        style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)),
-                  ],
+              final codigo = c['Codigo']?.toString();
+              final nombre = c['Cliente']?.toString() ?? '';
+              return InkWell(
+                onTap: codigo != null
+                    ? () => ClienteRouter.open(context, codigo, nombre: nombre)
+                    : null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 22,
+                        child: Text('${i + 1}', style: TextStyle(
+                          color: i < 3 ? AppColors.accent : AppColors.textMuted,
+                          fontSize: 12, fontWeight: FontWeight.bold,
+                        )),
+                      ),
+                      Expanded(
+                        child: Text(nombre,
+                            style: AppTextStyles.caption, maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                      Text('$facturas fc', style: AppTextStyles.muted),
+                      const SizedBox(width: 8),
+                      Text('\$ ${_fmt(monto)}',
+                          style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)),
+                      if (codigo != null) ...[
+                        const SizedBox(width: 4),
+                        const Icon(Icons.chevron_right,
+                            color: AppColors.textMuted, size: 14),
+                      ],
+                    ],
+                  ),
                 ),
               );
             }),

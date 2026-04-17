@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
+import '../../services/cliente_router.dart';
 import '../../services/drilldown_service.dart';
 
 class TasaConversionDrilldown extends StatefulWidget {
@@ -129,26 +130,35 @@ class _TasaConversionState extends State<TasaConversionDrilldown> {
         final c = filtered[i];
         final importe = double.tryParse(c['Importe']?.toString() ?? '0') ?? 0;
         final canal = c['Canal']?.toString() ?? '';
-        return Container(
-          margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.all(12),
-          decoration: AppCardStyle.base(borderColor: AppColors.success),
-          child: Row(
-            children: [
-              const Icon(Icons.check_circle, color: AppColors.success, size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(c['ClienteNombre']?.toString() ?? '', style: AppTextStyles.body),
-                    if (canal.isNotEmpty)
-                      Text(canal, style: AppTextStyles.muted),
-                  ],
+        final codigo = c['ClienteCodigo']?.toString();
+        final nombre = c['ClienteNombre']?.toString() ?? '';
+        return InkWell(
+          onTap: codigo != null
+              ? () => ClienteRouter.open(context, codigo, nombre: nombre)
+              : null,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.all(12),
+            decoration: AppCardStyle.base(borderColor: AppColors.success),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle, color: AppColors.success, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(nombre, style: AppTextStyles.body),
+                      if (canal.isNotEmpty)
+                        Text(canal, style: AppTextStyles.muted),
+                    ],
+                  ),
                 ),
-              ),
-              Text('\$ ${_fmt(importe)}', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)),
-            ],
+                Text('\$ ${_fmt(importe)}', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)),
+                if (codigo != null)
+                  const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 18),
+              ],
+            ),
           ),
         );
       },
@@ -173,31 +183,43 @@ class _TasaConversionState extends State<TasaConversionDrilldown> {
         final dias = int.tryParse(c['DiasInactivo']?.toString() ?? '');
         final color = _inactividadColor(dias);
         final canal = c['Canal']?.toString() ?? '';
-        return Container(
-          margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.all(12),
-          decoration: AppCardStyle.base(borderColor: color),
-          child: Row(
-            children: [
-              Container(
-                width: 8, height: 8,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(c['ClienteNombre']?.toString() ?? '', style: AppTextStyles.body),
-                    if (canal.isNotEmpty) Text(canal, style: AppTextStyles.muted),
-                  ],
+        final codigo = c['ClienteCodigo']?.toString();
+        final nombre = c['ClienteNombre']?.toString() ?? '';
+        return InkWell(
+          onTap: codigo != null
+              ? () => ClienteRouter.open(context, codigo, nombre: nombre)
+              : null,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.all(12),
+            decoration: AppCardStyle.base(borderColor: color),
+            child: Row(
+              children: [
+                Container(
+                  width: 8, height: 8,
+                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
                 ),
-              ),
-              Text(
-                _inactividadLabel(dias),
-                style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
-              ),
-            ],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(nombre, style: AppTextStyles.body),
+                      if (canal.isNotEmpty) Text(canal, style: AppTextStyles.muted),
+                    ],
+                  ),
+                ),
+                Text(
+                  _inactividadLabel(dias),
+                  style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                if (codigo != null)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 6),
+                    child: Icon(Icons.chevron_right, color: AppColors.textMuted, size: 16),
+                  ),
+              ],
+            ),
           ),
         );
       },

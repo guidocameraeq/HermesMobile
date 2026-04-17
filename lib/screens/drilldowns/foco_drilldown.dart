@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
+import '../../services/cliente_router.dart';
 import '../../services/drilldown_service.dart';
 
 class FocoDrilldown extends StatefulWidget {
@@ -157,23 +158,35 @@ class _FocoDrilldownState extends State<FocoDrilldown> {
       itemBuilder: (_, i) {
         final f = _facturas[i];
         final monto = double.tryParse(f['Monto']?.toString() ?? '0') ?? 0;
-        return Container(
-          margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.all(12),
-          decoration: AppCardStyle.base(),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Nro ${f['Numero']}', style: AppTextStyles.body),
-                    Text(f['ClienteNombre']?.toString() ?? '', style: AppTextStyles.muted),
-                  ],
+        final codigo = f['ClienteCodigo']?.toString();
+        final nombre = f['ClienteNombre']?.toString() ?? '';
+        return InkWell(
+          onTap: codigo != null
+              ? () => ClienteRouter.open(context, codigo, nombre: nombre)
+              : null,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.all(12),
+            decoration: AppCardStyle.base(),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Nro ${f['Numero']}', style: AppTextStyles.body),
+                      Text(nombre, style: AppTextStyles.muted),
+                    ],
+                  ),
                 ),
-              ),
-              Text('\$ ${_fmt(monto)}', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)),
-            ],
+                Text('\$ ${_fmt(monto)}', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)),
+                if (codigo != null)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 6),
+                    child: Icon(Icons.chevron_right, color: AppColors.textMuted, size: 16),
+                  ),
+              ],
+            ),
           ),
         );
       },

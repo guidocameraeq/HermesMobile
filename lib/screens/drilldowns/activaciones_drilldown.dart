@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../services/pg_service.dart';
+import '../../services/cliente_router.dart';
 
 class ActivacionesDrilldown extends StatefulWidget {
   final String vendedor;
@@ -53,26 +54,34 @@ class _ActivacionesState extends State<ActivacionesDrilldown> {
                   itemCount: _rows.length,
                   itemBuilder: (_, i) {
                     final r = _rows[i];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 6),
-                      padding: const EdgeInsets.all(12),
-                      decoration: AppCardStyle.base(borderColor: AppColors.success),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.flash_on, color: AppColors.success, size: 20),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(r['cliente_nombre']?.toString() ?? '',
-                                    style: AppTextStyles.body),
-                                Text('Código: ${r['cliente_codigo']}',
-                                    style: AppTextStyles.muted),
-                              ],
+                    final codigo = r['cliente_codigo']?.toString();
+                    final nombre = r['cliente_nombre']?.toString() ?? '';
+                    return InkWell(
+                      onTap: codigo != null
+                          ? () => ClienteRouter.open(context, codigo, nombre: nombre)
+                          : null,
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.all(12),
+                        decoration: AppCardStyle.base(borderColor: AppColors.success),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.flash_on, color: AppColors.success, size: 20),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(nombre, style: AppTextStyles.body),
+                                  Text('Código: $codigo', style: AppTextStyles.muted),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                            if (codigo != null)
+                              const Icon(Icons.chevron_right,
+                                  color: AppColors.textMuted, size: 16),
+                          ],
+                        ),
                       ),
                     );
                   },

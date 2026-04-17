@@ -7,6 +7,8 @@ import '../services/calculator_service.dart';
 import '../widgets/metric_card.dart';
 import '../widgets/month_selector.dart';
 import '../widgets/skeleton_card.dart';
+import '../widgets/app_drawer.dart';
+import '../widgets/mes_picker_sheet.dart';
 import 'drilldowns/facturacion_drilldown.dart';
 import 'drilldowns/tasa_conversion_drilldown.dart';
 import 'drilldowns/foco_drilldown.dart';
@@ -143,6 +145,7 @@ class _ScorecardTabState extends State<ScorecardTab>
 
     return Scaffold(
       backgroundColor: AppColors.bg,
+      drawer: const AppDrawer(currentTab: 0),
       appBar: AppBar(
         backgroundColor: AppColors.bgSidebar,
         elevation: 0,
@@ -174,19 +177,81 @@ class _ScorecardTabState extends State<ScorecardTab>
             onPressed: _loading ? null : _load,
             tooltip: 'Actualizar',
           ),
+          _mesButton(),
+          const AppBarAvatar(),
         ],
       ),
       body: Column(
         children: [
-          // ── Selector de mes ─────────────────────────────────
-          MonthSelector(
-            mes: _mes,
-            anio: _anio,
-            onChanged: _onMonthChanged,
-          ),
-          // ── Contenido ───────────────────────────────────────
+          if (_esMesNoActual()) _bannerMesViendo(),
           Expanded(child: _buildBody()),
         ],
+      ),
+    );
+  }
+
+  bool _esMesNoActual() {
+    final now = DateTime.now();
+    return _mes != now.month || _anio != now.year;
+  }
+
+  Widget _bannerMesViendo() {
+    const meses = ['', 'Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    return GestureDetector(
+      onTap: _abrirPickerMes,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        color: AppColors.warning.withOpacity(0.15),
+        child: Row(
+          children: [
+            const Icon(Icons.history, color: AppColors.warning, size: 16),
+            const SizedBox(width: 8),
+            Expanded(child: Text(
+              'Viendo ${meses[_mes]} $_anio',
+              style: const TextStyle(color: AppColors.warning, fontSize: 12, fontWeight: FontWeight.w600),
+            )),
+            GestureDetector(
+              onTap: _volverMesActual,
+              child: const Text('Volver a actual',
+                  style: TextStyle(color: AppColors.warning, fontSize: 11,
+                      decoration: TextDecoration.underline)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _volverMesActual() {
+    final now = DateTime.now();
+    _onMonthChanged(now.month, now.year);
+  }
+
+  Widget _mesButton() {
+    return IconButton(
+      icon: Icon(Icons.calendar_month,
+          color: _esMesNoActual() ? AppColors.warning : AppColors.textMuted, size: 20),
+      onPressed: _abrirPickerMes,
+      tooltip: 'Cambiar mes',
+    );
+  }
+
+  void _abrirPickerMes() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.bgCard,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => MesPickerSheet(
+        mesActual: _mes,
+        anioActual: _anio,
+        onPicked: (m, a) {
+          Navigator.pop(context);
+          _onMonthChanged(m, a);
+        },
       ),
     );
   }

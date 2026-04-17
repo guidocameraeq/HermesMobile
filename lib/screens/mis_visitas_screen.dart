@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../services/visitas_service.dart';
+import '../services/cliente_router.dart';
 
 class MisVisitasScreen extends StatefulWidget {
   const MisVisitasScreen({super.key});
@@ -140,6 +141,7 @@ class _VisitaTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final motivo = visita['motivo']?.toString() ?? '';
     final cliente = visita['cliente_nombre']?.toString() ?? '';
+    final clienteCodigo = visita['cliente_codigo']?.toString();
     final notas = visita['notas']?.toString() ?? '';
     final createdAt = visita['created_at'];
     String hora = '';
@@ -152,7 +154,11 @@ class _VisitaTile extends StatelessWidget {
       }
     }
 
-    return Container(
+    return InkWell(
+      onTap: clienteCodigo != null
+          ? () => ClienteRouter.open(context, clienteCodigo, nombre: cliente)
+          : null,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: AppCardStyle.base(),
@@ -190,9 +196,15 @@ class _VisitaTile extends StatelessWidget {
             children: [
               Text(hora, style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)),
               Text(fecha, style: AppTextStyles.muted),
+              if (clienteCodigo != null)
+                const Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Icon(Icons.chevron_right, color: AppColors.textMuted, size: 14),
+                ),
             ],
           ),
         ],
+      ),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../services/drilldown_service.dart';
+import '../../services/cliente_router.dart';
 
 class ReactivacionDrilldown extends StatefulWidget {
   final String vendedor;
@@ -68,28 +69,39 @@ class _ReactivacionDrilldownState extends State<ReactivacionDrilldown> {
                     final r = _rows[i];
                     final dias = int.tryParse(r['DiasInactivo']?.toString() ?? '0') ?? 0;
                     final importe = double.tryParse(r['Importe']?.toString() ?? '0') ?? 0;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 6),
-                      padding: const EdgeInsets.all(12),
-                      decoration: AppCardStyle.base(borderColor: AppColors.warning),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.replay, color: AppColors.warning, size: 20),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(r['ClienteNombre']?.toString() ?? '',
-                                    style: AppTextStyles.body),
-                                Text('Estuvo inactivo $dias días',
-                                    style: AppTextStyles.muted),
-                              ],
+                    final codigo = r['ClienteCodigo']?.toString();
+                    final nombre = r['ClienteNombre']?.toString() ?? '';
+                    return InkWell(
+                      onTap: codigo != null
+                          ? () => ClienteRouter.open(context, codigo, nombre: nombre)
+                          : null,
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.all(12),
+                        decoration: AppCardStyle.base(borderColor: AppColors.warning),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.replay, color: AppColors.warning, size: 20),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(nombre, style: AppTextStyles.body),
+                                  Text('Estuvo inactivo $dias días',
+                                      style: AppTextStyles.muted),
+                                ],
+                              ),
                             ),
-                          ),
-                          Text('\$ ${_fmt(importe)}',
-                              style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)),
-                        ],
+                            Text('\$ ${_fmt(importe)}',
+                                style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)),
+                            if (codigo != null)
+                              const Padding(
+                                padding: EdgeInsets.only(left: 6),
+                                child: Icon(Icons.chevron_right, color: AppColors.textMuted, size: 16),
+                              ),
+                          ],
+                        ),
                       ),
                     );
                   },

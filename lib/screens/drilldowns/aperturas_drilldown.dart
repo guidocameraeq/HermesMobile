@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../services/drilldown_service.dart';
+import '../../services/cliente_router.dart';
 
 class AperturasDrilldown extends StatefulWidget {
   final String vendedor;
@@ -50,28 +51,39 @@ class _AperturasDrilldownState extends State<AperturasDrilldown> {
                   itemBuilder: (_, i) {
                     final r = _rows[i];
                     final importe = double.tryParse(r['Importe']?.toString() ?? '0') ?? 0;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 6),
-                      padding: const EdgeInsets.all(12),
-                      decoration: AppCardStyle.base(borderColor: AppColors.success),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.person_add, color: AppColors.success, size: 20),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(r['ClienteNombre']?.toString() ?? r['ClienteCodigo']?.toString() ?? '',
-                                    style: AppTextStyles.body),
-                                Text('Primera compra: ${r['PrimeraCompra']?.toString().split(' ').first ?? ''}',
-                                    style: AppTextStyles.muted),
-                              ],
+                    final codigo = r['ClienteCodigo']?.toString();
+                    final nombre = r['ClienteNombre']?.toString() ?? codigo ?? '';
+                    return InkWell(
+                      onTap: codigo != null
+                          ? () => ClienteRouter.open(context, codigo, nombre: nombre)
+                          : null,
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.all(12),
+                        decoration: AppCardStyle.base(borderColor: AppColors.success),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.person_add, color: AppColors.success, size: 20),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(nombre, style: AppTextStyles.body),
+                                  Text('Primera compra: ${r['PrimeraCompra']?.toString().split(' ').first ?? ''}',
+                                      style: AppTextStyles.muted),
+                                ],
+                              ),
                             ),
-                          ),
-                          Text('\$ ${_fmt(importe)}',
-                              style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)),
-                        ],
+                            Text('\$ ${_fmt(importe)}',
+                                style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold)),
+                            if (codigo != null)
+                              const Padding(
+                                padding: EdgeInsets.only(left: 6),
+                                child: Icon(Icons.chevron_right, color: AppColors.textMuted, size: 16),
+                              ),
+                          ],
+                        ),
                       ),
                     );
                   },

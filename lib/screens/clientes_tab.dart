@@ -4,6 +4,7 @@ import '../models/cliente.dart';
 import '../models/session.dart';
 import '../services/clientes_service.dart';
 import 'cliente_detail_screen.dart';
+import '../widgets/app_drawer.dart';
 
 class ClientesTab extends StatefulWidget {
   const ClientesTab({super.key});
@@ -88,6 +89,7 @@ class _ClientesTabState extends State<ClientesTab>
 
     return Scaffold(
       backgroundColor: AppColors.bg,
+      drawer: const AppDrawer(currentTab: 2),
       appBar: AppBar(
         backgroundColor: AppColors.bgSidebar,
         title: Column(
@@ -116,6 +118,7 @@ class _ClientesTabState extends State<ClientesTab>
             icon: const Icon(Icons.refresh, color: AppColors.textMuted),
             onPressed: _loading ? null : _load,
           ),
+          const AppBarAvatar(),
         ],
       ),
       body: _loading

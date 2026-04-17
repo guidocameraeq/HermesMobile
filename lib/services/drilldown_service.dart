@@ -8,6 +8,7 @@ class DrilldownService {
       String vendedor, int mes, int anio) async {
     return SqlService.query(
       '''SELECT TOP 10
+            e.ClienteCodigo AS Codigo,
             COALESCE(MAX(c.ClienteNombre),
                      MAX(CAST(e.ClienteCodigo AS VARCHAR))) AS Cliente,
             SUM(e.SubTotalNetoLocal) AS Monto,
@@ -95,6 +96,7 @@ class DrilldownService {
     final phs = articulos.map((a) => "'${a.replaceAll("'", "''")}'").join(',');
     return SqlService.query(
       '''SELECT e.Numero, MAX(e.Fecha) AS Fecha,
+            MAX(e.ClienteCodigo) AS ClienteCodigo,
             MAX(c.ClienteNombre) AS ClienteNombre,
             SUM(e.SubTotalNetoLocal) AS Monto
          FROM [EQ-DBGA].[dbo].[fydvtsEstadisticas] e

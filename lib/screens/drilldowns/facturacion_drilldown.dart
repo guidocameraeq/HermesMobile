@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../services/drilldown_service.dart';
+import '../../services/cliente_router.dart';
 
 class FacturacionDrilldown extends StatefulWidget {
   final String vendedor;
@@ -82,29 +83,41 @@ class _FacturacionDrilldownState extends State<FacturacionDrilldown> {
         final c = _clientes[i];
         final monto = double.tryParse(c['Monto']?.toString() ?? '0') ?? 0;
         final facturas = c['Facturas']?.toString() ?? '0';
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(14),
-          decoration: AppCardStyle.base(),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: AppColors.primary.withOpacity(0.2),
-                child: Text('${i + 1}', style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(c['Cliente']?.toString() ?? '', style: AppTextStyles.body),
-                    Text('$facturas facturas', style: AppTextStyles.muted),
-                  ],
+        final codigo = c['Codigo']?.toString();
+        final nombre = c['Cliente']?.toString() ?? '';
+        return InkWell(
+          onTap: codigo != null
+              ? () => ClienteRouter.open(context, codigo, nombre: nombre)
+              : null,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(14),
+            decoration: AppCardStyle.base(),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: AppColors.primary.withOpacity(0.2),
+                  child: Text('${i + 1}', style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
-              ),
-              Text('\$ ${_fmt(monto)}', style: AppTextStyles.title.copyWith(fontSize: 14)),
-            ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(nombre, style: AppTextStyles.body),
+                      Text('$facturas facturas', style: AppTextStyles.muted),
+                    ],
+                  ),
+                ),
+                Text('\$ ${_fmt(monto)}', style: AppTextStyles.title.copyWith(fontSize: 14)),
+                if (codigo != null)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 4),
+                    child: Icon(Icons.chevron_right, color: AppColors.textMuted, size: 18),
+                  ),
+              ],
+            ),
           ),
         );
       },

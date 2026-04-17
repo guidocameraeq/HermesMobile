@@ -3,9 +3,10 @@ import '../config/theme.dart';
 import '../services/notification_service.dart';
 import 'scorecard_tab.dart';
 import 'clientes_tab.dart';
-import 'ventas_tab.dart';
-import 'mas_tab.dart';
+import 'assistant_screen.dart';
+import 'acciones_tab.dart';
 import 'actividad_detail_screen.dart';
+import 'home_controller.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,16 +19,19 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
   final _tabs = const <Widget>[
-    ScorecardTab(),
-    ClientesTab(),
-    VentasTab(),
-    MasTab(),
+    ScorecardTab(),      // 0
+    AssistantScreen(),   // 1 — Cronos
+    ClientesTab(),       // 2
+    AccionesTab(),       // 3
   ];
 
   @override
   void initState() {
     super.initState();
-    // Si la app se abrió desde una notificación (cold start), navegar a la ficha.
+    HomeController.register((i) {
+      if (mounted) setState(() => _currentIndex = i);
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final pending = NotificationService.pendingActividadId;
       if (pending != null && mounted) {
@@ -37,6 +41,12 @@ class _HomeScreenState extends State<HomeScreen> {
         ));
       }
     });
+  }
+
+  @override
+  void dispose() {
+    HomeController.unregister();
+    super.dispose();
   }
 
   @override
@@ -50,22 +60,23 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (i) => setState(() => _currentIndex = i),
+        type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart_rounded),
             label: 'Scorecard',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.schedule_send),
+            label: 'Cronos',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.people_outline),
             label: 'Clientes',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.trending_up),
-            label: 'Ventas',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.more_horiz),
-            label: 'Más',
+            icon: Icon(Icons.apps),
+            label: 'Acciones',
           ),
         ],
       ),

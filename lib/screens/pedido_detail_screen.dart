@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../services/pedidos_service.dart';
+import '../services/cliente_router.dart';
 
 class PedidoDetailScreen extends StatefulWidget {
   final String numero;
   final String cliente;
+  final String? clienteCodigo;
   final String fecha;
   final String estado;
   final double cantPendiente;
@@ -13,6 +15,7 @@ class PedidoDetailScreen extends StatefulWidget {
     super.key,
     required this.numero,
     required this.cliente,
+    this.clienteCodigo,
     required this.fecha,
     required this.estado,
     required this.cantPendiente,
@@ -80,7 +83,24 @@ class _PedidoDetailState extends State<PedidoDetailScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(widget.cliente, style: AppTextStyles.title),
+                            child: GestureDetector(
+                              onTap: widget.clienteCodigo != null
+                                  ? () => ClienteRouter.open(context,
+                                      widget.clienteCodigo, nombre: widget.cliente)
+                                  : null,
+                              child: Row(
+                                children: [
+                                  Flexible(child: Text(widget.cliente, style: AppTextStyles.title,
+                                      maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                  if (widget.clienteCodigo != null)
+                                    const Padding(
+                                      padding: EdgeInsets.only(left: 4),
+                                      child: Icon(Icons.chevron_right,
+                                          color: AppColors.accent, size: 16),
+                                    ),
+                                ],
+                              ),
+                            ),
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../services/sql_service.dart';
+import '../../services/cliente_router.dart';
 import 'oportunidades_cargas_screen.dart';
 
 class IncorporacionesCargasDrilldown extends StatefulWidget {
@@ -177,43 +178,53 @@ class _State extends State<IncorporacionesCargasDrilldown> {
       itemCount: items.length,
       itemBuilder: (_, i) {
         final r = items[i];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.all(12),
-          decoration: AppCardStyle.base(borderColor: color),
-          child: Row(
-            children: [
-              Icon(icon, color: color, size: 18),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(r['ClienteNombre']?.toString() ?? '',
-                        style: AppTextStyles.body, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.accent.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(4),
+        final codigo = r['ClienteCodigo']?.toString();
+        final nombre = r['ClienteNombre']?.toString() ?? '';
+        return InkWell(
+          onTap: codigo != null && codigo.isNotEmpty
+              ? () => ClienteRouter.open(context, codigo, nombre: nombre)
+              : null,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.all(12),
+            decoration: AppCardStyle.base(borderColor: color),
+            child: Row(
+              children: [
+                Icon(icon, color: color, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(nombre,
+                          style: AppTextStyles.body, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.accent.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              r['CargaNombre']?.toString() ?? '',
+                              style: const TextStyle(color: AppColors.accent, fontSize: 10, fontWeight: FontWeight.bold),
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          child: Text(
-                            r['CargaNombre']?.toString() ?? '',
-                            style: const TextStyle(color: AppColors.accent, fontSize: 10, fontWeight: FontWeight.bold),
-                            maxLines: 1, overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(r['Fecha']?.toString() ?? '', style: AppTextStyles.muted),
-                      ],
-                    ),
-                  ],
+                          const Spacer(),
+                          Text(r['Fecha']?.toString() ?? '', style: AppTextStyles.muted),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                if (codigo != null && codigo.isNotEmpty)
+                  const Icon(Icons.chevron_right,
+                      color: AppColors.textMuted, size: 16),
+              ],
+            ),
           ),
         );
       },
