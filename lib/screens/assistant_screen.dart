@@ -4,6 +4,7 @@ import '../config/theme.dart';
 import '../models/session.dart';
 import '../services/assistant_service.dart';
 import '../services/actividades_service.dart';
+import '../services/notification_service.dart';
 
 class AssistantScreen extends StatefulWidget {
   const AssistantScreen({super.key});
@@ -153,11 +154,27 @@ class _AssistantState extends State<AssistantScreen> {
           fechaProgramada: action.cuando,
           origen: 'cronos',
         );
+
+        // Programar notificación si tiene fecha
+        if (action.cuando != null) {
+          final dt = DateTime.tryParse(action.cuando!);
+          if (dt != null && dt.isAfter(DateTime.now())) {
+            final cliente = action.clienteResuelto?.nombre ?? action.clienteMatch ?? '';
+            await NotificationService.schedule(
+              id: DateTime.now().millisecondsSinceEpoch % 100000,
+              title: '${action.accionLabel}${cliente.isNotEmpty ? " — $cliente" : ""}',
+              body: action.nota.isNotEmpty ? action.nota : 'Actividad agendada',
+              scheduledDate: dt,
+            );
+          }
+        }
+
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Agendado: ${action.accionLabel}'
-                '${action.tieneCliente ? " — ${action.clienteResuelto!.nombre}" : ""}'),
+                '${action.tieneCliente ? " — ${action.clienteResuelto!.nombre}" : ""}'
+                '${action.cuando != null ? " (con notificación)" : ""}'),
             backgroundColor: AppColors.success,
           ),
         );

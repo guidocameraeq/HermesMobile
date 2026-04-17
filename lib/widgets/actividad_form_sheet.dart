@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../services/actividades_service.dart';
+import '../services/notification_service.dart';
 
 /// Bottom sheet para cargar una actividad manualmente.
 class ActividadFormSheet extends StatefulWidget {
@@ -71,11 +72,30 @@ class _FormState extends State<ActividadFormSheet> {
         descripcion: _descCtrl.text.trim().isNotEmpty ? _descCtrl.text.trim() : null,
         fechaProgramada: fechaProg,
       );
+
+      // Programar notificación si tiene fecha
+      if (_fecha != null) {
+        final h = _hora?.hour ?? 9;
+        final m = _hora?.minute ?? 0;
+        final dt = DateTime(_fecha!.year, _fecha!.month, _fecha!.day, h, m);
+        if (dt.isAfter(DateTime.now())) {
+          await NotificationService.schedule(
+            id: DateTime.now().millisecondsSinceEpoch % 100000,
+            title: '$_tipo — ${widget.clienteNombre}',
+            body: _descCtrl.text.trim().isNotEmpty ? _descCtrl.text.trim() : 'Actividad agendada',
+            scheduledDate: dt,
+          );
+        }
+      }
+
       if (!mounted) return;
       widget.onSaved();
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Actividad registrada'), backgroundColor: AppColors.success),
+        SnackBar(
+          content: Text('Actividad registrada${_fecha != null ? " (con notificación)" : ""}'),
+          backgroundColor: AppColors.success,
+        ),
       );
     } catch (e) {
       if (!mounted) return;

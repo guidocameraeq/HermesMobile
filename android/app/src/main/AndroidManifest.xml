@@ -9,6 +9,10 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <!-- Micrófono para asistente de voz -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- Notificaciones locales (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
         android:label="Hermes"
         android:name="${applicationName}"
@@ -40,6 +44,14 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Notificaciones locales: receivers -->
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+            </intent-filter>
+        </receiver>
         <!-- FileProvider para open_filex (instalar APK) -->
         <provider
             android:name="androidx.core.content.FileProvider"
