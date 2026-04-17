@@ -3,6 +3,7 @@ import '../config/theme.dart';
 import '../services/actividades_service.dart';
 import '../services/notification_service.dart';
 import '../services/cliente_router.dart';
+import '../services/calendar_service.dart';
 
 class ActividadDetailScreen extends StatefulWidget {
   final int actividadId;
@@ -63,6 +64,10 @@ class _State extends State<ActividadDetailScreen> {
   String get _tipo => _data?['tipo']?.toString() ?? '';
   String get _cliente => _data?['cliente_nombre']?.toString() ?? '';
   String get _clienteCodigo => _data?['cliente_codigo']?.toString() ?? '';
+  String? get _googleEventId {
+    final v = _data?['google_event_id']?.toString();
+    return (v == null || v.isEmpty) ? null : v;
+  }
 
   IconData get _icon => switch (_tipo) {
     'llamada' => Icons.phone,
@@ -209,6 +214,67 @@ class _State extends State<ActividadDetailScreen> {
         SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.danger),
       );
     }
+  }
+
+  Future<void> _agregarAlCalendario() async {
+    if (!await CalendarService.I.isEnabled) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Conectá Google Calendar en Configuración primero'),
+        backgroundColor: AppColors.accent,
+      ));
+      return;
+    }
+    if (_fecha == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Esta actividad no tiene fecha programada'),
+        backgroundColor: AppColors.warning,
+      ));
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      final h = _hora?.hour ?? 9;
+      final m = _hora?.minute ?? 0;
+      final dt = DateTime(_fecha!.year, _fecha!.month, _fecha!.day, h, m);
+      final eventId = await CalendarService.I.createEvent(
+        titulo: '${_tipo[0].toUpperCase()}${_tipo.substring(1)} — $_cliente',
+        inicio: dt,
+        duracion: const Duration(minutes: 30),
+        descripcion: _descCtrl.text.trim(),
+      );
+      if (eventId == null) throw Exception('No se pudo crear el evento');
+      await ActividadesService.setGoogleEventId(widget.actividadId, eventId);
+      if (!mounted) return;
+      await _load();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Agregado a Google Calendar'),
+        backgroundColor: AppColors.success,
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error: ${e.toString().replaceFirst("Exception: ", "")}'),
+        backgroundColor: AppColors.danger,
+      ));
+    }
+  }
+
+  Future<void> _quitarDelCalendario() async {
+    final eid = _googleEventId;
+    if (eid == null) return;
+    setState(() => _saving = true);
+    await CalendarService.I.deleteEvent(eid);
+    await ActividadesService.setGoogleEventId(widget.actividadId, null);
+    if (!mounted) return;
+    await _load();
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Quitado del calendario'),
+      backgroundColor: AppColors.textMuted,
+    ));
   }
 
   Future<void> _eliminar() async {
@@ -383,6 +449,12 @@ class _State extends State<ActividadDetailScreen> {
                 ),
               ),
 
+              const SizedBox(height: 10),
+
+              // Google Calendar tile
+              if (_fecha != null && !_esCompletada)
+                _googleCalendarTile(),
+
               const SizedBox(height: 20),
 
               // Estado + botón
@@ -482,6 +554,59 @@ class _State extends State<ActividadDetailScreen> {
             ),
             if (onTap != null)
               const Icon(Icons.edit_outlined, color: AppColors.accent, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _googleCalendarTile() {
+    final hasEvent = _googleEventId != null;
+    return InkWell(
+      onTap: hasEvent ? _quitarDelCalendario : _agregarAlCalendario,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: hasEvent
+              ? AppColors.success.withOpacity(0.08)
+              : AppColors.bgCard,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: hasEvent ? AppColors.success.withOpacity(0.4) : AppColors.border,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              hasEvent ? Icons.event_available : Icons.event_outlined,
+              color: hasEvent ? AppColors.success : AppColors.textMuted,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    hasEvent ? 'En Google Calendar' : 'Agregar a Google Calendar',
+                    style: TextStyle(
+                      color: hasEvent ? AppColors.success : AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    hasEvent ? 'Tocá para quitar' : 'Sincronizá con tu calendario',
+                    style: AppTextStyles.muted,
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              hasEvent ? Icons.close : Icons.chevron_right,
+              color: AppColors.textMuted, size: 18,
+            ),
           ],
         ),
       ),

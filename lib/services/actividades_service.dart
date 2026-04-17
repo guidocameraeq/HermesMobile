@@ -1,5 +1,6 @@
 import '../models/session.dart';
 import 'pg_service.dart';
+import 'calendar_service.dart';
 
 /// CRUD de actividades comerciales por cliente — Supabase.
 class ActividadesService {
@@ -7,8 +8,9 @@ class ActividadesService {
     'Llamada', 'Visita', 'Propuesta', 'Presentación', 'Reunión', 'Recordatorio', 'Otro',
   ];
 
-  /// Registra una actividad.
-  static Future<void> registrar({
+  /// Registra una actividad. Retorna el id creado.
+  /// Si Google Calendar está en modo auto y tiene fecha, sincroniza.
+  static Future<int?> registrar({
     required String clienteCodigo,
     required String clienteNombre,
     required String tipo,
@@ -31,11 +33,42 @@ class ActividadesService {
       fechaCol = ', fecha_programada';
     }
 
-    await PgService.execute(
+    final rows = await PgService.query(
       'INSERT INTO actividades_cliente '
       '(vendedor_nombre, cliente_codigo, cliente_nombre, tipo, descripcion, origen$fechaCol) '
-      'VALUES (@vendedor, @cliente, @nombre, @tipo, @desc, @origen${fechaProgramada != null ? ", @fecha" : ""})',
+      'VALUES (@vendedor, @cliente, @nombre, @tipo, @desc, @origen${fechaProgramada != null ? ", @fecha" : ""}) '
+      'RETURNING id',
       params,
+    );
+    final id = rows.isNotEmpty ? int.tryParse(rows.first['id']?.toString() ?? '') : null;
+
+    // Sincronización automática con Google Calendar si corresponde
+    if (id != null && fechaProgramada != null && await CalendarService.I.isAuto) {
+      final dt = DateTime.tryParse(fechaProgramada);
+      if (dt != null && dt.isAfter(DateTime.now())) {
+        final eventId = await CalendarService.I.createEvent(
+          titulo: '${tipo[0].toUpperCase()}${tipo.substring(1)} — $clienteNombre',
+          inicio: dt,
+          duracion: const Duration(minutes: 30),
+          descripcion: descripcion,
+        );
+        if (eventId != null) {
+          await PgService.execute(
+            'UPDATE actividades_cliente SET google_event_id = @eid WHERE id = @id',
+            {'eid': eventId, 'id': id},
+          );
+        }
+      }
+    }
+    return id;
+  }
+
+  /// Guarda un google_event_id en una actividad (linking manual).
+  static Future<void> setGoogleEventId(int id, String? eventId) async {
+    await PgService.execute(
+      'UPDATE actividades_cliente SET google_event_id = @eid '
+      'WHERE id = @id AND vendedor_nombre = @vendedor',
+      {'eid': eventId, 'id': id, 'vendedor': Session.current.vendedorNombre},
     );
   }
 
@@ -81,7 +114,7 @@ class ActividadesService {
     );
   }
 
-  /// Actualizar descripción y/o fecha programada.
+  /// Actualizar descripción y/o fecha programada. Sincroniza Calendar si tiene event_id.
   static Future<void> actualizar({
     required int id,
     String? descripcion,
@@ -105,22 +138,47 @@ class ActividadesService {
       'WHERE id = @id AND vendedor_nombre = @vendedor',
       params,
     );
+
+    // Sincronizar con Calendar si esta actividad tiene evento asociado
+    final act = await porId(id);
+    final eventId = act?['google_event_id']?.toString();
+    if (eventId != null && eventId.isNotEmpty && fechaProgramada != null) {
+      final dt = DateTime.tryParse(fechaProgramada);
+      if (dt != null) {
+        final tipo = act?['tipo']?.toString() ?? '';
+        final cliente = act?['cliente_nombre']?.toString() ?? '';
+        await CalendarService.I.updateEvent(
+          eventId: eventId,
+          titulo: '${tipo.isNotEmpty ? "${tipo[0].toUpperCase()}${tipo.substring(1)}" : "Actividad"} — $cliente',
+          inicio: dt,
+          duracion: const Duration(minutes: 30),
+          descripcion: descripcion,
+        );
+      }
+    }
   }
 
-  /// Eliminar actividad.
+  /// Eliminar actividad. Si tiene evento en Calendar, también lo borra.
   static Future<void> eliminar(int id) async {
+    final act = await porId(id);
+    final eventId = act?['google_event_id']?.toString();
+
     await PgService.execute(
       'DELETE FROM actividades_cliente '
       'WHERE id = @id AND vendedor_nombre = @vendedor',
       {'id': id, 'vendedor': Session.current.vendedorNombre},
     );
+
+    if (eventId != null && eventId.isNotEmpty) {
+      await CalendarService.I.deleteEvent(eventId);
+    }
   }
 
   /// Obtener una actividad por id.
   static Future<Map<String, dynamic>?> porId(int id) async {
     final rows = await PgService.query(
       'SELECT id, cliente_codigo, cliente_nombre, tipo, descripcion, '
-      'fecha_programada, completada, completada_at, origen, created_at '
+      'fecha_programada, completada, completada_at, origen, created_at, google_event_id '
       'FROM actividades_cliente '
       'WHERE id = @id AND vendedor_nombre = @vendedor',
       {'id': id, 'vendedor': Session.current.vendedorNombre},

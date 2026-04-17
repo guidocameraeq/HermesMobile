@@ -3,6 +3,7 @@ import '../config/theme.dart';
 import '../models/session.dart';
 import '../services/auth_service.dart';
 import '../services/biometric_service.dart';
+import '../services/calendar_service.dart';
 import '../services/update_service.dart';
 import '../services/pg_service.dart';
 import '../services/error_logger.dart';
@@ -29,12 +30,23 @@ class _ConfiguracionState extends State<ConfiguracionScreen> {
   bool _bioDisponible = false;
   bool _bioHabilitado = false;
 
+  String _calMode = 'off';       // off | manual | auto
+  String? _calAccount;
+  bool _calConnecting = false;
+
   @override
   void initState() {
     super.initState();
     _loadVersion();
     _loadBio();
+    _loadCalendar();
     _checkUpdate();
+  }
+
+  Future<void> _loadCalendar() async {
+    final mode = await CalendarService.I.getMode();
+    final acc = await CalendarService.I.getAccount();
+    if (mounted) setState(() { _calMode = mode; _calAccount = acc; });
   }
 
   Future<void> _loadVersion() async {
@@ -69,6 +81,38 @@ class _ConfiguracionState extends State<ConfiguracionScreen> {
             backgroundColor: AppColors.danger),
       );
     }
+  }
+
+  Future<void> _connectCalendar() async {
+    setState(() => _calConnecting = true);
+    try {
+      final email = await CalendarService.I.connect();
+      await CalendarService.I.setMode('manual');
+      if (!mounted) return;
+      setState(() { _calAccount = email; _calMode = 'manual'; _calConnecting = false; });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Conectado como $email'),
+        backgroundColor: AppColors.success,
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _calConnecting = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error conectando: ${e.toString().replaceFirst("Exception: ", "")}'),
+        backgroundColor: AppColors.danger,
+      ));
+    }
+  }
+
+  Future<void> _disconnectCalendar() async {
+    await CalendarService.I.disconnect();
+    if (!mounted) return;
+    setState(() { _calAccount = null; _calMode = 'off'; });
+  }
+
+  Future<void> _setCalMode(String mode) async {
+    await CalendarService.I.setMode(mode);
+    if (mounted) setState(() => _calMode = mode);
   }
 
   Future<void> _toggleBio() async {
@@ -194,6 +238,11 @@ class _ConfiguracionState extends State<ConfiguracionScreen> {
 
           const SizedBox(height: 14),
 
+          // ── Google Calendar ──────────────────────────────
+          _buildCalendarCard(),
+
+          const SizedBox(height: 14),
+
           // ── App ─────────────────────────────────────────
           Container(
             padding: const EdgeInsets.all(16),
@@ -269,6 +318,118 @@ class _ConfiguracionState extends State<ConfiguracionScreen> {
 
           const SizedBox(height: 30),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCalendarCard() {
+    final connected = _calAccount != null;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: AppCardStyle.base(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: connected
+                      ? AppColors.success.withOpacity(0.15)
+                      : AppColors.bg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.event_available,
+                    color: connected ? AppColors.success : AppColors.textMuted,
+                    size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Google Calendar', style: AppTextStyles.body),
+                    Text(
+                      connected ? _calAccount! : 'Desconectado',
+                      style: AppTextStyles.muted,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (connected)
+                IconButton(
+                  icon: const Icon(Icons.logout, color: AppColors.textMuted, size: 18),
+                  tooltip: 'Desconectar',
+                  onPressed: _disconnectCalendar,
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (!connected) ...[
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _calConnecting ? null : _connectCalendar,
+                icon: _calConnecting
+                    ? const SizedBox(width: 16, height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.link, size: 18),
+                label: Text(_calConnecting ? 'Conectando...' : 'Conectar con Google'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+          ] else ...[
+            const Text('Modo de sincronización', style: AppTextStyles.muted),
+            const SizedBox(height: 6),
+            _modeChip('off', 'Desactivado', Icons.toggle_off),
+            _modeChip('manual', 'Manual — botón en cada actividad', Icons.touch_app),
+            _modeChip('auto', 'Automático — toda actividad nueva', Icons.sync),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _modeChip(String value, String label, IconData icon) {
+    final sel = _calMode == value;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: InkWell(
+        onTap: () => _setCalMode(value),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: sel ? AppColors.primary.withOpacity(0.15) : AppColors.bg,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: sel ? AppColors.primary : AppColors.border,
+              width: sel ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 16,
+                  color: sel ? AppColors.primary : AppColors.textMuted),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(label, style: TextStyle(
+                  color: sel ? AppColors.textPrimary : AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
+                )),
+              ),
+              if (sel)
+                const Icon(Icons.check_circle, color: AppColors.primary, size: 16),
+            ],
+          ),
+        ),
       ),
     );
   }

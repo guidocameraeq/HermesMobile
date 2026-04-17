@@ -5,6 +5,7 @@ import '../models/session.dart';
 import '../services/assistant_service.dart';
 import '../services/actividades_service.dart';
 import '../services/notification_service.dart';
+import '../services/visitas_service.dart';
 import '../services/whisper_service.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/recording_overlay.dart';
@@ -124,6 +125,30 @@ class _AssistantState extends State<AssistantScreen>
     try {
       if (action.esPendiente && action.actividadId != null) {
         await ActividadesService.completar(action.actividadId!);
+      } else if (action.esVisitaAhora) {
+        // Cargar visita con GPS actual
+        if (action.clienteResuelto == null) {
+          throw Exception('Necesito saber a qué cliente estás visitando');
+        }
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Row(children: [
+            SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+            SizedBox(width: 12),
+            Text('Obteniendo ubicación GPS...'),
+          ]),
+          duration: Duration(seconds: 8),
+        ));
+        final pos = await VisitasService.obtenerGps();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        await VisitasService.registrar(
+          clienteCodigo: action.clienteResuelto!.codigo,
+          clienteNombre: action.clienteResuelto!.nombre,
+          latitud: pos.latitude,
+          longitud: pos.longitude,
+          motivo: action.motivo ?? 'Visita comercial',
+          notas: action.nota.isNotEmpty ? action.nota : null,
+        );
       } else {
         await ActividadesService.registrar(
           clienteCodigo: action.clienteResuelto?.codigo ?? '',
@@ -150,8 +175,9 @@ class _AssistantState extends State<AssistantScreen>
       setState(() => _confirmadas.add(action));
     } catch (e) {
       if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Error: $e'),
+        content: Text('Error: ${e.toString().replaceFirst("Exception: ", "")}'),
         backgroundColor: AppColors.danger,
       ));
     }
@@ -650,13 +676,33 @@ class _ActionCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (action.esVisitaAhora)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.my_location, size: 14, color: AppColors.success),
+                        const SizedBox(width: 6),
+                        Text('VISITA CON GPS AHORA',
+                            style: TextStyle(
+                              color: AppColors.success,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            )),
+                      ],
+                    ),
+                  ),
                 if (action.tieneCliente)
                   _row(Icons.person, 'Cliente',
                       '${action.clienteResuelto!.nombre} (${action.clienteResuelto!.codigo})')
                 else if (action.clienteMatch != null)
                   _row(Icons.person_search, 'Cliente',
                       '${action.clienteMatch} (no encontrado)'),
-                _row(Icons.category_outlined, 'Acción', action.accionLabel),
+                if (!action.esVisitaAhora)
+                  _row(Icons.category_outlined, 'Acción', action.accionLabel),
+                if (action.esVisitaAhora)
+                  _row(Icons.badge_outlined, 'Motivo', action.motivo ?? 'Visita comercial'),
                 if (action.cuando != null)
                   _row(Icons.schedule, 'Cuándo', action.cuandoFmt),
                 if (action.nota.isNotEmpty)
@@ -671,7 +717,9 @@ class _ActionCard extends StatelessWidget {
                       transitionBuilder: (w, a) =>
                           ScaleTransition(scale: a, child: w),
                       child: Icon(
-                        confirmada ? Icons.check_circle : Icons.check,
+                        confirmada
+                            ? Icons.check_circle
+                            : (action.esVisitaAhora ? Icons.my_location : Icons.check),
                         key: ValueKey(confirmada),
                         size: 16,
                       ),
@@ -680,8 +728,12 @@ class _ActionCard extends StatelessWidget {
                       duration: const Duration(milliseconds: 260),
                       child: Text(
                         confirmada
-                            ? (action.esPendiente ? 'Completada' : 'Agendada')
-                            : (action.esPendiente ? 'Completar' : 'Confirmar'),
+                            ? (action.esPendiente ? 'Completada'
+                                : action.esVisitaAhora ? 'Visita registrada'
+                                : 'Agendada')
+                            : (action.esPendiente ? 'Completar'
+                                : action.esVisitaAhora ? 'Cargar con mi ubicación'
+                                : 'Confirmar'),
                         key: ValueKey(confirmada),
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                       ),
