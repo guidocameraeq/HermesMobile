@@ -81,4 +81,41 @@ class ActividadesService {
     );
     return int.tryParse(rows.firstOrNull?['n']?.toString() ?? '0') ?? 0;
   }
+
+  /// Actividades completadas (últimas N).
+  static Future<List<Map<String, dynamic>>> completadas({int limit = 20}) async {
+    return PgService.query(
+      'SELECT id, cliente_codigo, cliente_nombre, tipo, descripcion, '
+      'completada_at, created_at FROM actividades_cliente '
+      'WHERE vendedor_nombre = @vendedor AND completada = TRUE '
+      'ORDER BY completada_at DESC LIMIT $limit',
+      {'vendedor': Session.current.vendedorNombre},
+    );
+  }
+
+  /// Pendientes de hoy.
+  static Future<List<Map<String, dynamic>>> pendientesHoy() async {
+    return PgService.query(
+      'SELECT id, cliente_codigo, cliente_nombre, tipo, descripcion, '
+      'fecha_programada, created_at FROM actividades_cliente '
+      'WHERE vendedor_nombre = @vendedor AND completada = FALSE '
+      'AND (fecha_programada::date = CURRENT_DATE '
+      '     OR (fecha_programada IS NULL AND created_at::date = CURRENT_DATE)) '
+      'ORDER BY fecha_programada ASC NULLS LAST',
+      {'vendedor': Session.current.vendedorNombre},
+    );
+  }
+
+  /// Pendientes de esta semana.
+  static Future<List<Map<String, dynamic>>> pendientesSemana() async {
+    return PgService.query(
+      'SELECT id, cliente_codigo, cliente_nombre, tipo, descripcion, '
+      'fecha_programada, created_at FROM actividades_cliente '
+      'WHERE vendedor_nombre = @vendedor AND completada = FALSE '
+      'AND (fecha_programada >= date_trunc(\'week\', CURRENT_DATE) '
+      '     OR fecha_programada IS NULL) '
+      'ORDER BY fecha_programada ASC NULLS LAST',
+      {'vendedor': Session.current.vendedorNombre},
+    );
+  }
 }

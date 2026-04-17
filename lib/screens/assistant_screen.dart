@@ -30,8 +30,8 @@ class _AssistantState extends State<AssistantScreen> {
     // Mensaje de bienvenida
     _messages.add(_ChatMessage(
       isUser: false,
-      text: 'Hola ${Session.current.vendedorNombre.split(' ').first}, soy tu asistente. '
-          'Decime qué necesitás y lo anoto.\n\n'
+      text: 'Hola ${Session.current.vendedorNombre.split(' ').first}, soy tu asistente de agenda. '
+          'Decime qué tenés que hacer y te lo anoto.\n\n'
           'Podés escribir o usar el micrófono. Por ejemplo:\n'
           '"Recordame mañana a las 10 que llame a García"',
     ));
@@ -183,9 +183,9 @@ class _AssistantState extends State<AssistantScreen> {
         backgroundColor: AppColors.bgSidebar,
         title: const Row(
           children: [
-            Icon(Icons.flash_on, color: AppColors.accent, size: 20),
+            Icon(Icons.schedule_send, color: AppColors.accent, size: 20),
             SizedBox(width: 8),
-            Text('Hermes Flash', style: AppTextStyles.title),
+            Text('Cronos', style: AppTextStyles.title),
           ],
         ),
       ),

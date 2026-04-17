@@ -7,11 +7,13 @@ import '../services/update_service.dart';
 import '../services/error_logger.dart';
 import '../services/visitas_service.dart';
 import '../services/pedidos_service.dart';
+import '../services/actividades_service.dart';
 import 'login_screen.dart';
 import 'visita_cliente_picker.dart';
 import 'mis_visitas_screen.dart';
 import 'pedidos_screen.dart';
 import 'assistant_screen.dart';
+import 'agenda_screen.dart';
 
 class MasTab extends StatefulWidget {
   const MasTab({super.key});
@@ -38,6 +40,9 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
   // Pedidos
   int _pedidosPend = 0;
 
+  // Agenda
+  int _actividadesPend = 0;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -48,6 +53,7 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
     _checkUpdate();
     _loadVisitasHoy();
     _loadPedidosPend();
+    _loadActividadesPend();
   }
 
   Future<void> _loadVersion() async {
@@ -59,6 +65,13 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
     try {
       final count = await VisitasService.conteoHoy();
       if (mounted) setState(() => _visitasHoy = count);
+    } catch (_) {}
+  }
+
+  Future<void> _loadActividadesPend() async {
+    try {
+      final count = await ActividadesService.conteoPendientes();
+      if (mounted) setState(() => _actividadesPend = count);
     } catch (_) {}
   }
 
@@ -217,13 +230,35 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
               const SizedBox(width: 8),
               Expanded(
                 child: _MenuTile(
-                  icon: Icons.flash_on,
-                  label: 'Hermes Flash',
+                  icon: Icons.schedule_send,
+                  label: 'Cronos',
                   color: AppColors.accent,
                   onTap: () => Navigator.push(context,
                       MaterialPageRoute(builder: (_) => const AssistantScreen())),
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // ── Mi Agenda ────────────────────────────────────────
+          Row(
+            children: [
+              Expanded(
+                child: _MenuTile(
+                  icon: Icons.event_note,
+                  label: 'Mi Agenda',
+                  color: AppColors.warning,
+                  badge: _actividadesPend > 0 ? '$_actividadesPend pend.' : null,
+                  onTap: () async {
+                    await Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => const AgendaScreen()));
+                    _loadActividadesPend();
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Expanded(child: SizedBox()), // placeholder futuro
             ],
           ),
           const SizedBox(height: 16),

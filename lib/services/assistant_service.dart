@@ -4,6 +4,7 @@ import '../config/constants.dart';
 import '../models/cliente.dart';
 import '../models/session.dart';
 import 'clientes_service.dart';
+import 'actividades_service.dart';
 
 /// Respuesta parseada del asistente IA.
 class AssistantAction {
@@ -74,13 +75,13 @@ class AssistantService {
         .map((c) => '${c.codigo}: ${c.nombre}')
         .join('\n');
 
-    return '''Sos Hermes Flash, el asistente de agenda del vendedor. SOLO podés hacer 3 cosas:
+    return '''Sos Cronos, el asistente de agenda del vendedor. SOLO podés hacer 3 cosas:
 1. AGENDAR actividades y recordatorios ("recordame llamar a García mañana")
 2. LISTAR pendientes ("qué tengo pendiente")
 3. MARCAR como completada ("ya llamé a García")
 
 Para CUALQUIER otra cosa (preguntas, conversación, chistes, consultas de datos), respondé:
-{"tipo":"rechazo","accion":"otro","nota":"","mensaje":"Solo puedo ayudarte con actividades y recordatorios. Decime qué tenés que hacer y te lo anoto."}
+{"tipo":"rechazo","accion":"otro","nota":"","mensaje":"Soy Cronos y solo puedo ayudarte con actividades y recordatorios. Decime qué tenés que hacer y te lo anoto."}
 
 El vendedor se llama: $vendedor
 Fecha y hora actual: $fecha ${now.hour}:${now.minute.toString().padLeft(2, '0')}
@@ -102,8 +103,58 @@ Tipos de acción: llamada, visita, propuesta, presentacion, reunion, recordatori
 Tipos de respuesta: actividad, consulta, pendientes, completar, rechazo''';
   }
 
+  /// Detecta consultas de pendientes y las resuelve sin LLM.
+  static Future<AssistantAction?> _checkPendientes(String msg) async {
+    final q = msg.toLowerCase();
+    final esPendientes = q.contains('pendiente') || q.contains('tengo que hacer') ||
+        q.contains('mi agenda') || q.contains('qué tengo') || q.contains('que tengo') ||
+        q.contains('mis actividades') || q.contains('tareas');
+
+    if (!esPendientes) return null;
+
+    final items = await ActividadesService.pendientes();
+    if (items.isEmpty) {
+      return AssistantAction(
+        tipo: 'pendientes', accion: 'otro', nota: '',
+        mensaje: 'No tenés actividades pendientes. Todo al día.',
+      );
+    }
+
+    final buf = StringBuffer('Tenés ${items.length} actividades pendientes:\n\n');
+    for (final item in items.take(10)) {
+      final tipo = item['tipo']?.toString() ?? '';
+      final cliente = item['cliente_nombre']?.toString() ?? '';
+      final desc = item['descripcion']?.toString() ?? '';
+      final fecha = item['fecha_programada'];
+      String fechaStr = '';
+      if (fecha != null) {
+        final dt = fecha is DateTime ? fecha : DateTime.tryParse(fecha.toString());
+        if (dt != null) {
+          final now = DateTime.now();
+          final diff = dt.difference(now);
+          if (diff.inDays == 0) fechaStr = ' (hoy ${dt.hour}:${dt.minute.toString().padLeft(2, '0')})';
+          else if (diff.inDays == 1) fechaStr = ' (mañana ${dt.hour}:${dt.minute.toString().padLeft(2, '0')})';
+          else fechaStr = ' (${dt.day}/${dt.month})';
+        }
+      }
+      buf.write('• ${tipo[0].toUpperCase()}${tipo.substring(1)}$fechaStr');
+      if (cliente.isNotEmpty) buf.write(' — $cliente');
+      if (desc.isNotEmpty) buf.write(': $desc');
+      buf.write('\n');
+    }
+
+    return AssistantAction(
+      tipo: 'pendientes', accion: 'otro', nota: '',
+      mensaje: buf.toString().trim(),
+    );
+  }
+
   /// Envía un mensaje al LLM y retorna la acción parseada.
   static Future<AssistantAction> sendMessage(String userMessage) async {
+    // Detección pre-LLM: consulta de pendientes (no necesita IA)
+    final pendientesResult = await _checkPendientes(userMessage);
+    if (pendientesResult != null) return pendientesResult;
+
     final systemPrompt = await _buildSystemPrompt();
 
     final response = await http.post(
