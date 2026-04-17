@@ -11,6 +11,7 @@ import 'login_screen.dart';
 import 'visita_cliente_picker.dart';
 import 'mis_visitas_screen.dart';
 import 'pedidos_screen.dart';
+import 'assistant_screen.dart';
 
 class MasTab extends StatefulWidget {
   const MasTab({super.key});
@@ -214,8 +215,15 @@ class _MasTabState extends State<MasTab> with AutomaticKeepAliveClientMixin {
                 ),
               ),
               const SizedBox(width: 8),
-              // Espacio para futuro tile (Embudo, etc.)
-              const Expanded(child: SizedBox()),
+              Expanded(
+                child: _MenuTile(
+                  icon: Icons.flash_on,
+                  label: 'Hermes Flash',
+                  color: AppColors.accent,
+                  onTap: () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const AssistantScreen())),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
