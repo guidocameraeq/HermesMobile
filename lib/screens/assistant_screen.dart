@@ -148,16 +148,30 @@ class _AssistantState extends State<AssistantScreen>
     if (cliente == null) return;
     HapticFeedback.mediumImpact();
     try {
-      await VisitasService.registrar(
+      final vinculadaId = await VisitasService.registrar(
         clienteCodigo: cliente.codigo,
         clienteNombre: cliente.nombre,
         latitud: pos.latitude,
         longitud: pos.longitude,
         motivo: motivo,
         notas: action.nota.isNotEmpty ? action.nota : null,
+        precisionM: pos.accuracy,
       );
       if (!mounted) return;
       setState(() => _confirmadas.add(action));
+
+      // Si vinculamos con una actividad agendada, informar al vendedor
+      if (vinculadaId != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Row(children: [
+            Icon(Icons.link, color: Colors.white, size: 16),
+            SizedBox(width: 8),
+            Expanded(child: Text('Visita vinculada a tu actividad agendada y marcada como completada.')),
+          ]),
+          backgroundColor: AppColors.success,
+          duration: const Duration(seconds: 4),
+        ));
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(

@@ -59,22 +59,25 @@ class _CheckinState extends State<VisitaCheckinScreen> {
     setState(() => _submitting = true);
 
     try {
-      await VisitasService.registrar(
+      final vinculadaId = await VisitasService.registrar(
         clienteCodigo: widget.cliente.codigo,
         clienteNombre: widget.cliente.nombre,
         latitud: _position!.latitude,
         longitud: _position!.longitude,
         motivo: _motivo,
         notas: _notasCtrl.text.trim().isNotEmpty ? _notasCtrl.text.trim() : null,
+        precisionM: _position!.accuracy,
       );
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Visita registrada correctamente'),
+        SnackBar(
+          content: Text(vinculadaId != null
+              ? 'Visita registrada + actividad agendada marcada como completada'
+              : 'Visita registrada correctamente'),
           backgroundColor: AppColors.success,
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 3),
         ),
       );
 
