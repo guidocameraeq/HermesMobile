@@ -8,12 +8,14 @@
   @media print {
     .no-print { display: none; }
     .page-break { page-break-before: always; }
-    body { font-size: 10pt; }
+    body { font-size: 10pt; background: white; }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', system-ui, sans-serif; color: #1a1a2e; line-height: 1.5; padding: 30px; max-width: 900px; margin: 0 auto; background: #fafafa; }
   h1 { font-size: 28px; color: #0f172a; border-bottom: 4px solid #2563eb; padding-bottom: 10px; margin-bottom: 20px; }
   h2 { font-size: 20px; color: #1e3a5f; margin: 30px 0 12px; border-left: 5px solid #2563eb; padding-left: 12px; }
+  h2.done { border-left-color: #10b981; color: #065f46; }
+  h2.pending { border-left-color: #f59e0b; color: #92400e; }
   h3 { font-size: 16px; color: #334155; margin: 20px 0 8px; }
   h4 { font-size: 13px; color: #475569; margin: 15px 0 6px; text-transform: uppercase; letter-spacing: 0.5px; }
   p, li { font-size: 12px; color: #334155; }
@@ -23,17 +25,24 @@
   th { background: #1e293b; color: white; padding: 8px 10px; text-align: left; font-size: 11px; }
   td { padding: 6px 10px; border-bottom: 1px solid #e2e8f0; }
   tr:nth-child(even) { background: #f1f5f9; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; }
+  tr.done-row { background: #f0fdf4 !important; }
+  tr.done-row td { border-bottom-color: #bbf7d0; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; white-space: nowrap; }
   .badge-done { background: #dcfce7; color: #166534; }
+  .badge-partial { background: #fef9c3; color: #854d0e; }
   .badge-pending { background: #fef3c7; color: #92400e; }
   .badge-future { background: #e0e7ff; color: #3730a3; }
+  .badge-extra { background: #fae8ff; color: #86198f; }
   .badge-alta { background: #fee2e2; color: #991b1b; }
   .badge-media { background: #fef3c7; color: #92400e; }
   .badge-baja { background: #e0e7ff; color: #3730a3; }
   code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: 'Cascadia Code', 'Consolas', monospace; }
   pre { background: #1e293b; color: #e2e8f0; padding: 15px; border-radius: 8px; font-size: 11px; overflow-x: auto; margin: 10px 0; font-family: 'Cascadia Code', 'Consolas', monospace; line-height: 1.4; }
   .card { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin: 10px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-  .card-header { font-weight: bold; font-size: 14px; color: #0f172a; margin-bottom: 8px; }
+  .card.done { border-left: 5px solid #10b981; background: #f0fdf4; }
+  .card.extra { border-left: 5px solid #a855f7; background: #faf5ff; }
+  .card.pending { border-left: 5px solid #f59e0b; background: #fffbeb; }
+  .card-header { font-weight: bold; font-size: 14px; color: #0f172a; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
   .highlight { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 10px 14px; margin: 10px 0; border-radius: 0 6px 6px 0; }
@@ -43,10 +52,25 @@
   .toc a { color: #2563eb; text-decoration: none; }
   .toc a:hover { text-decoration: underline; }
   .toc li { margin: 6px 0; }
-  .flow-diagram { background: #1e293b; color: #e2e8f0; padding: 20px; border-radius: 10px; font-family: monospace; font-size: 11px; white-space: pre; line-height: 1.6; }
+  .toc li.done::marker { content: "✅ "; }
+  .toc li.extra::marker { content: "✨ "; }
+  .toc li.pending::marker { content: "⏳ "; }
+  .flow-diagram { background: #1e293b; color: #e2e8f0; padding: 20px; border-radius: 10px; font-family: monospace; font-size: 11px; white-space: pre; line-height: 1.6; overflow-x: auto; }
   .version-tag { background: #2563eb; color: white; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; }
   hr { border: none; border-top: 2px solid #e2e8f0; margin: 30px 0; }
   .footer { text-align: center; color: #94a3b8; font-size: 10px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+  .stat-box { display: inline-block; background: white; padding: 12px 18px; border-radius: 8px; border: 1px solid #e2e8f0; margin: 4px; text-align: center; min-width: 100px; }
+  .stat-num { font-size: 24px; font-weight: bold; color: #2563eb; display: block; }
+  .stat-num.green { color: #10b981; }
+  .stat-num.purple { color: #a855f7; }
+  .stat-num.orange { color: #f59e0b; }
+  .stat-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+  .timeline { border-left: 3px solid #2563eb; padding: 0 0 0 18px; margin: 15px 0; }
+  .timeline-item { margin-bottom: 14px; position: relative; }
+  .timeline-item::before { content: ""; position: absolute; left: -25px; top: 4px; width: 10px; height: 10px; background: #2563eb; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 2px #2563eb; }
+  .timeline-item.done::before { background: #10b981; box-shadow: 0 0 0 2px #10b981; }
+  .timeline-version { font-weight: bold; color: #0f172a; font-size: 13px; }
+  .timeline-date { color: #94a3b8; font-size: 10px; margin-left: 8px; }
 </style>
 </head>
 <body>
@@ -56,8 +80,32 @@
 </div>
 
 <h1>HERMES MOBILE — Plan Maestro de Desarrollo</h1>
-<p style="font-size:14px;color:#64748b;margin-bottom:5px;">App Android para Equipo Comercial — CRM Bidireccional</p>
-<p style="font-size:11px;color:#94a3b8;">Documento generado: Abril 2026 | Versión actual: v2.2.0 | Repo: github.com/guidocameraeq/HermesMobile</p>
+<p style="font-size:14px;color:#64748b;margin-bottom:5px;">App Android para Equipo Comercial — CRM Bidireccional con Asistente IA</p>
+<p style="font-size:11px;color:#94a3b8;">Documento actualizado: <strong>Abril 2026</strong> · Versión actual: <span class="version-tag">v3.4.0</span> · Repo: github.com/guidocameraeq/HermesMobile</p>
+
+<!-- Panel de progreso -->
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin:20px 0;justify-content:center;">
+  <div class="stat-box">
+    <span class="stat-num green">3</span>
+    <span class="stat-label">Bloques completos</span>
+  </div>
+  <div class="stat-box">
+    <span class="stat-num purple">7</span>
+    <span class="stat-label">Extras no planeados</span>
+  </div>
+  <div class="stat-box">
+    <span class="stat-num orange">6</span>
+    <span class="stat-label">Bloques pendientes</span>
+  </div>
+  <div class="stat-box">
+    <span class="stat-num">34</span>
+    <span class="stat-label">Releases totales</span>
+  </div>
+  <div class="stat-box">
+    <span class="stat-num">v3.4</span>
+    <span class="stat-label">Versión actual</span>
+  </div>
+</div>
 
 <hr>
 
@@ -66,69 +114,155 @@
 <h3 style="margin-bottom:10px;">Tabla de Contenidos</h3>
 <ol>
   <li><a href="#vision">Visión General y Arquitectura</a></li>
-  <li><a href="#completado">Fases Completadas (v1.0 → v2.2)</a></li>
+  <li><a href="#historial">Historial de Versiones v1.0 → v3.4</a></li>
+  <li><a href="#completado">Fases Completadas</a></li>
   <li><a href="#infraestructura">Infraestructura y Stack Técnico</a></li>
   <li><a href="#tablas">Mapa de Base de Datos</a></li>
-  <li><a href="#bloque-e">Bloque E — Actividades de Cliente (Historia Clínica)</a></li>
-  <li><a href="#bloque-c">Bloque C — Embudo CRM de Prospectos</a></li>
-  <li><a href="#bloque-d">Bloque D — Leads desde Google Forms</a></li>
-  <li><a href="#bloque-f">Bloque F — Matriz de Potencial</a></li>
-  <li><a href="#bloque-g">Bloque G — Relevamiento PDV</a></li>
-  <li><a href="#bloque-h">Bloque H — Objetivo de Visitas Diarias</a></li>
-  <li><a href="#bloque-i">Bloque I — Agenda + Notificaciones</a></li>
-  <li><a href="#bloque-j">Bloque J — Voz + LLM + Push (Fase Avanzada)</a></li>
-  <li><a href="#circuito-crm">Circuito CRM Completo</a></li>
-  <li><a href="#orden">Orden de Ejecución y Dependencias</a></li>
-  <li><a href="#navegacion">Evolución de la Navegación</a></li>
-  <li><a href="#desktop">Impacto en Hermes Desktop</a></li>
-  <li><a href="#pendientes">Pendientes de Revisión</a></li>
+  <li class="done"><a href="#bloque-e">Bloque E — Actividades de Cliente (Historia Clínica)</a></li>
+  <li class="done"><a href="#bloque-i">Bloque I — Agenda + Notificaciones Locales</a></li>
+  <li class="done"><a href="#bloque-k">Bloque K — Rediseño UX + Linking Universal</a></li>
+  <li class="extra"><a href="#extra-cronos">Extra: Cronos — Asistente IA con Voz</a></li>
+  <li class="extra"><a href="#extra-biometrico">Extra: Login Biométrico</a></li>
+  <li class="extra"><a href="#extra-calendar">Extra: Google Calendar</a></li>
+  <li class="extra"><a href="#extra-prompts">Extra: System Prompts en DB</a></li>
+  <li class="pending"><a href="#bloque-c">Bloque C — Embudo CRM de Prospectos</a></li>
+  <li class="pending"><a href="#bloque-f">Bloque F — Matriz de Potencial</a></li>
+  <li class="pending"><a href="#bloque-d">Bloque D — Leads desde Google Forms</a></li>
+  <li class="pending"><a href="#bloque-g">Bloque G — Relevamiento PDV</a></li>
+  <li class="pending"><a href="#bloque-h">Bloque H — Objetivo de Visitas Diarias</a></li>
+  <li class="pending"><a href="#bloque-j">Bloque J — Push Notifications (FCM)</a></li>
+  <li><a href="#pendientes-tecnicos">Pendientes Técnicos Específicos</a></li>
+  <li><a href="#orden">Próximos Pasos Sugeridos</a></li>
 </ol>
 </div>
 
 <!-- 1. VISIÓN -->
 <h2 id="vision">1. Visión General</h2>
 
-<p>Hermes Mobile evoluciona de una app <strong>read-only</strong> (vendedor solo ve datos) a un <strong>CRM bidireccional</strong> donde el vendedor genera datos en campo y gerencia los consume desde el desktop.</p>
+<p>Hermes Mobile evolucionó de una app <strong>read-only</strong> (vendedor solo ve datos) a una <strong>plataforma comercial completa</strong> donde el vendedor genera datos en campo, usa un asistente IA con voz, y gerencia consume todo desde el desktop.</p>
 
 <div class="flow-diagram">
-VENDEDOR (campo)                        GERENCIA (oficina)
-┌──────────────────┐                    ┌──────────────────┐
-│  Hermes Mobile   │                    │  Hermes Desktop  │
-│                  │──── escribe ────►  │                  │
-│  • Scorecard     │                    │  • Reportes      │
-│  • Visitas GPS   │    Supabase        │  • Dashboards    │
-│  • Actividades   │    (cloud)         │  • Mapas         │
-│  • Relevamientos │                    │  • Overview CRM  │
-│  • Embudo CRM    │◄──── lee ─────    │  • Configuración │
-│  • Agenda        │                    │                  │
-└──────────────────┘                    └──────────────────┘
-         │                                       │
-         └───── SQL Server (VPN) ────────────────┘
-                   (datos de facturación, read-only)
+VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
+┌──────────────────────┐                   ┌──────────────────────┐
+│  Hermes Mobile v3.4  │                   │  Hermes Desktop      │
+│                      │──── escribe ────► │                      │
+│  • Scorecard         │                   │  • Reportes          │
+│  • Clientes + saldos │                   │  • Dashboards        │
+│  • Ventas            │                   │  • Mapas             │
+│  • Pedidos           │      Supabase     │  • Overview CRM      │
+│  • Visitas GPS       │       (cloud)     │  • Config objetivos  │
+│  • Agenda            │                   │  • Edición prompts   │
+│  • Cronos (IA + voz) │◄──── lee ──────── │    de agentes IA     │
+│  • Google Calendar   │                   │                      │
+└──────────────────────┘                   └──────────────────────┘
+          │                                           │
+          └─────── SQL Server (VPN, read-only) ───────┘
+                  (facturación + pedidos + CxC)
 </div>
 
-<!-- 2. COMPLETADO -->
-<h2 id="completado">2. Fases Completadas</h2>
+<div class="success">
+<strong>Pilares técnicos:</strong> Flutter (Dart) + Supabase (PostgreSQL cloud) + SQL Server (jTDS via VPN) + OpenAI GPT-4o-mini (Cronos) + Whisper API (voz) + Google Calendar API + flutter_local_notifications + local_auth + flutter_secure_storage + geolocator.
+</div>
 
+<!-- 2. HISTORIAL -->
+<h2 id="historial">2. Historial de Versiones</h2>
+
+<div class="timeline">
+  <div class="timeline-item done">
+    <span class="timeline-version">v1.0 → v2.2</span>
+    <span class="timeline-date">Primera etapa</span>
+    <p>Base funcional completa: Scorecard con 9 métricas, Clientes, Ventas, Pedidos, Visitas GPS, auto-updates.</p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v2.3 — Cronos POC</span>
+    <span class="timeline-date">Asistente IA</span>
+    <p>Primera versión del chat con GPT-4o-mini + voz local (speech_to_text).</p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v2.5 — Historia Clínica</span>
+    <span class="timeline-date">Bloque E</span>
+    <p>Tabla <code>actividades_cliente</code> + timeline en ficha de cliente + formulario de actividad.</p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v2.6 — Cronos v2</span>
+    <span class="timeline-date">Mejoras LLM</span>
+    <p>Historial de conversación, múltiples acciones por mensaje, pendientes con tarjetas.</p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v2.7 — Notificaciones</span>
+    <span class="timeline-date">Bloque I</span>
+    <p><code>flutter_local_notifications</code> + Mi Agenda + alarmas exactas con la app cerrada.</p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v2.8 — Ficha Actividad + Biométrico</span>
+    <span class="timeline-date">CRUD + seguridad</span>
+    <p>Pantalla de detalle editable (editar/eliminar/completar) + Login con huella (local_auth + secure_storage).</p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v2.9 — Bloque K</span>
+    <span class="timeline-date">Rediseño UX completo</span>
+    <p>Bottom nav + drawer + Configuración + ClienteRouter universal + filtros de mes en ícono secundario.</p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v3.0 — Cronos Premium</span>
+    <span class="timeline-date">Whisper + animaciones</span>
+    <p>Transcripción con Whisper API, overlay de grabación con pulso reactivo, animaciones en toda la pantalla, chips de bienvenida, haptics.</p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v3.1 — Google Calendar + Cronos Visitas</span>
+    <span class="timeline-date">Bloque L</span>
+    <p>Integración Google Calendar (off/manual/auto), Cronos distingue agendar vs cargar visita GPS.</p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v3.2 — Prompts en DB</span>
+    <span class="timeline-date">Sistema de agentes</span>
+    <p>Tabla <code>agent_prompts</code> + PromptService con cache + fallback. Editable sin recompilar.</p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v3.3 — Cronos + Inteligente</span>
+    <span class="timeline-date">Fix bugs</span>
+    <p>Filtros correctos por fecha/cliente, chips de desambiguación para clientes homónimos, charla casual, contexto reforzado.</p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v3.4 — Cronos Robusto</span>
+    <span class="timeline-date">Actual</span>
+    <p>Ficha de Cronos en AppBar, chips rotando, visita GPS con chips de motivo + GPS en vivo, filtros mañana/vencidas/mes, intent consulta_visitas, prompt v4 completo.</p>
+  </div>
+</div>
+
+<!-- 3. COMPLETADO -->
+<h2 id="completado" class="page-break done">3. Fases Completadas</h2>
+
+<h3>3.1 Base (v1.0 → v2.2)</h3>
 <table>
 <tr><th>Fase</th><th>Descripción</th><th>Release</th><th>Estado</th></tr>
-<tr><td>Fase 0</td><td>Git, seguridad, .gitignore, CLAUDE.md</td><td>v1.0.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
-<tr><td>Fase 1</td><td>Bottom nav (4 tabs), tema centralizado, selector de mes, analytics</td><td>v1.1.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
-<tr><td>Fase 2</td><td>Drill-downs del scorecard + toggle pendientes</td><td>v1.2.x</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
-<tr><td>Fase 3</td><td>Módulo Clientes + saldo CxC + ficha detalle</td><td>v1.4.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
-<tr><td>Fase 4</td><td>Auto-actualización via GitHub Releases</td><td>v1.3.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
-<tr><td>Fase 5</td><td>Módulo Ventas: KPIs, gráfico evolución 6 meses, top 10</td><td>v1.5.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
-<tr><td>Fase 6</td><td>Pulido: skeleton loading, error logger, degradación elegante</td><td>v1.6.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
-<tr><td>Bloque B</td><td>Análisis de líneas de producto en ficha del cliente</td><td>v1.7.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
-<tr><td>Bloque A</td><td>Visitas GPS con geolocalización obligatoria</td><td>v1.8.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
-<tr><td>Bloque P</td><td>Módulo de Pedidos (pendientes/cerrados + detalle artículos)</td><td>v1.9.x</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
-<tr><td>Paridad</td><td>9/9 métricas al 100%, todos los drill-downs, pendientes completos</td><td>v2.0.x</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
-<tr><td>Performance</td><td>Optimización global de queries: batch + paralelización</td><td>v2.1.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
-<tr><td>Cuotas</td><td>Grilla de cuotas por cliente en Scorecard</td><td>v2.2.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
+<tr class="done-row"><td>Fase 0</td><td>Git, seguridad, .gitignore, CLAUDE.md</td><td>v1.0.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
+<tr class="done-row"><td>Fase 1</td><td>Bottom nav (4 tabs), tema centralizado, analytics</td><td>v1.1.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
+<tr class="done-row"><td>Fase 2</td><td>Drill-downs del scorecard + toggle pendientes</td><td>v1.2.x</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
+<tr class="done-row"><td>Fase 3</td><td>Módulo Clientes + saldo CxC + ficha detalle</td><td>v1.4.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
+<tr class="done-row"><td>Fase 4</td><td>Auto-actualización via GitHub Releases</td><td>v1.3.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
+<tr class="done-row"><td>Fase 5</td><td>Módulo Ventas: KPIs, evolución 6 meses, top 10</td><td>v1.5.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
+<tr class="done-row"><td>Fase 6</td><td>Pulido: skeleton loading, error logger</td><td>v1.6.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
+<tr class="done-row"><td>Bloque B</td><td>Análisis de líneas de producto en ficha</td><td>v1.7.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
+<tr class="done-row"><td>Bloque A</td><td>Visitas GPS con geolocalización</td><td>v1.8.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
+<tr class="done-row"><td>Bloque P</td><td>Módulo Pedidos (pendientes/cerrados + detalle)</td><td>v1.9.x</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
+<tr class="done-row"><td>Paridad</td><td>9/9 métricas + drill-downs + pendientes</td><td>v2.0.x</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
+<tr class="done-row"><td>Performance</td><td>Optimización global queries: batch + paralelización</td><td>v2.1.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
+<tr class="done-row"><td>Cuotas</td><td>Grilla de cuotas por cliente en Scorecard</td><td>v2.2.0</td><td><span class="badge badge-done">✅ Completo</span></td></tr>
 </table>
 
-<!-- 3. INFRAESTRUCTURA -->
-<h2 id="infraestructura" class="page-break">3. Infraestructura y Stack Técnico</h2>
+<h3>3.2 Bloques del plan original ya completos</h3>
+<table>
+<tr><th>Bloque</th><th>Descripción</th><th>Release</th><th>Estado</th></tr>
+<tr class="done-row"><td><strong>E</strong></td><td>Historia Clínica — actividades por cliente + timeline + CRUD</td><td>v2.5 → v2.8</td><td><span class="badge badge-done">✅ 100%</span></td></tr>
+<tr class="done-row"><td><strong>I</strong></td><td>Mi Agenda + Notificaciones locales + tap-to-ficha</td><td>v2.7 → v2.8</td><td><span class="badge badge-done">✅ 100%</span></td></tr>
+<tr class="done-row"><td><strong>K</strong></td><td>Rediseño UX completo (drawer, config, linking universal, filtros mes)</td><td>v2.9.0</td><td><span class="badge badge-done">✅ 100% <em>(bloque improvisado)</em></span></td></tr>
+<tr class="done-row"><td><strong>L</strong></td><td>Google Calendar (off/manual/auto) + Cronos visitas GPS</td><td>v3.1.0</td><td><span class="badge badge-done">✅ 100% <em>(bloque improvisado)</em></span></td></tr>
+<tr class="done-row"><td><strong>J</strong> (parcial)</td><td>Voz con Whisper + LLM Cronos <em>(falta Push FCM)</em></td><td>v2.3 → v3.4</td><td><span class="badge badge-partial">🟡 ~70%</span></td></tr>
+</table>
+
+<!-- 4. INFRAESTRUCTURA -->
+<h2 id="infraestructura">4. Infraestructura y Stack Técnico</h2>
 
 <div class="grid-2">
 <div class="card">
@@ -137,25 +271,28 @@ VENDEDOR (campo)                        GERENCIA (oficina)
     <li><strong>Framework:</strong> Flutter (Dart)</li>
     <li><strong>Min SDK:</strong> Android 8+ (API 26)</li>
     <li><strong>Repo:</strong> github.com/guidocameraeq/HermesMobile</li>
-    <li><strong>Build:</strong> flutter build apk --release</li>
+    <li><strong>Build:</strong> <code>flutter build apk --release</code></li>
     <li><strong>Distribución:</strong> APK sideload + auto-update</li>
-    <li><strong>Tamaño APK:</strong> ~52 MB</li>
+    <li><strong>Tamaño APK:</strong> ~57 MB</li>
+    <li><strong>Última versión:</strong> <span class="version-tag">v3.4.0</span></li>
   </ul>
 </div>
 <div class="card">
-  <div class="card-header">Bases de Datos</div>
+  <div class="card-header">Bases de Datos y Servicios</div>
   <ul>
     <li><strong>SQL Server:</strong> 192.168.1.2\ANDROMEDA (VPN, read-only)</li>
     <li><strong>Driver:</strong> jTDS 1.3.1 via sql_conn local</li>
     <li><strong>Supabase:</strong> PostgreSQL cloud (read-write)</li>
-    <li><strong>Paquete PG:</strong> postgres ^3.5.4</li>
-    <li><strong>Storage:</strong> Supabase Storage (fotos futuro)</li>
+    <li><strong>Paquete PG:</strong> <code>postgres</code> ^3.5.4</li>
+    <li><strong>OpenAI API:</strong> GPT-4o-mini + Whisper</li>
+    <li><strong>Google APIs:</strong> Calendar (OAuth)</li>
+    <li><strong>Storage:</strong> Supabase Storage (fotos, futuro)</li>
   </ul>
 </div>
 </div>
 
 <div class="card">
-  <div class="card-header">Paquetes Flutter instalados</div>
+  <div class="card-header">Paquetes Flutter instalados (v3.4.0)</div>
   <div class="grid-3">
     <div><code>postgres</code> — Supabase directo</div>
     <div><code>sql_conn</code> — SQL Server (local)</div>
@@ -163,45 +300,53 @@ VENDEDOR (campo)                        GERENCIA (oficina)
     <div><code>fl_chart</code> — Gráficos</div>
     <div><code>geolocator</code> — GPS</div>
     <div><code>package_info_plus</code> — Versión</div>
-    <div><code>http</code> — Downloads</div>
+    <div><code>http</code> — Downloads + APIs</div>
     <div><code>path_provider</code> — Temp files</div>
     <div><code>open_filex</code> — Install APK</div>
+    <div><code>flutter_local_notifications</code> — Alertas</div>
+    <div><code>timezone</code> — Zona horaria AR</div>
+    <div><code>record</code> — Grabación audio</div>
+    <div><code>local_auth</code> — Huella digital</div>
+    <div><code>flutter_secure_storage</code> — Cifrado credenciales</div>
+    <div><code>google_sign_in</code> — OAuth Google</div>
+    <div><code>googleapis</code> — Calendar API</div>
+    <div><code>googleapis_auth</code> — OAuth client</div>
+    <div><code>extension_google_sign_in_as_googleapis_auth</code></div>
   </div>
 </div>
 
 <div class="card">
-  <div class="card-header">Paquetes a agregar (bloques futuros)</div>
+  <div class="card-header">Paquetes pendientes (bloques futuros)</div>
   <div class="grid-3">
-    <div><code>flutter_local_notifications</code> — Alertas</div>
-    <div><code>googleapis</code> — Google Calendar</div>
-    <div><code>image_picker</code> — Cámara/fotos</div>
-    <div><code>supabase_flutter</code> — Storage</div>
-    <div><code>url_launcher</code> — Tap-to-call</div>
-    <div><code>firebase_messaging</code> — Push (fase J)</div>
+    <div><code>image_picker</code> — Cámara/fotos (G)</div>
+    <div><code>supabase_flutter</code> — Storage (G)</div>
+    <div><code>url_launcher</code> — Tap-to-call (C)</div>
+    <div><code>firebase_messaging</code> — Push FCM (J)</div>
   </div>
 </div>
 
-<!-- 4. TABLAS -->
-<h2 id="tablas" class="page-break">4. Mapa de Base de Datos</h2>
+<!-- 5. TABLAS -->
+<h2 id="tablas" class="page-break">5. Mapa de Base de Datos</h2>
 
-<h3>4.1 Tablas existentes — Supabase PostgreSQL</h3>
+<h3>5.1 Tablas actuales — Supabase PostgreSQL</h3>
 <table>
-<tr><th>Tabla</th><th>Propósito</th><th>Lectura</th><th>Escritura</th></tr>
-<tr><td><code>usuarios</code></td><td>Autenticación + roles</td><td>Mobile + Desktop</td><td>Desktop</td></tr>
-<tr><td><code>metricas_pool</code></td><td>Definición de métricas</td><td>Mobile + Desktop</td><td>Desktop</td></tr>
-<tr><td><code>asignaciones</code></td><td>Metas por vendedor/mes</td><td>Mobile + Desktop</td><td>Desktop</td></tr>
-<tr><td><code>cuotas_clientes</code></td><td>Cuota por cliente/mes</td><td>Mobile + Desktop</td><td>Desktop</td></tr>
-<tr><td><code>activaciones</code></td><td>Marketing en PDV</td><td>Mobile + Desktop</td><td>Desktop</td></tr>
-<tr><td><code>roles</code></td><td>Permisos por rol</td><td>Mobile + Desktop</td><td>Desktop</td></tr>
-<tr><td><code>analytics</code></td><td>Tracking de uso</td><td>Desktop</td><td>Mobile + Desktop</td></tr>
-<tr><td><code>feedback</code></td><td>Comentarios de usuarios</td><td>Desktop</td><td>Mobile</td></tr>
-<tr><td><code>visitas</code></td><td>Check-in GPS</td><td>Mobile + Desktop</td><td>Mobile</td></tr>
+<tr><th>Tabla</th><th>Propósito</th><th>Lectura</th><th>Escritura</th><th>Estado</th></tr>
+<tr><td><code>usuarios</code></td><td>Autenticación + roles</td><td>Mobile + Desktop</td><td>Desktop</td><td>✅</td></tr>
+<tr><td><code>metricas_pool</code></td><td>Definición de métricas</td><td>Mobile + Desktop</td><td>Desktop</td><td>✅</td></tr>
+<tr><td><code>asignaciones</code></td><td>Metas por vendedor/mes</td><td>Mobile + Desktop</td><td>Desktop</td><td>✅</td></tr>
+<tr><td><code>cuotas_clientes</code></td><td>Cuota por cliente/mes</td><td>Mobile + Desktop</td><td>Desktop</td><td>✅</td></tr>
+<tr><td><code>activaciones</code></td><td>Marketing en PDV</td><td>Mobile + Desktop</td><td>Desktop</td><td>✅</td></tr>
+<tr><td><code>roles</code></td><td>Permisos por rol</td><td>Mobile + Desktop</td><td>Desktop</td><td>✅</td></tr>
+<tr><td><code>analytics</code></td><td>Tracking de uso</td><td>Desktop</td><td>Mobile + Desktop</td><td>✅</td></tr>
+<tr><td><code>feedback</code></td><td>Comentarios de usuarios</td><td>Desktop</td><td>Mobile</td><td>✅</td></tr>
+<tr><td><code>visitas</code></td><td>Check-in GPS</td><td>Mobile + Desktop</td><td>Mobile</td><td>✅</td></tr>
+<tr class="done-row"><td><code>actividades_cliente</code></td><td>Historia Clínica + Agenda (+ google_event_id)</td><td>Mobile + Desktop</td><td>Mobile</td><td>✅ v2.5+</td></tr>
+<tr class="done-row"><td><code>agent_prompts</code></td><td>System prompts de agentes IA (editables)</td><td>Mobile + Desktop</td><td>Desktop (futuro)</td><td>✅ v3.2</td></tr>
 </table>
 
-<h3>4.2 Tablas a crear — por bloque</h3>
+<h3>5.2 Tablas a crear — por bloque pendiente</h3>
 <table>
 <tr><th>Tabla</th><th>Bloque</th><th>Tipo</th><th>Escribe</th><th>Lee</th></tr>
-<tr><td><code>actividades_cliente</code></td><td>E</td><td>Evento</td><td>Mobile</td><td>Mobile + Desktop</td></tr>
 <tr><td><code>etapas_embudo</code></td><td>C</td><td>Configuración</td><td>Desktop</td><td>Mobile + Desktop</td></tr>
 <tr><td><code>prospectos</code></td><td>C</td><td>Entidad</td><td>Mobile</td><td>Mobile + Desktop</td></tr>
 <tr><td><code>actividades_prospecto</code></td><td>C</td><td>Evento</td><td>Mobile</td><td>Mobile + Desktop</td></tr>
@@ -209,637 +354,377 @@ VENDEDOR (campo)                        GERENCIA (oficina)
 <tr><td><code>matriz_potencial</code></td><td>F</td><td>Evento periódico</td><td>Mobile</td><td>Mobile + Desktop</td></tr>
 <tr><td><code>config_cuestionarios</code></td><td>F, G</td><td>Configuración</td><td>Desktop</td><td>Mobile</td></tr>
 <tr><td><code>relevamientos_pdv</code></td><td>G</td><td>Evento</td><td>Mobile</td><td>Mobile + Desktop</td></tr>
-<tr><td><code>agenda</code></td><td>I</td><td>Entidad</td><td>Mobile</td><td>Mobile</td></tr>
 </table>
 
-<h3>4.3 Tablas SQL Server (read-only via VPN)</h3>
+<h3>5.3 Tablas SQL Server (read-only via VPN)</h3>
 <table>
 <tr><th>Tabla</th><th>Propósito</th><th>Columnas clave</th></tr>
 <tr><td><code>fydvtsEstadisticas</code></td><td>Facturas y NC</td><td>VendedorNombre, Fecha, NumeraTipoTipo, ClienteCodigo, SubTotalNetoLocal, ArticuloCodigo</td></tr>
-<tr><td><code>fydvtsClientesXLinea</code></td><td>Padrón de clientes</td><td>ClienteCodigo, ClienteNombre, ClienteCategoria, ClienteSituacion, VendedorNombre</td></tr>
-<tr><td><code>fydvtsPedidos</code></td><td>Pedidos</td><td>Numero, Estado (Pendiente/Cancelado/Anulado), CantidadPendiente, SubTotalNetoPendienteLocal</td></tr>
+<tr><td><code>fydvtsClientesXLinea</code></td><td>Padrón de clientes</td><td>ClienteCodigo, ClienteNombre, ClienteCategoria, VendedorNombre</td></tr>
+<tr><td><code>fydvtsPedidos</code></td><td>Pedidos</td><td>Numero, Estado, CantidadPendiente, SubTotalNetoPendienteLocal</td></tr>
 <tr><td><code>fydvtsCtasCtes</code></td><td>Cuentas por cobrar</td><td>ClienteCodigo, ImpPendiente, Atraso, FechaVto</td></tr>
-<tr><td><code>fydgnrArticulos</code></td><td>Catálogo de productos</td><td>ArticuloCodigo, LineaNombre, MarcaNombre, EstadoBaja</td></tr>
+<tr><td><code>fydgnrArticulos</code></td><td>Catálogo de productos</td><td>ArticuloCodigo, LineaNombre, MarcaNombre</td></tr>
 </table>
 
-<h3>4.4 Diagrama de relaciones</h3>
-<div class="flow-diagram">
-                    ┌─────────────────┐
-                    │  SQL Server     │
-                    │  (read-only)    │
-                    ├─────────────────┤
-                    │ Estadisticas    │───► Facturación, métricas
-                    │ ClientesXLinea  │───► Padrón, categorías
-                    │ Pedidos         │───► Backlog, pendientes
-                    │ CtasCtes        │───► Saldos CxC
-                    │ Articulos       │───► Líneas de producto
-                    └────────┬────────┘
-                             │ cliente_codigo (join key)
-                             │
-┌────────────────────────────┼────────────────────────────┐
-│              Supabase PostgreSQL (cloud)                │
-├────────────────────────────┼────────────────────────────┤
-│                            │                            │
-│  EXISTENTES                │  POR CREAR                 │
-│  ──────────                │  ─────────                 │
-│  usuarios ◄────────────────┤                            │
-│  metricas_pool             │  actividades_cliente       │
-│  asignaciones              │    └─ vendedor + cliente   │
-│  cuotas_clientes           │  matriz_potencial          │
-│  activaciones              │    └─ vendedor + cliente   │
-│  visitas ◄─────────────────┤  relevamientos_pdv         │
-│    └─ vendedor + cliente   │    └─ vendedor + cliente   │
-│  analytics                 │  agenda                    │
-│  feedback                  │    └─ vendedor + cliente   │
-│                            │  etapas_embudo             │
-│                            │  prospectos                │
-│                            │    └─ vendedor + etapa     │
-│                            │  actividades_prospecto     │
-│                            │    └─ prospecto_id         │
-│                            │  leads                     │
-│                            │    └─ origen externo       │
-│                            │  config_cuestionarios      │
-└────────────────────────────┴────────────────────────────┘
+<!-- BLOQUE E -->
+<h2 id="bloque-e" class="done page-break">6. Bloque E — Historia Clínica <span class="badge badge-done">✅ 100%</span></h2>
+
+<div class="card done">
+<div class="card-header">Objetivo cumplido</div>
+<p>Cada cliente tiene un <strong>timeline cronológico</strong> con toda su actividad: visitas GPS, llamadas, propuestas, reuniones, recordatorios. Todo editable desde la ficha del cliente.</p>
 </div>
 
-<!-- 5. BLOQUE E -->
-<h2 id="bloque-e" class="page-break">5. Bloque E — Actividades de Cliente (Historia Clínica)</h2>
-<p><span class="badge badge-alta">Prioridad ALTA</span> — Base de todo lo demás</p>
-
-<div class="info">
-<strong>Objetivo:</strong> Que cada cliente tenga un "historial clínico" completo con todas las interacciones que el vendedor tuvo con él: visitas, llamadas, propuestas comerciales, presentaciones de producto, reuniones. El vendedor carga actividades desde la ficha del cliente y el historial se construye automáticamente.
-</div>
-
-<div class="card">
-<div class="card-header">Situación actual</div>
-<p>Hoy la ficha del cliente en Hermes Mobile muestra datos transaccionales (facturación, saldo CxC, evolución mensual, líneas de producto) pero <strong>no tiene registro de las interacciones comerciales</strong>. El vendedor no puede anotar que llamó a un cliente, que le presentó un producto, o que le envió una propuesta. Esta información se pierde o queda en la cabeza del vendedor.</p>
-<p style="margin-top:6px;">Las visitas GPS ya se registran (Bloque A), pero son solo un check-in geolocalizado — no hay forma de registrar qué se habló ni qué resultó de la visita.</p>
-</div>
-
-<div class="card">
-<div class="card-header">Situación deseada</div>
-<p>Cada cliente tiene un <strong>timeline cronológico</strong> (historia clínica) en su ficha que muestra, de más reciente a más antiguo:</p>
+<h4>Implementación</h4>
 <ul>
-  <li>Visitas GPS registradas (ya existen en tabla <code>visitas</code>)</li>
-  <li>Actividades cargadas manualmente (llamadas, propuestas, presentaciones)</li>
-  <li>Relevamientos completados (matriz potencial, PDV — de bloques F y G)</li>
-  <li>Cada entrada con: icono por tipo, descripción, fecha/hora</li>
-</ul>
-<p style="margin-top:6px;">El vendedor puede abrir la ficha de cualquier cliente y ver rápidamente: "hace 2 semanas lo visité, le presenté la línea de pinturas, quedó en evaluar, hoy tengo que llamarlo". <strong>El jefe puede ver esta misma información desde Hermes Desktop</strong> para evaluar la gestión comercial del vendedor.</p>
-</div>
-
-<div class="card">
-<div class="card-header">Por qué es la base de todo</div>
-<p>Este bloque es el primero porque establece la <strong>estructura de datos que todos los demás bloques alimentan</strong>. La matriz de potencial (F), el relevamiento PDV (G), la agenda (I) — todos generan registros que aparecen en esta historia clínica. Sin esta base, los demás bloques quedan aislados.</p>
-</div>
-
-<h3>Tabla Supabase</h3>
-<pre>
-CREATE TABLE actividades_cliente (
-    id SERIAL PRIMARY KEY,
-    vendedor_nombre TEXT NOT NULL,
-    cliente_codigo TEXT NOT NULL,
-    cliente_nombre TEXT NOT NULL,
-    tipo TEXT NOT NULL,  -- 'llamada','propuesta','presentacion','reunion','otro'
-    descripcion TEXT,
-    resultado TEXT,
-    vinculada_visita_id INT,  -- FK opcional a tabla visitas
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-CREATE INDEX idx_act_cli ON actividades_cliente (cliente_codigo, created_at DESC);
-</pre>
-
-<h3>Pantallas</h3>
-<ul>
-  <li><strong>Ficha del cliente → sección "Historia clínica":</strong> Timeline cronológico con visitas + actividades + relevamientos. Cada entrada con icono por tipo, descripción, fecha.</li>
-  <li><strong>Botón "Cargar actividad":</strong> Bottom sheet con dropdown de tipo + campo descripción + botón guardar.</li>
+  <li>Tabla <code>actividades_cliente</code> en Supabase (id, vendedor, cliente_codigo, tipo, descripcion, fecha_programada, completada, origen, created_at)</li>
+  <li>Widget <code>HistoriaClinica</code> — timeline unificado con visitas + actividades</li>
+  <li>Formulario <code>ActividadFormSheet</code> para cargar nueva</li>
+  <li>Tipos: llamada, visita, propuesta, presentacion, reunion, recordatorio, otro</li>
+  <li>Orígenes: <code>manual</code>, <code>cronos</code>, <code>visita_gps</code>, <code>hermes_flash</code></li>
+  <li><strong>Ficha de actividad</strong> (v2.8): pantalla detallada con editar fecha/hora/descripción, completar/reabrir, eliminar, navegación a ficha del cliente</li>
+  <li>Tap en timeline abre la ficha; notificación al tap también lleva directo</li>
 </ul>
 
-<h3>Archivos a crear/modificar</h3>
-<table>
-<tr><th>Archivo</th><th>Acción</th></tr>
-<tr><td><code>lib/services/actividades_service.dart</code></td><td>Crear — CRUD actividades</td></tr>
-<tr><td><code>lib/widgets/historia_clinica.dart</code></td><td>Crear — Timeline widget</td></tr>
-<tr><td><code>lib/widgets/actividad_sheet.dart</code></td><td>Crear — Bottom sheet de carga</td></tr>
-<tr><td><code>lib/screens/cliente_detail_screen.dart</code></td><td>Modificar — Integrar timeline + botón</td></tr>
-</table>
+<!-- BLOQUE I -->
+<h2 id="bloque-i" class="done">7. Bloque I — Mi Agenda + Notificaciones <span class="badge badge-done">✅ 100%</span></h2>
 
-<!-- 6. BLOQUE C -->
-<h2 id="bloque-c" class="page-break">6. Bloque C — Embudo CRM de Prospectos</h2>
-<p><span class="badge badge-alta">Prioridad ALTA</span> — Reemplazar CRM actual</p>
-
-<div class="info">
-<strong>Objetivo:</strong> Reemplazar el CRM actual (Armin) con un embudo de prospectos nativo en Hermes Mobile. Los vendedores crean prospectos desde la app con un formulario custom (reemplaza Google Forms), los mueven por un embudo de 6 etapas, registran actividades, y marcan como ganado/perdido con motivo.
+<div class="card done">
+<div class="card-header">Objetivo cumplido</div>
+<p>Pantalla "Mi Agenda" con filtros (Hoy/Semana/Todas/Hechas). Notificaciones locales que suenan con la app cerrada. Tap en notificación abre la ficha de actividad.</p>
 </div>
 
-<div class="card">
-<div class="card-header">Situación actual — Lo que no funciona</div>
-<p>El equipo comercial usa un CRM externo (Armin) que fue adaptado con parches para funcionar con el modelo de prospección de la empresa. Los problemas principales:</p>
+<h4>Implementación</h4>
 <ul>
-  <li><strong>Alta de prospectos:</strong> Se hace via Google Forms porque el CRM no tiene un formulario sencillo. El vendedor completa un formulario largo de Google, eso va a un Google Sheet, y con Zapier se carga al CRM como "nuevo cliente" (que en realidad es un prospecto). Es engorroso y propenso a errores.</li>
-  <li><strong>Embudo:</strong> Se adaptó la herramienta de embudo del CRM a las etapas del negocio, pero no fue diseñado para esto. Las tarjetas se mueven entre etapas manualmente.</li>
-  <li><strong>Actividades:</strong> El CRM tiene un módulo de actividades pero es "muy malo, no se entiende, difícil de usar" y no tiene notificaciones ni se sincroniza con el calendario.</li>
-  <li><strong>Tracking limitado:</strong> Cuando un prospecto se "gana", el alta del cliente se hace por fuera (formulario Excel a administración). No hay forma de vincular un prospecto ganado con el nuevo cliente en el sistema ERP.</li>
-  <li><strong>Overview:</strong> Un chico se encarga de hacer el seguimiento de la cartera de prospectos, saca reportes, y empuja a los vendedores. Hoy hace esto desde el CRM que queremos reemplazar.</li>
-</ul>
-</div>
-
-<div class="card">
-<div class="card-header">Situación deseada</div>
-<p>Todo el circuito de prospección vive en Hermes:</p>
-<ul>
-  <li><strong>Formulario nativo en la app:</strong> El vendedor crea prospectos directamente desde Hermes Mobile con un formulario custom adaptado al negocio. Sin Google Forms intermediario.</li>
-  <li><strong>Embudo visual:</strong> Lista de prospectos filtrable por etapa con resumen de cantidad y valor por etapa. El vendedor mueve prospectos entre etapas con un tap.</li>
-  <li><strong>6 etapas:</strong> Entrada → 1er Contacto/Entrevista → Propuesta Enviada → Seguimiento → Análisis Financiero → Prospecto Estratégico. Más Ganado/Perdido como resultado final.</li>
-  <li><strong>"Prospecto Estratégico"</strong> es una etapa especial para prospectos grandes a largo plazo donde las negociaciones pueden tardar meses o años.</li>
-  <li><strong>Actividades por prospecto:</strong> Timeline de interacciones (llamadas, emails, reuniones, propuestas).</li>
-  <li><strong>Ganado/Perdido:</strong> Se registra el resultado con motivo. El tracking llega hasta ahí — el alta del cliente sigue siendo manual por fuera por ahora.</li>
-  <li><strong>Admin/Overview:</strong> Se hace desde Hermes Desktop. El chico de overview ve el embudo completo de todos los vendedores desde la PC.</li>
-</ul>
-</div>
-
-<div class="card">
-<div class="card-header">Etapas fijas ahora, configurables después</div>
-<p>Las etapas se guardan en una tabla de Supabase (<code>etapas_embudo</code>) con seed inicial de las 6 etapas actuales. Por ahora son fijas — si hay que cambiar una, se edita directamente en la base de datos. En una fase posterior se agrega UI de configuración en Hermes Desktop para que el admin pueda crear, editar y reordenar etapas sin tocar código.</p>
-</div>
-
-<h3>Etapas del embudo (fijas, configurables después)</h3>
-<table>
-<tr><th>#</th><th>Etapa</th><th>Color</th><th>Descripción</th></tr>
-<tr><td>1</td><td>Entrada</td><td style="color:#64748b">●</td><td>Prospecto recién creado o asignado desde lead</td></tr>
-<tr><td>2</td><td>1er Contacto / Entrevista</td><td style="color:#2563eb">●</td><td>Vendedor hizo primera visita o llamada</td></tr>
-<tr><td>3</td><td>Propuesta Enviada</td><td style="color:#f59e0b">●</td><td>Se envió propuesta comercial</td></tr>
-<tr><td>4</td><td>Seguimiento</td><td style="color:#8b5cf6">●</td><td>En proceso de seguimiento</td></tr>
-<tr><td>5</td><td>Análisis Financiero</td><td style="color:#06b6d4">●</td><td>Admin hace análisis crediticio</td></tr>
-<tr><td>6</td><td>Prospecto Estratégico</td><td style="color:#ec4899">●</td><td>Negociaciones a largo plazo (clientes grandes)</td></tr>
-<tr><td>✅</td><td>Ganado</td><td style="color:#10b981">●</td><td>Se convirtió en cliente + motivo</td></tr>
-<tr><td>❌</td><td>Perdido</td><td style="color:#ef4444">●</td><td>No se concretó + motivo</td></tr>
-</table>
-
-<h3>Tablas Supabase</h3>
-<pre>
-CREATE TABLE etapas_embudo (
-    id SERIAL PRIMARY KEY,
-    nombre TEXT NOT NULL,
-    orden INTEGER NOT NULL,
-    color TEXT DEFAULT '#2563EB',
-    activo BOOLEAN DEFAULT TRUE
-);
-
-CREATE TABLE prospectos (
-    id SERIAL PRIMARY KEY,
-    vendedor_nombre TEXT NOT NULL,
-    -- Datos del formulario custom (a definir)
-    nombre TEXT NOT NULL,
-    empresa TEXT,
-    email TEXT,
-    telefono TEXT,
-    rubro TEXT,
-    -- (campos adicionales según formulario largo)
-    etapa_id INTEGER REFERENCES etapas_embudo(id) DEFAULT 1,
-    origen TEXT DEFAULT 'manual',  -- 'manual' | 'lead'
-    lead_id INTEGER,               -- FK opcional a leads
-    resultado TEXT DEFAULT 'activo', -- 'activo' | 'ganado' | 'perdido'
-    motivo_cierre TEXT,
-    valor_potencial NUMERIC DEFAULT 0,
-    activo BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE actividades_prospecto (
-    id SERIAL PRIMARY KEY,
-    prospecto_id INTEGER REFERENCES prospectos(id) ON DELETE CASCADE,
-    tipo_actividad TEXT NOT NULL,
-    descripcion TEXT,
-    vendedor_nombre TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-</pre>
-
-<h3>Sub-fases</h3>
-<table>
-<tr><th>Sub-fase</th><th>Qué incluye</th></tr>
-<tr><td>C1</td><td>Crear tablas + modelos Dart</td></tr>
-<tr><td>C2</td><td>Formulario de alta de prospecto (custom, reemplaza Google Forms)</td></tr>
-<tr><td>C3</td><td>Pantalla embudo: lista filtrable por etapa, resumen por etapa, mover con tap</td></tr>
-<tr><td>C4</td><td>Detalle prospecto: ficha + timeline actividades + tap-to-call</td></tr>
-<tr><td>C5</td><td>Integración en tab Más → tile "Embudo"</td></tr>
-</table>
-
-<!-- 7. BLOQUE D -->
-<h2 id="bloque-d">7. Bloque D — Leads desde Google Forms</h2>
-<p><span class="badge badge-media">Prioridad MEDIA</span> — Depende del Bloque C</p>
-
-<div class="info">
-<strong>Circuito:</strong> Cliente potencial completa Google Form → Zapier → Supabase tabla <code>leads</code> → Admin califica en Hermes.exe → Asigna a vendedor → Vendedor recibe notificación → Completa formulario largo → Se crea prospecto en embudo.
-</div>
-
-<div class="card">
-<div class="card-header">Situación actual</div>
-<p>Previo a los prospectos hay dos embudos de leads:</p>
-<ul>
-  <li><strong>Embudo de Talleres:</strong> Contactos de talleres pequeños que no son clientes directos. El chico de overview los revisa y los deriva por WhatsApp al distribuidor que corresponda según la zona.</li>
-  <li><strong>Embudo de Leads:</strong> Leads calificados que el chico lee, evalúa y asigna al vendedor según la zona geográfica.</li>
-</ul>
-<p style="margin-top:6px;">Los formularios de leads son Google Forms porque los completa <strong>gente externa</strong> (clientes potenciales que llegan por la web, redes sociales, etc.). Este formulario debe seguir siendo externo y "compartible" — no puede estar dentro de la app porque no es para vendedores sino para el público.</p>
-<p style="margin-top:6px;">Hoy el flujo es: Google Form → Google Sheet → Zapier → CRM (Armin). Queremos cambiarlo a: Google Form → Google Sheet → Zapier → <strong>Supabase</strong>.</p>
-</div>
-
-<div class="card">
-<div class="card-header">Situación deseada</div>
-<ul>
-  <li>El Google Form sigue funcionando igual para el público externo</li>
-  <li>Zapier/Make envía los datos a una tabla <code>leads</code> en Supabase via REST API</li>
-  <li>El admin (chico de overview) ve los leads desde <strong>Hermes Desktop</strong> — los califica como Lead o Taller, y los asigna a vendedores</li>
-  <li>Cuando un lead se asigna a un vendedor, este recibe una notificación en Hermes Mobile</li>
-  <li>El vendedor va a visitar/llamar al lead y cuando está listo, completa el formulario largo de prospecto directamente en la app → el lead se convierte en prospecto y entra al embudo (Bloque C)</li>
-</ul>
-</div>
-
-<h3>Tabla Supabase</h3>
-<pre>
-CREATE TABLE leads (
-    id SERIAL PRIMARY KEY,
-    nombre TEXT NOT NULL,
-    email TEXT,
-    telefono TEXT,
-    empresa TEXT,
-    rubro TEXT,
-    origen TEXT DEFAULT 'google_forms',
-    tipo TEXT DEFAULT 'lead',  -- 'lead' | 'taller'
-    estado TEXT DEFAULT 'nuevo', -- 'nuevo' | 'asignado' | 'descartado'
-    vendedor_asignado TEXT,     -- lo pone el admin
-    notas_admin TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-</pre>
-
-<h3>Configuración Zapier/Make</h3>
-<ul>
-  <li>Trigger: New Row in Google Sheets</li>
-  <li>Action: POST a <code>https://&lt;project&gt;.supabase.co/rest/v1/leads</code></li>
-  <li>Headers: apikey, Authorization, Content-Type, Prefer</li>
-  <li>Body: mapeo de columnas del form a campos de la tabla</li>
+  <li><code>flutter_local_notifications</code> v21 con <code>timezone</code> (America/Argentina/Buenos_Aires)</li>
+  <li>Canal <code>hermes_actividades</code>, prioridad alta, icono app</li>
+  <li>Exact alarms + boot receiver (persisten tras reinicio)</li>
+  <li>Permisos: <code>POST_NOTIFICATIONS</code>, <code>SCHEDULE_EXACT_ALARM</code>, <code>RECEIVE_BOOT_COMPLETED</code></li>
+  <li><strong>Tap en notif</strong> → abre <code>ActividadDetailScreen</code> (cold start y warm)</li>
+  <li>Editar fecha cancela notif anterior y programa nueva</li>
 </ul>
 
-<!-- 8. BLOQUE F -->
-<h2 id="bloque-f" class="page-break">8. Bloque F — Matriz de Potencial</h2>
-<p><span class="badge badge-alta">Prioridad ALTA</span> — Depende del Bloque E</p>
+<!-- BLOQUE K -->
+<h2 id="bloque-k" class="done">8. Bloque K — Rediseño UX Completo <span class="badge badge-done">✅ 100%</span> <span class="badge badge-extra">✨ No planeado</span></h2>
 
-<div class="info">
-<strong>Objetivo:</strong> El vendedor completa un cuestionario por cliente que, mediante fórmulas de ponderación, calcula el valor monetario potencial de ese cliente para la empresa. Se hace periódicamente (cada 3 meses). El resultado se muestra en la ficha del cliente y alimenta un reporte de cartera.
+<div class="card done">
+<div class="card-header">Objetivo cumplido</div>
+<p>Bloque que no estaba en el plan original — nació de necesidad real. Reorganización completa de la navegación y enlaces universales a fichas de cliente desde todos los módulos.</p>
 </div>
 
-<div class="card">
-<div class="card-header">Situación actual</div>
-<p>No existe un relevamiento de potencial en la empresa. Los vendedores tienen una noción intuitiva de cuánto "podría comprar" cada cliente, pero no hay un método estructurado para medirlo. La gerencia no tiene visibilidad del potencial real de la cartera.</p>
-</div>
-
-<div class="card">
-<div class="card-header">Situación deseada</div>
-<p>El vendedor abre la ficha de un cliente → toca "Relevamiento de potencial" → se abre un cuestionario con preguntas específicas del negocio (tamaño del local, rubros que maneja, zona, competencia, etc.). Cada respuesta tiene un peso numérico. Al finalizar, el sistema calcula automáticamente un <strong>valor monetario potencial</strong> ($) que ese cliente podría representar para la empresa.</p>
+<h4>Cambios v2.9.0</h4>
 <ul>
-  <li><strong>Contexto al cargar:</strong> Mientras completa el cuestionario, ve datos clave del cliente — facturación últimos 6 meses, líneas que compra, última visita. Esto ayuda a responder con información real.</li>
-  <li><strong>Control de periodicidad:</strong> No puede hacer dos veces el mismo relevamiento en el mismo trimestre (UNIQUE constraint). A los 3 meses del último relevamiento, la app muestra un badge/alerta: "Hace 3 meses que no relevás a este cliente".</li>
-  <li><strong>Resultado visible:</strong> El valor de potencial aparece en la ficha del cliente y en la historia clínica.</li>
-  <li><strong>Reporte de cartera:</strong> En un apartado separado, el vendedor puede ver un ranking de su cartera por potencial. La gerencia ve lo mismo desde Hermes Desktop.</li>
-  <li><strong>Preguntas configurables:</strong> Las preguntas y pesos se definen en la tabla <code>config_cuestionarios</code>, que el admin gestiona desde el desktop. Si cambian los criterios, no hay que tocar código.</li>
-</ul>
-</div>
-
-<h3>Tabla Supabase</h3>
-<pre>
-CREATE TABLE matriz_potencial (
-    id SERIAL PRIMARY KEY,
-    vendedor_nombre TEXT NOT NULL,
-    cliente_codigo TEXT NOT NULL,
-    cliente_nombre TEXT NOT NULL,
-    respuestas JSONB NOT NULL,       -- {pregunta_id: respuesta}
-    ponderacion_total NUMERIC,        -- valor $ calculado
-    mes INTEGER, anio INTEGER,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(vendedor_nombre, cliente_codigo, mes, anio)
-);
-
-CREATE TABLE config_cuestionarios (
-    id SERIAL PRIMARY KEY,
-    tipo TEXT NOT NULL,  -- 'matriz_potencial' | 'relevamiento_pdv'
-    nombre TEXT NOT NULL,
-    preguntas JSONB NOT NULL,  -- [{pregunta, tipo_respuesta, opciones, peso}]
-    activo BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-</pre>
-
-<h3>Controles</h3>
-<ul>
-  <li><strong>Duplicado:</strong> UNIQUE constraint impide cargar dos veces el mismo período</li>
-  <li><strong>Alerta 3 meses:</strong> Al abrir la ficha del cliente, verificar si la última matriz tiene más de 3 meses → mostrar badge/alerta</li>
-  <li><strong>Contexto:</strong> Al cargar, mostrar facturación últimos 6 meses del cliente</li>
+  <li><strong>Bottom nav nueva:</strong> Scorecard · Cronos · Clientes · Acciones (antes: Scorecard/Clientes/Ventas/Más)</li>
+  <li><strong>Drawer lateral</strong> (hamburguesa top-left) con todo el menú</li>
+  <li><strong>Avatar top-right</strong> → pantalla de Configuración (perfil, huella, updates, feedback, errores, logout)</li>
+  <li>Tab "Más" → "Acciones" solo con tiles de acción</li>
+  <li>Ventas pasa a ser pantalla pushada desde drawer</li>
 </ul>
 
-<!-- 9. BLOQUE G -->
-<h2 id="bloque-g">9. Bloque G — Relevamiento PDV</h2>
-<p><span class="badge badge-media">Prioridad MEDIA</span> — Depende del Bloque E</p>
-
-<div class="info">
-<strong>Objetivo:</strong> El vendedor puede hacer un relevamiento del punto de venta del cliente: completar un cuestionario sobre exhibición, competencia, stock visible, y tomar 1-2 fotos del local/góndola. Todo queda guardado y accesible desde la ficha del cliente y desde Hermes Desktop para gerencia.
-</div>
-
-<div class="card">
-<div class="card-header">Situación actual</div>
-<p>No hay un mecanismo para documentar el punto de venta. Los vendedores a veces sacan fotos con el celular personal pero no quedan en ningún sistema centralizado. Gerencia no tiene visibilidad de cómo se exhiben los productos en cada cliente.</p>
-</div>
-
-<div class="card">
-<div class="card-header">Situación deseada</div>
+<h4>Filtros de fecha reorganizados</h4>
 <ul>
-  <li>El vendedor abre la ficha del cliente → toca "Relevamiento PDV" → cuestionario con preguntas sobre el punto de venta</li>
-  <li>Puede tomar 1-2 fotos con la cámara del celular</li>
-  <li>Las fotos se suben a <strong>Supabase Storage</strong> (bucket de imágenes, no a la tabla) y se guardan las URLs</li>
-  <li>El relevamiento queda en la historia clínica del cliente</li>
-  <li>Desde Hermes Desktop, gerencia puede ver los relevamientos con fotos — útil para evaluar exhibición, hacer seguimiento de materiales de marketing, etc.</li>
-  <li>Las preguntas son configurables desde la tabla <code>config_cuestionarios</code> (misma infraestructura que la matriz de potencial)</li>
-</ul>
-</div>
-
-<h3>Tabla Supabase</h3>
-<pre>
-CREATE TABLE relevamientos_pdv (
-    id SERIAL PRIMARY KEY,
-    vendedor_nombre TEXT NOT NULL,
-    cliente_codigo TEXT NOT NULL,
-    cliente_nombre TEXT NOT NULL,
-    respuestas JSONB NOT NULL,
-    foto_urls TEXT[],         -- array de URLs en Supabase Storage
-    notas TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-</pre>
-
-<h3>Fotos</h3>
-<ul>
-  <li>Paquete: <code>image_picker</code> para cámara/galería</li>
-  <li>Upload a Supabase Storage (bucket <code>relevamientos</code>)</li>
-  <li>Se guarda la URL pública en la tabla</li>
+  <li>Default siempre <strong>mes actual</strong></li>
+  <li>Ícono calendario en AppBar → bottom-sheet con grid de meses</li>
+  <li>Banner amarillo "Viendo Marzo 2026 · Volver a actual" si no es mes actual</li>
 </ul>
 
-<!-- 10. BLOQUE H -->
-<h2 id="bloque-h">10. Bloque H — Objetivo de Visitas Diarias</h2>
-<p><span class="badge badge-media">Prioridad MEDIA</span> — Independiente</p>
-
-<div class="info">
-<strong>Objetivo:</strong> Establecer una meta diaria de visitas por vendedor y comparar automáticamente con las visitas GPS registradas. El vendedor ve su progreso y gerencia ve el cumplimiento del equipo.
-</div>
-
-<div class="card">
-<div class="card-header">Situación actual</div>
-<p>Las visitas GPS ya se registran (Bloque A completado), pero no hay un objetivo contra el cual compararlas. El vendedor sabe que "fue a 3 clientes hoy" pero no sabe si eso es suficiente. Gerencia no tiene una métrica de actividad comercial diaria.</p>
-</div>
-
-<div class="card">
-<div class="card-header">Situación deseada</div>
+<h4>Cliente-linking universal</h4>
+<p>Nuevo helper <code>ClienteRouter.open(context, codigo)</code> que cachea la cartera y navega. Aplicado en:</p>
 <ul>
-  <li>Desde Hermes Desktop, el admin configura una meta de visitas diarias por vendedor (ej: "LAMBRECHT: 5 visitas/día")</li>
-  <li>En la app, el vendedor ve un badge: "3/5 visitas hoy" — en la pestaña Más y/o en el Scorecard</li>
-  <li>La tabla <code>visitas</code> ya tiene todos los datos necesarios — solo falta la meta y la comparación</li>
-  <li>En Hermes Desktop, gerencia ve un reporte: cumplimiento de visitas por vendedor por semana/mes</li>
-  <li>Eventualmente este objetivo puede integrarse como una métrica más del Scorecard (como facturación o aperturas)</li>
+  <li>Top 10 de Ventas</li>
+  <li>7 drill-downs del scorecard (facturación, conversión, foco, aperturas, reactivación, activaciones, incorporaciones, oportunidades)</li>
+  <li>Header de Ficha de Actividad</li>
+  <li>Detalle de Pedido</li>
+  <li>Mis Visitas</li>
 </ul>
+
+<!-- EXTRAS -->
+<h2 id="extra-cronos" class="page-break">9. Extra: Cronos — Asistente IA con Voz <span class="badge badge-extra">✨ No planeado</span></h2>
+
+<div class="card extra">
+<div class="card-header">Feature estrella no planeada</div>
+<p>Nació como POC y terminó siendo una de las funciones más usadas. Es un asistente de agenda conversacional con voz, restringido al dominio comercial, que entiende lenguaje natural argentino.</p>
 </div>
 
-<!-- 11. BLOQUE I -->
-<h2 id="bloque-i" class="page-break">11. Bloque I — Agenda + Notificaciones</h2>
-<p><span class="badge badge-media">Prioridad MEDIA</span> — Depende del Bloque E</p>
-
-<div class="card">
-<div class="card-header">Situación actual</div>
-<p>Los vendedores no tienen un sistema de agenda integrado con la gestión comercial. Usan su calendario personal (Google Calendar, notas del celular) para agendar llamadas y visitas, pero eso no se conecta con el historial del cliente. Cuando el vendedor dice "tengo que llamar a Juan la semana que viene", esa intención no queda registrada en ningún sistema.</p>
-</div>
-
-<div class="card">
-<div class="card-header">Situación deseada</div>
-<p>El vendedor tiene una <strong>"Mi agenda"</strong> dentro de Hermes con actividades programadas. Cuando crea una, puede asignarle una fecha y hora y el celular le manda una <strong>notificación local</strong> a la hora indicada (funciona con la app cerrada, sin servidor, sin costo). Al tocar la notificación se abre Hermes, marca la actividad como completada, y esa acción queda registrada en la historia clínica del cliente (Bloque E).</p>
-<p style="margin-top:6px;">Opcionalmente, cada actividad tiene un botón <strong>"Agregar a Google Calendar"</strong> para sincronizar con el calendario personal del vendedor (se ve en el reloj, en la PC, etc.).</p>
-<p style="margin-top:6px;">Además, el sistema genera <strong>alertas automáticas</strong>: si hace más de 3 meses que no se relevó la matriz de potencial de un cliente, aparece un badge en la ficha y opcionalmente una notificación.</p>
-</div>
-
-<h3>Tabla Supabase</h3>
-<pre>
-CREATE TABLE agenda (
-    id SERIAL PRIMARY KEY,
-    vendedor_nombre TEXT NOT NULL,
-    cliente_codigo TEXT,
-    cliente_nombre TEXT,
-    titulo TEXT NOT NULL,
-    descripcion TEXT,
-    fecha_hora TIMESTAMPTZ NOT NULL,
-    tipo TEXT DEFAULT 'recordatorio',
-    completada BOOLEAN DEFAULT FALSE,
-    completada_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-</pre>
-
-<h3>Notificaciones</h3>
-<table>
-<tr><th>Tipo</th><th>Tecnología</th><th>Ejemplo</th></tr>
-<tr><td>Recordatorio personal</td><td><code>flutter_local_notifications</code></td><td>"Llamar a Juan García a las 10:00"</td></tr>
-<tr><td>Sincronizar con calendario</td><td><code>googleapis</code> (Google Calendar)</td><td>Botón "Agregar a Google Calendar"</td></tr>
-<tr><td>Alerta automática</td><td>Notificación local calculada</td><td>"Hace 3 meses que no relevás a X"</td></tr>
-<tr><td>Push desde gerencia</td><td>Firebase Cloud Messaging (Bloque J)</td><td>"Reunión de equipo mañana"</td></tr>
-</table>
-
-<h3>Flujo</h3>
-<ol>
-  <li>Vendedor crea actividad con fecha/hora</li>
-  <li>App programa notificación local</li>
-  <li>A la hora → suena notificación (app cerrada)</li>
-  <li>Tap → abre Hermes → marca como completada</li>
-  <li>Se registra en historia clínica del cliente</li>
-</ol>
-
-<!-- 12. BLOQUE J -->
-<h2 id="bloque-j">12. Bloque J — Voz + LLM + Push (Fase Avanzada)</h2>
-<p><span class="badge badge-baja">Prioridad BAJA</span> — Fase futura, depende de E + I</p>
-
-<div class="card">
-<div class="card-header">Visión</div>
-<p>El dueño de la empresa quiere que eventualmente el vendedor pueda cargar actividades con un <strong>mensaje de voz</strong>: "Hoy llamé a García de Distribuidora Norte, le presenté la línea de pinturas vintage, quedó en evaluar la propuesta y me va a confirmar la semana que viene". Un LLM (inteligencia artificial) procesa esa transcripción y genera automáticamente la actividad con tipo, cliente, descripción y fecha de seguimiento.</p>
-<p style="margin-top:6px;">Por otro lado, se necesitan <strong>push notifications desde el servidor</strong> para que gerencia pueda enviar mensajes al equipo ("reunión mañana a las 9") y para que el sistema envíe alertas automáticas ("te asignaron un nuevo lead", "tenés 3 seguimientos vencidos").</p>
-</div>
-
-<h3>Grabación de voz → Actividad automática</h3>
-<ol>
-  <li>Vendedor graba mensaje de voz (30 seg - 2 min)</li>
-  <li>Transcripción: <code>speech_to_text</code> local (gratis) o Whisper API (~$0.006/min)</li>
-  <li>Texto → Claude API → extrae: tipo actividad, cliente, resumen, próximo paso</li>
-  <li>Se guarda como actividad con <code>origen = 'voz'</code></li>
-  <li>El vendedor puede revisar/editar antes de confirmar</li>
-</ol>
-
-<h3>Push Notifications (Firebase Cloud Messaging)</h3>
+<h4>Capacidades actuales (v3.4)</h4>
 <ul>
-  <li>Gerencia manda notificaciones a vendedores desde Hermes.exe</li>
-  <li>Sistema manda alertas automáticas (leads asignados, seguimientos vencidos)</li>
-  <li>Requiere proyecto Firebase + configuración Android</li>
-  <li>Es complementario a las notificaciones locales del Bloque I (que no necesitan servidor)</li>
+  <li><strong>Agendar actividades</strong> — llamada, visita, propuesta, reunión, recordatorio</li>
+  <li><strong>Cargar visita con GPS</strong> — detecta "estoy visitando a X" / "llegué a Y" y toma ubicación</li>
+  <li><strong>Consultar pendientes</strong> — filtros hoy/mañana/semana/mes/vencidas/fecha_especifica + por cliente + orden próxima/última + límite</li>
+  <li><strong>Consultar visitas hechas</strong> — por período o por cliente</li>
+  <li><strong>Completar tareas</strong> — "ya llamé a García"</li>
+  <li><strong>Múltiples acciones</strong> en un solo mensaje (incluidas recurrencias)</li>
+  <li><strong>Charla casual</strong> — saludos, gracias, perfecto → respuesta amable</li>
+  <li><strong>Desambiguación de cliente</strong> — si hay varios homónimos, chips para elegir</li>
+  <li><strong>Ayuda contextual</strong> — "¿qué podés hacer?" → lista capacidades</li>
+</ul>
+
+<h4>Stack técnico de Cronos</h4>
+<ul>
+  <li><strong>LLM:</strong> OpenAI GPT-4o-mini (~$0.001 por conversación)</li>
+  <li><strong>Voz:</strong> Whisper API (español argentino, $0.006/min)</li>
+  <li><strong>Grabación:</strong> paquete <code>record</code> v5 (aac, 16kHz)</li>
+  <li><strong>System prompt:</strong> en Supabase (<code>agent_prompts</code>), editable sin recompilar</li>
+  <li><strong>Historial:</strong> conversación completa enviada al LLM (multi-turn)</li>
+  <li><strong>Placeholders</strong> en el prompt: <code>{{vendedor}}</code>, <code>{{fecha}}</code>, <code>{{clientes}}</code></li>
+</ul>
+
+<h4>UX visual</h4>
+<ul>
+  <li>Pantalla de bienvenida con <strong>chips rotando</strong> (4 visibles, 15 en pool, rotan cada 4s)</li>
+  <li><strong>Ficha de Cronos</strong> — tap en nombre → bottom sheet con misión/capacidades/ejemplos</li>
+  <li><strong>Overlay de grabación</strong> con pulso reactivo al audio + timer + botones Listo/Cancelar</li>
+  <li>Burbuja "Transcribiendo..." animada mientras Whisper procesa</li>
+  <li>Burbuja "Pensando..." con 3 puntos bouncing mientras LLM responde</li>
+  <li>Tarjetas de acción con entrance animado + check elástico al confirmar</li>
+  <li><strong>Card de visita GPS</strong>: chips de motivo tocables + GPS en vivo + botón deshabilitado hasta tener ubicación</li>
+  <li>Haptic feedback en todas las interacciones críticas</li>
+</ul>
+
+<h2 id="extra-biometrico">10. Extra: Login Biométrico <span class="badge badge-extra">✨ No planeado</span></h2>
+
+<div class="card extra">
+<p>Login con huella dactilar opcional. El vendedor puede entrar a la app sin tipear credenciales.</p>
+</div>
+
+<ul>
+  <li><code>local_auth</code> 2.3.0 + <code>flutter_secure_storage</code> 9.0.0</li>
+  <li>Credenciales guardadas con <code>EncryptedSharedPreferences</code> (Android)</li>
+  <li>MainActivity extiende <code>FlutterFragmentActivity</code> (requisito de local_auth)</li>
+  <li>Permisos: <code>USE_BIOMETRIC</code>, <code>USE_FINGERPRINT</code></li>
+  <li>Botón huella en pantalla de login (si está habilitado)</li>
+  <li>Dialog "¿Activar huella?" tras primer login exitoso</li>
+  <li>Toggle en Configuración</li>
+  <li>Logout borra credenciales guardadas</li>
+</ul>
+
+<h2 id="extra-calendar">11. Extra: Google Calendar (Bloque L) <span class="badge badge-extra">✨ No planeado</span></h2>
+
+<div class="card extra">
+<p>Sincronización bidireccional con Google Calendar. Toda actividad con fecha puede aparecer en el calendario del vendedor.</p>
+</div>
+
+<h4>Modos de sincronización</h4>
+<ul>
+  <li><strong>Desactivado</strong> (default)</li>
+  <li><strong>Manual</strong> — botón "Agregar al calendario" en cada actividad</li>
+  <li><strong>Automático</strong> — toda actividad nueva con fecha va al calendar</li>
+</ul>
+
+<h4>Comportamiento</h4>
+<ul>
+  <li>Crear actividad → <code>insert event</code> en calendar</li>
+  <li>Editar fecha/descripción → <code>patch event</code></li>
+  <li>Eliminar actividad → <code>delete event</code></li>
+  <li>Columna <code>google_event_id</code> en <code>actividades_cliente</code> linkea los dos lados</li>
+  <li>Token OAuth cifrado en <code>flutter_secure_storage</code></li>
+  <li>Paquetes: <code>google_sign_in</code>, <code>googleapis</code>, <code>googleapis_auth</code>, <code>extension_google_sign_in_as_googleapis_auth</code></li>
 </ul>
 
 <div class="highlight">
-<strong>Nota:</strong> Este bloque es ambicioso pero cada pieza es independiente. Se puede hacer primero las push notifications (Firebase) y después la voz (LLM), o al revés. La voz requiere costos recurrentes (API de transcripción + API de LLM) que hay que evaluar según el volumen de uso.
+<strong>Setup pendiente del usuario:</strong> crear OAuth client ID en Google Cloud Console con SHA-1 del keystore, habilitar Calendar API, agregar test users (los gmails de los vendedores). Cuando esté listo, el toggle "Conectar con Google" empieza a funcionar. Código ya preparado para recibirlo.
 </div>
 
-<!-- 13. CIRCUITO CRM -->
-<h2 id="circuito-crm" class="page-break">13. Circuito CRM Completo</h2>
+<h2 id="extra-prompts">12. Extra: System Prompts en DB <span class="badge badge-extra">✨ No planeado</span></h2>
 
-<div class="flow-diagram">
-EXTERNO                    ADMIN (Hermes.exe)              VENDEDOR (Hermes Mobile)
-────────                   ──────────────────              ────────────────────────
-
-Cliente potencial          Chico de overview
-completa Google Form       ve leads en desktop
-       │                          │
-       ▼                          ▼
-   [LEAD] ──Zapier──►    Embudo de Leads
-                          ├─ Taller → derivar a distribuidor (WhatsApp)
-                          └─ Lead calificado → asignar a vendedor
-                                    │
-                                    ▼ (notificación al vendedor)
-                                                              Vendedor recibe lead
-                                                              Visita/llama al lead
-                                                              Completa formulario
-                                                              largo en Hermes Mobile
-                                                                       │
-                                                                       ▼
-                                                              [PROSPECTO] en embudo
-                                                              ┌─ Entrada
-                                                              ├─ 1er Contacto
-                                                              ├─ Propuesta Enviada
-                                                              ├─ Seguimiento
-                                                              ├─ Análisis Financiero
-                                                              └─ Prospecto Estratégico
-                                                                       │
-                                                              ┌────────┴────────┐
-                                                              ▼                 ▼
-                                                          [GANADO]          [PERDIDO]
-                                                          + motivo          + motivo
-                                                          Alta manual
-                                                          por fuera
-
-
-EN PARALELO (clientes existentes):
-
-Vendedor en campo
-       │
-       ├─ Registrar visita GPS ────────────────────► tabla visitas
-       ├─ Cargar actividad (llamada, propuesta) ──► tabla actividades_cliente
-       ├─ Relevamiento matriz potencial ──────────► tabla matriz_potencial
-       ├─ Relevamiento PDV + fotos ───────────────► tabla relevamientos_pdv
-       ├─ Agenda + recordatorios ─────────────────► tabla agenda
-       └─ Ver scorecard, clientes, pedidos ───────► SQL Server (read-only)
-                                                          │
-                                                          ▼
-                                                   Hermes Desktop
-                                                   (gerencia ve todo)
+<div class="card extra">
+<p>Arquitectura para agregar agentes IA sin tocar código. Todos los prompts viven en Supabase y se pueden editar en caliente.</p>
 </div>
 
-<!-- 14. ORDEN -->
-<h2 id="orden" class="page-break">14. Orden de Ejecución y Dependencias</h2>
+<pre>-- Tabla
+agent_prompts (
+  id SERIAL PRIMARY KEY,
+  agent_id TEXT UNIQUE,     -- 'cronos', 'analista', 'cobrador', etc
+  prompt TEXT,
+  description TEXT,
+  version INT DEFAULT 1,
+  active BOOLEAN,
+  updated_at TIMESTAMP,
+  updated_by TEXT
+)</pre>
 
-<div class="flow-diagram">
-BLOQUE E (Actividades cliente)        ◄── BASE de la historia clínica
-   │                                      Requisito para F, G, I
-   ▼
-BLOQUE C (Embudo prospectos)          ◄── Reemplazar CRM actual
-   │                                      Independiente de E
-   ▼
-BLOQUE F (Matriz potencial)          ◄── Cuestionario + ponderación
-   │                                      Depende de E (historia clínica)
-   ▼
-BLOQUE I (Agenda + notificaciones)   ◄── Recordatorios
-   │                                      Depende de E (completar → historia)
-   ▼
-BLOQUE D (Leads Google Forms)        ◄── Automatización
-   │                                      Depende de C (embudo donde caen)
-   ▼
-BLOQUE G (Relevamiento PDV)          ◄── Fotos + cuestionario
-   │                                      Depende de E (va a historia)
-   ▼
-BLOQUE H (Objetivo visitas)          ◄── Meta diaria
-   │                                      Independiente
-   ▼
-BLOQUE J (Voz + LLM + Push)          ◄── Fase avanzada
-                                          Depende de E + I
+<h4>PromptService — patrón</h4>
+<ul>
+  <li>Cache local 5 minutos → cero overhead por llamada</li>
+  <li>Fallback hardcodeado si la DB falla (resiliencia offline)</li>
+  <li>Placeholders <code>{{var}}</code> reemplazados en runtime</li>
+  <li>Método <code>invalidate(agent_id)</code> para forzar recarga</li>
+</ul>
+
+<p><strong>Futuro:</strong> pantalla en Hermes Desktop para editar prompts de todos los agentes con versionado y rollback.</p>
+
+<!-- BLOQUES PENDIENTES -->
+<h2 id="bloque-c" class="pending page-break">13. Bloque C — Embudo CRM de Prospectos <span class="badge badge-alta">Alta</span></h2>
+
+<div class="card pending">
+<p><strong>Prioridad #1.</strong> Reemplaza el Google Forms actual. Es el bloque más transformador del negocio.</p>
 </div>
 
-<div class="highlight">
-<strong>Recomendación:</strong> E → C → F → I → D → G → H → J. Los bloques E y C son los de mayor impacto. E es la base técnica, C es la necesidad de negocio más urgente (reemplazar el CRM).
+<h4>Diseño</h4>
+<pre>Lead (externo) → Calificado (admin) → Prospecto (vendedor mobile)
+                                              ↓
+   Contacto inicial → Calificación → Propuesta → Negociación → Cierre
+                                                                ↓
+                                                    Ganado / Perdido</pre>
+
+<h4>Componentes</h4>
+<ul>
+  <li><strong>C1:</strong> Tablas <code>etapas_embudo</code>, <code>prospectos</code>, <code>actividades_prospecto</code></li>
+  <li><strong>C2:</strong> Formulario custom largo para dar de alta un prospecto (reemplaza Google Forms)</li>
+  <li><strong>C3:</strong> Vista de embudo agrupada por etapa (lista filtrable, no Kanban drag)</li>
+  <li><strong>C4:</strong> Ficha de prospecto con datos + etapa + timeline de actividades + tap-to-call</li>
+  <li><strong>C5:</strong> Tile "Embudo" en drawer + Acciones</li>
+</ul>
+
+<h2 id="bloque-f" class="pending">14. Bloque F — Matriz de Potencial <span class="badge badge-alta">Alta</span></h2>
+
+<div class="card pending">
+<p>Cuestionario configurable que pondera el <strong>valor monetario potencial</strong> de cada cliente. Cambia cómo el vendedor prioriza su cartera.</p>
 </div>
 
-<!-- 15. NAVEGACIÓN -->
-<h2 id="navegacion">15. Evolución de la Navegación</h2>
+<ul>
+  <li>Tabla <code>matriz_potencial</code> (respuestas JSON + ponderación $)</li>
+  <li>Tabla <code>config_cuestionarios</code> para preguntas + fórmulas</li>
+  <li>Control: no permitir duplicado en mismo período</li>
+  <li>Alerta a los 3 meses para re-evaluar</li>
+  <li>Resultado visible en ficha del cliente + reporte de cartera</li>
+  <li>Reporte en Hermes Desktop (gerencia)</li>
+</ul>
 
-<h3>Actual (4 tabs)</h3>
-<pre>
-Bottom Nav: Scorecard | Clientes | Ventas | Más
-                                           └── Registrar visita
-                                               Mis visitas
-                                               Pedidos
-                                               (versión, feedback, logout)
-</pre>
+<h2 id="bloque-d" class="pending">15. Bloque D — Leads desde Google Forms <span class="badge badge-media">Media</span></h2>
 
-<h3>Futuro (4 tabs + Más expandido → eventualmente Drawer)</h3>
-<pre>
-Bottom Nav: Scorecard | Clientes | Ventas | Más
-                                           └── Registrar visita
-                                               Mis visitas
-                                               Pedidos
-                                               Embudo CRM (Bloque C)
-                                               Relevamientos (Bloques F, G)
-                                               Mi agenda (Bloque I)
-                                               (versión, feedback, logout)
+<pre>Google Forms → Sheets → Zapier/Make → POST Supabase REST
+                                              ↓
+                                    Admin desktop califica
+                                              ↓
+                                     Asigna a vendedor
+                                              ↓
+                                   Notif push → vendedor
+                                              ↓
+                                  Completa formulario largo
+                                              ↓
+                                   Lead pasa a Prospecto (C)</pre>
 
-Cuando haya 6+ módulos → migrar a Drawer lateral
-</pre>
+<ul>
+  <li>Tabla <code>leads</code> (nombre, email, teléfono, empresa, tipo)</li>
+  <li>Admin desktop: califica y deriva</li>
+  <li>Notificación al vendedor cuando recibe un lead asignado</li>
+  <li>Integración Zapier para el webhook de Google Forms</li>
+</ul>
 
-<!-- 16. DESKTOP -->
-<h2 id="desktop">16. Impacto en Hermes Desktop</h2>
+<h2 id="bloque-g" class="pending">16. Bloque G — Relevamiento PDV <span class="badge badge-media">Media</span></h2>
 
-<div class="highlight">
-<strong>Nota:</strong> Hermes Desktop (Hermes.exe) lee las mismas tablas de Supabase con psycopg2. Cada bloque nuevo en mobile genera datos que gerencia debería poder consumir desde el desktop. Estos son los módulos a agregar en Hermes.exe eventualmente.
+<ul>
+  <li>Tabla <code>relevamientos_pdv</code> (respuestas JSON + foto_urls)</li>
+  <li>Cuestionario configurable (comparte <code>config_cuestionarios</code> con F)</li>
+  <li>Captura de 1-2 fotos → Supabase Storage (bucket)</li>
+  <li>Accesible desde ficha del cliente</li>
+  <li>Reporte de relevamientos en Desktop</li>
+</ul>
+
+<h2 id="bloque-h" class="pending">17. Bloque H — Objetivo de Visitas Diarias <span class="badge badge-media">Media</span></h2>
+
+<ul>
+  <li>Meta de visitas diarias por vendedor (configurable en Desktop)</li>
+  <li>Comparación automática vs tabla <code>visitas</code> existente</li>
+  <li>Badge/indicador en la app</li>
+  <li>Reporte de cumplimiento mensual</li>
+</ul>
+
+<h2 id="bloque-j" class="pending">18. Bloque J — Push Notifications (FCM) <span class="badge badge-baja">Baja</span> <span class="badge badge-partial">🟡 ~70%</span></h2>
+
+<div class="card pending">
+<p>Voz y LLM ya completos (v2.3 → v3.4). Falta solo el componente de <strong>push notifications desde el servidor</strong> para que gerencia pueda disparar alertas automáticas a los vendedores.</p>
+</div>
+
+<h4>Ya hecho</h4>
+<ul>
+  <li>✅ Whisper API para transcripción de voz</li>
+  <li>✅ LLM Cronos con agente completo (GPT-4o-mini)</li>
+  <li>✅ System prompts editables en DB</li>
+</ul>
+
+<h4>Pendiente</h4>
+<ul>
+  <li>Firebase Cloud Messaging (FCM) para push desde backend</li>
+  <li>Casos de uso: gerencia → vendedor ("te asigné un lead"), alertas automáticas ("no visitaste a X hace 60 días")</li>
+  <li>Setup Firebase project + device token registration</li>
+</ul>
+
+<!-- 14. PENDIENTES TÉCNICOS -->
+<h2 id="pendientes-tecnicos" class="page-break">19. Pendientes Técnicos Específicos</h2>
+
+<p>Ideas y mejoras sobre lo ya hecho, para ir resolviendo en el tiempo:</p>
+
+<div class="card">
+  <div class="card-header">📲 Notificaciones con acciones rápidas <span class="badge badge-media">Media</span></div>
+  <p>Botones en el panel de notificaciones (como alarmas de Android): "Posponer 10 min" y "Completada". Permite al vendedor manejar actividades sin abrir la app.</p>
+  <ul>
+    <li><code>AndroidNotificationAction</code> + background isolate (<code>@pragma('vm:entry-point')</code>)</li>
+    <li>Snooze cancela la notif y programa +10 min</li>
+    <li>Complete hace UPDATE en Supabase</li>
+    <li>Cola offline: si no hay internet, encolar y reintentar al abrir app</li>
+    <li>Esfuerzo: ~80 líneas + testing con app totalmente cerrada</li>
+  </ul>
+</div>
+
+<div class="card">
+  <div class="card-header">🗑️ Soft-delete de actividades <span class="badge badge-baja">Baja</span></div>
+  <p>Hoy <code>ActividadesService.eliminar()</code> hace <code>DELETE</code> hard. Cambiar a <code>UPDATE SET eliminada_at = NOW()</code> + filtrar en lecturas para permitir recuperar eliminadas por accidente y auditoría.</p>
+</div>
+
+<div class="card">
+  <div class="card-header">🔐 Finalizar setup Google Cloud OAuth <span class="badge badge-media">Media</span></div>
+  <p>Proyecto "Hermes Mobile" creado en Google Cloud Console, OAuth External configurado, package <code>com.hermes.hermes_vendedor</code>, SHA-1 <code>EC:92:8A:A2:30:AC:E2:AC:62:16:9C:ED:22:8A:D3:99:33:AF:0F:0E</code>. <strong>Frenó porque en OAuth consent screen → Test users hay que agregar los gmails de cada vendedor.</strong> Cuando se recopilen los mails → agregarlos como Test users → el botón "Conectar con Google" empieza a funcionar.</p>
+</div>
+
+<div class="card">
+  <div class="card-header">📊 Pantalla de gestión de prompts en Desktop <span class="badge badge-baja">Baja</span></div>
+  <p>La tabla <code>agent_prompts</code> está preparada. Falta una UI en Hermes Desktop para: listar agentes, editar prompt con preview, versionar, rollback, activar/desactivar. Esto permitiría iterar prompts sin tocar SQL.</p>
+</div>
+
+<div class="card">
+  <div class="card-header">📈 Agente Analista de Clientes <span class="badge badge-baja">Baja</span></div>
+  <p>Feasible con la arquitectura actual. Usa <code>PromptService.get('analista', {...})</code>. App agrupa facturación, top productos, evolución, saldo, últimas visitas en un JSON y lo manda al LLM con un prompt especializado. Devuelve análisis textual. Costo ~$0.002 por análisis.</p>
+</div>
+
+<div class="card">
+  <div class="card-header">🔍 Drill-downs del scorecard más accionables</div>
+  <p>Mejorar contenido para que cada drill-down no sea solo lista sino que sugiera acción (ej: "El cliente X no compró en 3 meses, sus últimos 5 productos fueron Y, Z..."). Aprovechar LLM.</p>
+</div>
+
+<div class="card">
+  <div class="card-header">💰 Verificación saldos CxC con desktop</div>
+  <p>Comparar que los saldos de cuentas corrientes en la app coinciden exactamente con los reportes de Hermes Desktop.</p>
+</div>
+
+<div class="card">
+  <div class="card-header">🗺️ Mapa de visitas en Hermes Desktop</div>
+  <p>Leaflet.js embebido en WebView para visualizar las visitas GPS de todos los vendedores. Heatmap por zona, filtros por fecha/vendedor.</p>
+</div>
+
+<!-- 15. PRÓXIMOS PASOS -->
+<h2 id="orden">20. Próximos Pasos Sugeridos</h2>
+
+<div class="info">
+<strong>Orden de ejecución recomendado</strong> (por impacto de negocio):
 </div>
 
 <table>
-<tr><th>Bloque Mobile</th><th>Módulo Desktop</th><th>Funcionalidad</th></tr>
-<tr><td>Visitas GPS</td><td>Reporte de visitas + mapa Leaflet</td><td>Markers por visita, filtros por vendedor/fecha, cobertura</td></tr>
-<tr><td>Actividades cliente</td><td>Vista historia clínica por cliente</td><td>Timeline completo de interacciones</td></tr>
-<tr><td>Matriz potencial</td><td>Reporte de cartera por potencial</td><td>Ranking de clientes por valor potencial, evolución</td></tr>
-<tr><td>Relevamiento PDV</td><td>Galería de relevamientos</td><td>Fotos, respuestas tabuladas, cumplimiento</td></tr>
-<tr><td>Embudo CRM</td><td>Dashboard de prospectos</td><td>Funnel visual, pipeline total, forecast</td></tr>
-<tr><td>Leads</td><td>Panel de calificación de leads</td><td>Calificar, asignar, derivar talleres</td></tr>
-<tr><td>Agenda</td><td>Vista de agenda del equipo</td><td>Qué tiene agendado cada vendedor</td></tr>
+<tr><th>#</th><th>Bloque</th><th>Por qué</th><th>Esfuerzo</th></tr>
+<tr><td>1</td><td><strong>Notificaciones con acciones rápidas</strong></td><td>Alto impacto, esfuerzo chico, complementa el bloque I ya hecho</td><td>Chico</td></tr>
+<tr><td>2</td><td><strong>C — Embudo de Prospectos</strong></td><td>Reemplaza el Google Forms. Cambia radicalmente el día a día del vendedor y el overview de gerencia.</td><td>Grande</td></tr>
+<tr><td>3</td><td><strong>F — Matriz de Potencial</strong></td><td>Base analítica para priorizar cartera. Útil después de C.</td><td>Medio</td></tr>
+<tr><td>4</td><td><strong>Finalizar OAuth Google</strong> + agregar test users</td><td>Desbloquea feature ya construida (Calendar)</td><td>5 min (cuando tengan mails)</td></tr>
+<tr><td>5</td><td><strong>D — Leads Google Forms</strong></td><td>Automatiza entrada de leads. Potencia C.</td><td>Medio</td></tr>
+<tr><td>6</td><td><strong>Agente Analista de Clientes</strong></td><td>Aprovecha PromptService. Gran "wow factor" para vendedores.</td><td>Medio</td></tr>
+<tr><td>7</td><td><strong>G — Relevamiento PDV</strong></td><td>Fotos + cuestionario. Trabajo de campo.</td><td>Medio</td></tr>
+<tr><td>8</td><td><strong>H — Objetivo visitas diarias</strong></td><td>Pulido. Aprovecha tabla <code>visitas</code> existente.</td><td>Chico</td></tr>
+<tr><td>9</td><td><strong>J — Push FCM</strong></td><td>Fase avanzada. Requiere setup Firebase.</td><td>Medio</td></tr>
 </table>
-
-<!-- 17. PENDIENTES -->
-<h2 id="pendientes" class="page-break">17. Pendientes de Revisión</h2>
-
-<table>
-<tr><th>Item</th><th>Detalle</th><th>Prioridad</th></tr>
-<tr><td>Drill-downs del Scorecard</td><td>Mejorar contenido para que sea más accionable (más datos, comparativas)</td><td><span class="badge badge-media">Media</span></td></tr>
-<tr><td>Saldos CxC</td><td>Verificar que coincidan con Reporte Diario del desktop</td><td><span class="badge badge-media">Media</span></td></tr>
-<tr><td>Oportunidades cargas</td><td>Agregar variante "no compró en últimos 12 meses"</td><td><span class="badge badge-baja">Baja</span></td></tr>
-<tr><td>Mapa de visitas (Desktop)</td><td>Leaflet.js embebido en WebView con markers GPS</td><td><span class="badge badge-media">Media</span></td></tr>
-<tr><td>Pedidos: verificar estados</td><td>Confirmar que Cancelado=facturado completo y Anulado=parcial</td><td><span class="badge badge-media">Media</span></td></tr>
-</table>
-
-<hr>
 
 <div class="footer">
-  <p><strong>Hermes Mobile — Plan Maestro de Desarrollo</strong></p>
-  <p>Excelencia Química Argentina S.R.L. | Generado con Claude Code | Abril 2026</p>
-  <p>Repo: github.com/guidocameraeq/HermesMobile | Stack: Flutter + SQL Server + Supabase</p>
+Plan Maestro Hermes Mobile · Generado automáticamente · Abril 2026<br>
+Versión actual del código: <strong>v3.4.0</strong> · Repo: github.com/guidocameraeq/HermesMobile
 </div>
 
 </body>
