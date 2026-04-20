@@ -18,6 +18,7 @@ class AssistantAction {
   final Cliente? clienteResuelto;
   final int? actividadId; // para completar desde pendientes
   final String? motivo;   // para visita_ahora
+  final List<Cliente>? candidatos; // varios matches — usuario debe elegir
 
   AssistantAction({
     required this.tipo,
@@ -29,12 +30,15 @@ class AssistantAction {
     this.clienteResuelto,
     this.actividadId,
     this.motivo,
+    this.candidatos,
   });
 
   bool get esActividad => tipo == 'actividad';
   bool get esPendiente => tipo == 'pendiente_item';
   bool get esVisitaAhora => tipo == 'visita_ahora';
   bool get tieneCliente => clienteResuelto != null;
+  bool get necesitaDesambiguacion =>
+      clienteResuelto == null && candidatos != null && candidatos!.length > 1;
 
   String get cuandoFmt {
     if (cuando == null) return 'Sin fecha';
@@ -106,26 +110,10 @@ class AssistantService {
     });
   }
 
-  /// Detecta consultas de pendientes — devuelve resultado con tarjetas.
-  static Future<AssistantResult?> _checkPendientes(String msg) async {
-    final q = msg.toLowerCase();
-    final esPendientes = q.contains('pendiente') || q.contains('tengo que hacer') ||
-        q.contains('mi agenda') || q.contains('qué tengo') || q.contains('que tengo') ||
-        q.contains('mis actividades') || q.contains('tareas');
-
-    if (!esPendientes) return null;
-
-    final items = await ActividadesService.pendientes();
-    if (items.isEmpty) {
-      return AssistantResult(
-        mensaje: 'No tenés actividades pendientes. Todo al día.',
-        actions: [],
-      );
-    }
-
-    // Crear una tarjeta por cada actividad pendiente
-    final actions = <AssistantAction>[];
-    for (final item in items.take(10)) {
+  /// Transforma filas de actividades_cliente en AssistantActions tipo pendiente_item.
+  static List<AssistantAction> _rowsToPendienteItems(List<Map<String, dynamic>> items) {
+    final out = <AssistantAction>[];
+    for (final item in items.take(15)) {
       final id = int.tryParse(item['id']?.toString() ?? '');
       final tipo = item['tipo']?.toString() ?? 'otro';
       final cliente = item['cliente_nombre']?.toString() ?? '';
@@ -133,7 +121,7 @@ class AssistantService {
       final desc = item['descripcion']?.toString() ?? '';
       final fecha = item['fecha_programada']?.toString();
 
-      actions.add(AssistantAction(
+      out.add(AssistantAction(
         tipo: 'pendiente_item',
         accion: tipo,
         clienteMatch: cliente,
@@ -147,19 +135,11 @@ class AssistantService {
         ) : null,
       ));
     }
-
-    return AssistantResult(
-      mensaje: 'Tenés ${items.length} actividades pendientes:',
-      actions: actions,
-    );
+    return out;
   }
 
   /// Envía un mensaje al LLM con historial completo.
   static Future<AssistantResult> sendMessage(String userMessage) async {
-    // Detección pre-LLM: pendientes
-    final pendientesResult = await _checkPendientes(userMessage);
-    if (pendientesResult != null) return pendientesResult;
-
     // Agregar mensaje del usuario al historial
     _historial.add({'role': 'user', 'content': userMessage});
 
@@ -207,13 +187,56 @@ class AssistantService {
       final actions = <AssistantAction>[];
       for (final a in accionesList) {
         final map = a as Map<String, dynamic>;
-        final clienteMatch = map['cliente_match']?.toString();
-        Cliente? clienteResuelto;
-        if (clienteMatch != null && clienteMatch.isNotEmpty) {
-          clienteResuelto = await _fuzzyMatchCliente(clienteMatch);
+        final tipoAccion = map['tipo']?.toString() ?? 'actividad';
+
+        // Consulta de pendientes: app ejecuta la query y expande en tarjetas
+        if (tipoAccion == 'consulta_pendientes') {
+          final filtroFecha = map['filtro_fecha']?.toString() ?? 'todos';
+          final clienteMatchQ = map['cliente_match']?.toString();
+          List<Map<String, dynamic>> items;
+
+          if (clienteMatchQ != null && clienteMatchQ.isNotEmpty) {
+            final cands = await _fuzzyMatchClientes(clienteMatchQ);
+            if (cands.isEmpty) {
+              items = [];
+            } else if (cands.length == 1) {
+              items = await ActividadesService.pendientesPorCliente(cands.first.codigo);
+            } else {
+              // Múltiples clientes: generamos acción especial de desambiguación
+              actions.add(AssistantAction(
+                tipo: 'consulta_ambigua',
+                clienteMatch: clienteMatchQ,
+                accion: 'consulta',
+                nota: filtroFecha,
+                mensaje: '',
+                candidatos: cands,
+              ));
+              continue;
+            }
+          } else if (filtroFecha == 'hoy') {
+            items = await ActividadesService.pendientesHoy();
+          } else if (filtroFecha == 'semana') {
+            items = await ActividadesService.pendientesSemana();
+          } else {
+            items = await ActividadesService.pendientes();
+          }
+          actions.addAll(_rowsToPendienteItems(items));
+          continue;
         }
 
-        final tipoAccion = map['tipo']?.toString() ?? 'actividad';
+        // Actividad / visita_ahora: resolver cliente con posibles candidatos
+        final clienteMatch = map['cliente_match']?.toString();
+        Cliente? clienteResuelto;
+        List<Cliente>? candidatos;
+        if (clienteMatch != null && clienteMatch.isNotEmpty) {
+          final cands = await _fuzzyMatchClientes(clienteMatch);
+          if (cands.length == 1) {
+            clienteResuelto = cands.first;
+          } else if (cands.length > 1) {
+            candidatos = cands;
+          }
+        }
+
         actions.add(AssistantAction(
           tipo: tipoAccion,
           clienteMatch: clienteMatch,
@@ -223,6 +246,7 @@ class AssistantService {
           mensaje: mensaje,
           clienteResuelto: clienteResuelto,
           motivo: map['motivo']?.toString(),
+          candidatos: candidatos,
         ));
       }
 
@@ -232,20 +256,30 @@ class AssistantService {
     }
   }
 
-  static Future<Cliente?> _fuzzyMatchCliente(String query) async {
+  /// Resuelve un cliente_match contra la cartera. Retorna todos los candidatos
+  /// que coincidan — la UI muestra opciones si hay más de uno.
+  static Future<List<Cliente>> _fuzzyMatchClientes(String query) async {
     final clientes = await _getClientes();
     final q = query.toLowerCase().trim();
 
+    // 1. Match exacto por código
     final byCode = clientes.where((c) => c.codigo == q).toList();
-    if (byCode.length == 1) return byCode.first;
+    if (byCode.length == 1) return byCode;
 
+    // 2. Match por contención en nombre
     final matches = clientes.where((c) =>
         c.nombre.toLowerCase().contains(q) ||
         q.split(' ').every((word) => c.nombre.toLowerCase().contains(word))
     ).toList();
 
-    if (matches.length == 1) return matches.first;
-    if (matches.isNotEmpty) return matches.first;
-    return null;
+    return matches;
+  }
+
+  /// Ejecuta el núcleo de una consulta_pendientes una vez resuelto el cliente
+  /// (usado cuando el usuario elige entre candidatos ambiguos).
+  static Future<List<AssistantAction>> consultaPendientesResuelta(
+      Cliente cliente) async {
+    final items = await ActividadesService.pendientesPorCliente(cliente.codigo);
+    return _rowsToPendienteItems(items);
   }
 }

@@ -7,6 +7,7 @@ import '../services/actividades_service.dart';
 import '../services/notification_service.dart';
 import '../services/visitas_service.dart';
 import '../services/whisper_service.dart';
+import '../models/cliente.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/recording_overlay.dart';
 
@@ -23,6 +24,7 @@ class _AssistantState extends State<AssistantScreen>
   final _scrollCtrl = ScrollController();
   final _messages = <_ChatMessage>[];
   final Set<AssistantAction> _confirmadas = {};
+  final Map<AssistantAction, Cliente> _elegidos = {}; // cliente resuelto manualmente
 
   bool _sending = false;
   bool _transcribing = false;
@@ -93,12 +95,23 @@ class _AssistantState extends State<AssistantScreen>
     final audioPath = await RecordingOverlay.show(context);
     if (audioPath == null || !mounted) return;
 
-    setState(() => _transcribing = true);
+    // Burbuja placeholder del usuario con mic + dots mientras transcribe
+    final placeholder = _ChatMessage(
+      isUser: true, text: '', isTranscribing: true);
+    setState(() {
+      _transcribing = true;
+      _messages.add(placeholder);
+    });
+    _scrollToBottom();
     HapticFeedback.selectionClick();
+
     try {
       final text = await WhisperService.transcribe(audioPath);
       if (!mounted) return;
-      setState(() => _transcribing = false);
+      setState(() {
+        _messages.remove(placeholder);
+        _transcribing = false;
+      });
       if (text.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('No se captó voz'),
@@ -106,11 +119,13 @@ class _AssistantState extends State<AssistantScreen>
         ));
         return;
       }
-      // Envío directo — es lo que el usuario esperaba
       await _sendText(text);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _transcribing = false);
+      setState(() {
+        _messages.remove(placeholder);
+        _transcribing = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Error transcribiendo: ${e.toString().replaceFirst('Exception: ', '')}'),
         backgroundColor: AppColors.danger,
@@ -118,17 +133,59 @@ class _AssistantState extends State<AssistantScreen>
     }
   }
 
+  /// Cliente efectivo: el resuelto automático o el elegido por el usuario.
+  Cliente? _clienteFinal(AssistantAction action) =>
+      action.clienteResuelto ?? _elegidos[action];
+
+  /// Usuario elige un cliente de la lista de candidatos.
+  void _elegirCliente(AssistantAction action, Cliente cliente) {
+    HapticFeedback.selectionClick();
+    setState(() => _elegidos[action] = cliente);
+
+    // Si la acción es consulta_ambigua, expandir la consulta ahora con el cliente elegido
+    if (action.tipo == 'consulta_ambigua') {
+      _expandirConsultaCliente(action, cliente);
+    }
+  }
+
+  Future<void> _expandirConsultaCliente(AssistantAction action, Cliente cliente) async {
+    try {
+      final items = await AssistantService.consultaPendientesResuelta(cliente);
+      if (!mounted) return;
+      setState(() {
+        if (items.isEmpty) {
+          _messages.add(_ChatMessage(
+            isUser: false,
+            text: '${cliente.nombre} no tiene pendientes.',
+          ));
+        } else {
+          _messages.add(_ChatMessage(
+            isUser: false,
+            text: 'Pendientes de ${cliente.nombre}:',
+            actions: items,
+          ));
+        }
+      });
+      _scrollToBottom();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error: $e'), backgroundColor: AppColors.danger));
+    }
+  }
+
   // ── Confirmar acción ───────────────────────────────────────────
   Future<void> _confirmAction(AssistantAction action) async {
     if (_confirmadas.contains(action)) return;
+    final cliente = _clienteFinal(action);
+
     HapticFeedback.mediumImpact();
     try {
       if (action.esPendiente && action.actividadId != null) {
         await ActividadesService.completar(action.actividadId!);
       } else if (action.esVisitaAhora) {
-        // Cargar visita con GPS actual
-        if (action.clienteResuelto == null) {
-          throw Exception('Necesito saber a qué cliente estás visitando');
+        if (cliente == null) {
+          throw Exception('Elegí el cliente primero');
         }
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Row(children: [
@@ -142,17 +199,20 @@ class _AssistantState extends State<AssistantScreen>
         if (!mounted) return;
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         await VisitasService.registrar(
-          clienteCodigo: action.clienteResuelto!.codigo,
-          clienteNombre: action.clienteResuelto!.nombre,
+          clienteCodigo: cliente.codigo,
+          clienteNombre: cliente.nombre,
           latitud: pos.latitude,
           longitud: pos.longitude,
           motivo: action.motivo ?? 'Visita comercial',
           notas: action.nota.isNotEmpty ? action.nota : null,
         );
       } else {
+        if (cliente == null && action.clienteMatch != null) {
+          throw Exception('Elegí el cliente primero');
+        }
         await ActividadesService.registrar(
-          clienteCodigo: action.clienteResuelto?.codigo ?? '',
-          clienteNombre: action.clienteResuelto?.nombre ?? action.clienteMatch ?? '',
+          clienteCodigo: cliente?.codigo ?? '',
+          clienteNombre: cliente?.nombre ?? action.clienteMatch ?? '',
           tipo: action.accion,
           descripcion: action.nota,
           fechaProgramada: action.cuando,
@@ -161,10 +221,10 @@ class _AssistantState extends State<AssistantScreen>
         if (action.cuando != null) {
           final dt = DateTime.tryParse(action.cuando!);
           if (dt != null && dt.isAfter(DateTime.now())) {
-            final cliente = action.clienteResuelto?.nombre ?? action.clienteMatch ?? '';
+            final nombre = cliente?.nombre ?? action.clienteMatch ?? '';
             await NotificationService.schedule(
               id: DateTime.now().millisecondsSinceEpoch % 100000,
-              title: '${action.accionLabel}${cliente.isNotEmpty ? " — $cliente" : ""}',
+              title: '${action.accionLabel}${nombre.isNotEmpty ? " — $nombre" : ""}',
               body: action.nota.isNotEmpty ? action.nota : 'Actividad agendada',
               scheduledDate: dt,
             );
@@ -256,7 +316,9 @@ class _AssistantState extends State<AssistantScreen>
                         key: ValueKey(_messages[i]),
                         msg: _messages[i],
                         confirmadas: _confirmadas,
+                        elegidos: _elegidos,
                         onConfirm: _confirmAction,
+                        onElegir: _elegirCliente,
                       );
                     },
                   ),
@@ -532,13 +594,17 @@ class _AnimatedChipState extends State<_AnimatedChip>
 class _MessageBubble extends StatefulWidget {
   final _ChatMessage msg;
   final Set<AssistantAction> confirmadas;
+  final Map<AssistantAction, Cliente> elegidos;
   final Future<void> Function(AssistantAction) onConfirm;
+  final void Function(AssistantAction, Cliente) onElegir;
 
   const _MessageBubble({
     super.key,
     required this.msg,
     required this.confirmadas,
+    required this.elegidos,
     required this.onConfirm,
+    required this.onElegir,
   });
 
   @override
@@ -571,6 +637,16 @@ class _MessageBubbleState extends State<_MessageBubble>
   @override
   Widget build(BuildContext context) {
     final m = widget.msg;
+    // Burbuja especial mientras Whisper transcribe
+    if (m.isTranscribing) {
+      return FadeTransition(
+        opacity: _opacity,
+        child: SlideTransition(
+          position: _slide,
+          child: const _TranscribingBubble(),
+        ),
+      );
+    }
     return FadeTransition(
       opacity: _opacity,
       child: SlideTransition(
@@ -623,7 +699,9 @@ class _MessageBubbleState extends State<_MessageBubble>
                     child: _ActionCard(
                       action: a,
                       confirmada: widget.confirmadas.contains(a),
+                      clienteElegido: widget.elegidos[a],
                       onConfirm: () => widget.onConfirm(a),
+                      onElegir: (c) => widget.onElegir(a, c),
                     ),
                   )),
                 ],
@@ -640,12 +718,16 @@ class _MessageBubbleState extends State<_MessageBubble>
 class _ActionCard extends StatelessWidget {
   final AssistantAction action;
   final bool confirmada;
+  final Cliente? clienteElegido;
   final VoidCallback onConfirm;
+  final void Function(Cliente) onElegir;
 
   const _ActionCard({
     required this.action,
     required this.confirmada,
+    required this.clienteElegido,
     required this.onConfirm,
+    required this.onElegir,
   });
 
   @override
@@ -696,6 +778,11 @@ class _ActionCard extends StatelessWidget {
                 if (action.tieneCliente)
                   _row(Icons.person, 'Cliente',
                       '${action.clienteResuelto!.nombre} (${action.clienteResuelto!.codigo})')
+                else if (clienteElegido != null)
+                  _row(Icons.person, 'Cliente',
+                      '${clienteElegido!.nombre} (${clienteElegido!.codigo})')
+                else if (action.candidatos != null && action.candidatos!.isNotEmpty)
+                  _candidatosPicker()
                 else if (action.clienteMatch != null)
                   _row(Icons.person_search, 'Cliente',
                       '${action.clienteMatch} (no encontrado)'),
@@ -781,6 +868,56 @@ class _ActionCard extends StatelessWidget {
     );
   }
 
+  Widget _candidatosPicker() {
+    final cands = action.candidatos!;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.person_search, size: 14, color: AppColors.warning),
+              const SizedBox(width: 8),
+              Text('Hay ${cands.length} clientes con ese nombre:',
+                  style: const TextStyle(color: AppColors.warning, fontSize: 11,
+                      fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: cands.map((c) => InkWell(
+              onTap: () => onElegir(c),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.accent.withOpacity(0.4)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.person, size: 12, color: AppColors.accent),
+                    const SizedBox(width: 5),
+                    Text(c.nombre,
+                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 11)),
+                    const SizedBox(width: 4),
+                    Text('(${c.codigo})',
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                  ],
+                ),
+              ),
+            )).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _row(IconData icon, String label, String value) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: Row(
@@ -793,6 +930,89 @@ class _ActionCard extends StatelessWidget {
           ],
         ),
       );
+}
+
+/// Burbuja del USUARIO mientras Whisper transcribe el audio.
+/// Muestra ícono de micrófono + dots animados + "Transcribiendo...".
+class _TranscribingBubble extends StatefulWidget {
+  const _TranscribingBubble();
+  @override
+  State<_TranscribingBubble> createState() => _TranscribingBubbleState();
+}
+
+class _TranscribingBubbleState extends State<_TranscribingBubble>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 900),
+    )..repeat();
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft, end: Alignment.bottomRight,
+            colors: [AppColors.primary, Color(0xFF3B82F6)],
+          ),
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(16),
+            topRight: Radius.circular(16),
+            bottomLeft: Radius.circular(16),
+            bottomRight: Radius.circular(4),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.mic, color: Colors.white70, size: 14),
+            const SizedBox(width: 8),
+            const Text('Transcribiendo',
+                style: TextStyle(color: Colors.white, fontSize: 12)),
+            const SizedBox(width: 6),
+            AnimatedBuilder(
+              animation: _ctrl,
+              builder: (_, __) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(3, (i) {
+                    final phase = (_ctrl.value - i * 0.2) % 1;
+                    final y = -3 * (phase < 0.3 ? (1 - (phase / 0.3 - 0.5).abs() * 2) : 0);
+                    final op = 0.4 + 0.6 * (phase < 0.3 ? 1 - (phase / 0.3 - 0.5).abs() * 2 : 0);
+                    return Padding(
+                      padding: EdgeInsets.only(right: i < 2 ? 3 : 0),
+                      child: Transform.translate(
+                        offset: Offset(0, y.toDouble()),
+                        child: Container(
+                          width: 5, height: 5,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(op.clamp(0.4, 1.0)),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Indicador de "Cronos está pensando..." con 3 dots animados.
@@ -994,11 +1214,13 @@ class _ChatMessage {
   final String text;
   final List<AssistantAction>? actions;
   final bool isError;
+  final bool isTranscribing; // placeholder mientras Whisper transcribe
 
   _ChatMessage({
     required this.isUser,
     required this.text,
     this.actions,
     this.isError = false,
+    this.isTranscribing = false,
   });
 }

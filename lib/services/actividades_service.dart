@@ -220,6 +220,18 @@ class ActividadesService {
     );
   }
 
+  /// Pendientes de un cliente específico.
+  static Future<List<Map<String, dynamic>>> pendientesPorCliente(String clienteCodigo) async {
+    return PgService.query(
+      'SELECT id, cliente_codigo, cliente_nombre, tipo, descripcion, '
+      'fecha_programada, created_at FROM actividades_cliente '
+      'WHERE vendedor_nombre = @vendedor AND cliente_codigo = @cliente '
+      'AND completada = FALSE '
+      'ORDER BY fecha_programada ASC NULLS LAST, created_at DESC',
+      {'vendedor': Session.current.vendedorNombre, 'cliente': clienteCodigo},
+    );
+  }
+
   /// Pendientes de esta semana.
   static Future<List<Map<String, dynamic>>> pendientesSemana() async {
     return PgService.query(
