@@ -232,15 +232,65 @@ class ActividadesService {
     );
   }
 
-  /// Pendientes de esta semana.
+  /// Pendientes de mañana (fecha_programada = CURRENT_DATE + 1).
+  static Future<List<Map<String, dynamic>>> pendientesManana() async {
+    return PgService.query(
+      'SELECT id, cliente_codigo, cliente_nombre, tipo, descripcion, '
+      'fecha_programada, created_at FROM actividades_cliente '
+      'WHERE vendedor_nombre = @vendedor AND completada = FALSE '
+      'AND fecha_programada::date = CURRENT_DATE + INTERVAL \'1 day\' '
+      'ORDER BY fecha_programada ASC',
+      {'vendedor': Session.current.vendedorNombre},
+    );
+  }
+
+  /// Pendientes vencidas — con fecha < hoy y no completadas.
+  static Future<List<Map<String, dynamic>>> pendientesVencidas() async {
+    return PgService.query(
+      'SELECT id, cliente_codigo, cliente_nombre, tipo, descripcion, '
+      'fecha_programada, created_at FROM actividades_cliente '
+      'WHERE vendedor_nombre = @vendedor AND completada = FALSE '
+      'AND fecha_programada IS NOT NULL '
+      'AND fecha_programada::date < CURRENT_DATE '
+      'ORDER BY fecha_programada DESC',
+      {'vendedor': Session.current.vendedorNombre},
+    );
+  }
+
+  /// Pendientes de este mes calendario.
+  static Future<List<Map<String, dynamic>>> pendientesMes() async {
+    return PgService.query(
+      'SELECT id, cliente_codigo, cliente_nombre, tipo, descripcion, '
+      'fecha_programada, created_at FROM actividades_cliente '
+      'WHERE vendedor_nombre = @vendedor AND completada = FALSE '
+      'AND fecha_programada >= date_trunc(\'month\', CURRENT_DATE) '
+      'AND fecha_programada <  date_trunc(\'month\', CURRENT_DATE) + INTERVAL \'1 month\' '
+      'ORDER BY fecha_programada ASC',
+      {'vendedor': Session.current.vendedorNombre},
+    );
+  }
+
+  /// Pendientes de un día específico (ISO yyyy-MM-dd).
+  static Future<List<Map<String, dynamic>>> pendientesFecha(String iso) async {
+    return PgService.query(
+      'SELECT id, cliente_codigo, cliente_nombre, tipo, descripcion, '
+      'fecha_programada, created_at FROM actividades_cliente '
+      'WHERE vendedor_nombre = @vendedor AND completada = FALSE '
+      'AND fecha_programada::date = @fecha::date '
+      'ORDER BY fecha_programada ASC',
+      {'vendedor': Session.current.vendedorNombre, 'fecha': iso},
+    );
+  }
+
+  /// Pendientes de esta semana calendario (lunes a domingo inclusive).
   static Future<List<Map<String, dynamic>>> pendientesSemana() async {
     return PgService.query(
       'SELECT id, cliente_codigo, cliente_nombre, tipo, descripcion, '
       'fecha_programada, created_at FROM actividades_cliente '
       'WHERE vendedor_nombre = @vendedor AND completada = FALSE '
-      'AND (fecha_programada >= date_trunc(\'week\', CURRENT_DATE) '
-      '     OR fecha_programada IS NULL) '
-      'ORDER BY fecha_programada ASC NULLS LAST',
+      'AND fecha_programada >= date_trunc(\'week\', CURRENT_DATE) '
+      'AND fecha_programada <  date_trunc(\'week\', CURRENT_DATE) + INTERVAL \'7 days\' '
+      'ORDER BY fecha_programada ASC',
       {'vendedor': Session.current.vendedorNombre},
     );
   }

@@ -5,6 +5,7 @@ import '../models/cliente.dart';
 import '../models/session.dart';
 import 'clientes_service.dart';
 import 'actividades_service.dart';
+import 'visitas_service.dart';
 import 'prompt_service.dart';
 
 /// Respuesta parseada del asistente IA.
@@ -36,6 +37,7 @@ class AssistantAction {
   bool get esActividad => tipo == 'actividad';
   bool get esPendiente => tipo == 'pendiente_item';
   bool get esVisitaAhora => tipo == 'visita_ahora';
+  bool get esVisitaRegistrada => tipo == 'visita_registrada';
   bool get tieneCliente => clienteResuelto != null;
   bool get necesitaDesambiguacion =>
       clienteResuelto == null && candidatos != null && candidatos!.length > 1;
@@ -108,6 +110,33 @@ class AssistantService {
       'hora': hora,
       'clientes': clientesStr,
     });
+  }
+
+  /// Transforma filas de visitas (ya hechas, con GPS) en AssistantActions de solo lectura.
+  static List<AssistantAction> _rowsToVisitaItems(List<Map<String, dynamic>> items) {
+    final out = <AssistantAction>[];
+    for (final item in items.take(10)) {
+      final cliente = item['cliente_nombre']?.toString() ?? '';
+      final codigo = item['cliente_codigo']?.toString() ?? '';
+      final motivo = item['motivo']?.toString() ?? '';
+      final notas = item['notas']?.toString() ?? '';
+      final createdAt = item['created_at']?.toString();
+
+      out.add(AssistantAction(
+        tipo: 'visita_registrada',
+        accion: 'visita',
+        clienteMatch: cliente,
+        cuando: createdAt,
+        nota: notas,
+        mensaje: '',
+        motivo: motivo,
+        clienteResuelto: cliente.isNotEmpty ? Cliente(
+          codigo: codigo, nombre: cliente, categoria: '', situacion: '',
+          localidad: '', provincia: '',
+        ) : null,
+      ));
+    }
+    return out;
   }
 
   /// Transforma filas de actividades_cliente en AssistantActions tipo pendiente_item.
@@ -192,7 +221,10 @@ class AssistantService {
         // Consulta de pendientes: app ejecuta la query y expande en tarjetas
         if (tipoAccion == 'consulta_pendientes') {
           final filtroFecha = map['filtro_fecha']?.toString() ?? 'todos';
+          final fechaEspecifica = map['fecha_especifica']?.toString();
           final clienteMatchQ = map['cliente_match']?.toString();
+          final orden = map['orden']?.toString() ?? 'proxima';
+          final limite = int.tryParse(map['limite']?.toString() ?? '15') ?? 15;
           List<Map<String, dynamic>> items;
 
           if (clienteMatchQ != null && clienteMatchQ.isNotEmpty) {
@@ -202,7 +234,6 @@ class AssistantService {
             } else if (cands.length == 1) {
               items = await ActividadesService.pendientesPorCliente(cands.first.codigo);
             } else {
-              // Múltiples clientes: generamos acción especial de desambiguación
               actions.add(AssistantAction(
                 tipo: 'consulta_ambigua',
                 clienteMatch: clienteMatchQ,
@@ -213,14 +244,76 @@ class AssistantService {
               ));
               continue;
             }
+          } else if (fechaEspecifica != null && fechaEspecifica.isNotEmpty) {
+            items = await ActividadesService.pendientesFecha(fechaEspecifica);
           } else if (filtroFecha == 'hoy') {
             items = await ActividadesService.pendientesHoy();
+          } else if (filtroFecha == 'manana') {
+            items = await ActividadesService.pendientesManana();
           } else if (filtroFecha == 'semana') {
             items = await ActividadesService.pendientesSemana();
+          } else if (filtroFecha == 'mes') {
+            items = await ActividadesService.pendientesMes();
+          } else if (filtroFecha == 'vencidas') {
+            items = await ActividadesService.pendientesVencidas();
           } else {
             items = await ActividadesService.pendientes();
           }
+
+          // Post-proceso: orden y límite
+          if (orden == 'ultima') {
+            items = List.of(items);
+            items.sort((a, b) {
+              final af = a['fecha_programada']?.toString();
+              final bf = b['fecha_programada']?.toString();
+              if (af == null && bf == null) return 0;
+              if (af == null) return 1;
+              if (bf == null) return -1;
+              return bf.compareTo(af);
+            });
+          }
+          if (limite > 0 && items.length > limite) {
+            items = items.take(limite).toList();
+          }
+
           actions.addAll(_rowsToPendienteItems(items));
+          continue;
+        }
+
+        // Consulta de visitas GPS ya hechas
+        if (tipoAccion == 'consulta_visitas') {
+          final filtroFecha = map['filtro_fecha']?.toString() ?? 'hoy';
+          final clienteMatchQ = map['cliente_match']?.toString();
+          List<Map<String, dynamic>> items;
+
+          if (clienteMatchQ != null && clienteMatchQ.isNotEmpty) {
+            final cands = await _fuzzyMatchClientes(clienteMatchQ);
+            if (cands.length == 1) {
+              items = await VisitasService.visitasCliente(cands.first.codigo, limit: 10);
+            } else if (cands.length > 1) {
+              actions.add(AssistantAction(
+                tipo: 'consulta_ambigua',
+                clienteMatch: clienteMatchQ,
+                accion: 'visitas',
+                nota: filtroFecha,
+                mensaje: '',
+                candidatos: cands,
+              ));
+              continue;
+            } else {
+              items = [];
+            }
+          } else if (filtroFecha == 'hoy') {
+            items = await VisitasService.visitasHoy();
+          } else if (filtroFecha == 'semana') {
+            items = await VisitasService.visitasSemana();
+          } else if (filtroFecha == 'mes') {
+            items = await VisitasService.visitasMes();
+          } else {
+            items = await VisitasService.visitasHoy();
+          }
+
+          actions.addAll(_rowsToVisitaItems(items));
           continue;
         }
 

@@ -111,6 +111,31 @@ class VisitasService {
     );
   }
 
+  /// Visitas del vendedor de este mes calendario.
+  static Future<List<Map<String, dynamic>>> visitasMes() async {
+    return PgService.query(
+      '''SELECT id, cliente_codigo, cliente_nombre, motivo, notas,
+              latitud, longitud, created_at
+         FROM visitas
+         WHERE vendedor_nombre = @vendedor
+           AND created_at >= date_trunc('month', CURRENT_DATE)
+         ORDER BY created_at DESC''',
+      {'vendedor': Session.current.vendedorNombre},
+    );
+  }
+
+  /// Última visita a un cliente específico (o null).
+  static Future<Map<String, dynamic>?> ultimaVisitaCliente(String codigo) async {
+    final rows = await PgService.query(
+      '''SELECT id, cliente_codigo, cliente_nombre, motivo, notas, created_at
+         FROM visitas
+         WHERE cliente_codigo = @cliente AND vendedor_nombre = @vendedor
+         ORDER BY created_at DESC LIMIT 1''',
+      {'cliente': codigo, 'vendedor': Session.current.vendedorNombre},
+    );
+    return rows.firstOrNull;
+  }
+
   /// Cantidad de visitas de hoy (para badge).
   static Future<int> conteoHoy() async {
     final rows = await PgService.query(

@@ -10,6 +10,9 @@ import '../services/whisper_service.dart';
 import '../models/cliente.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/recording_overlay.dart';
+import '../widgets/cronos_info_sheet.dart';
+import '../widgets/cycling_chips.dart';
+import 'package:geolocator/geolocator.dart';
 
 class AssistantScreen extends StatefulWidget {
   const AssistantScreen({super.key});
@@ -137,6 +140,33 @@ class _AssistantState extends State<AssistantScreen>
   Cliente? _clienteFinal(AssistantAction action) =>
       action.clienteResuelto ?? _elegidos[action];
 
+  /// Callback desde _VisitaAhoraCard con motivo y GPS ya obtenidos.
+  Future<void> _confirmVisitaAhora(
+      AssistantAction action, String motivo, Position pos) async {
+    if (_confirmadas.contains(action)) return;
+    final cliente = _clienteFinal(action);
+    if (cliente == null) return;
+    HapticFeedback.mediumImpact();
+    try {
+      await VisitasService.registrar(
+        clienteCodigo: cliente.codigo,
+        clienteNombre: cliente.nombre,
+        latitud: pos.latitude,
+        longitud: pos.longitude,
+        motivo: motivo,
+        notas: action.nota.isNotEmpty ? action.nota : null,
+      );
+      if (!mounted) return;
+      setState(() => _confirmadas.add(action));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error: ${e.toString().replaceFirst("Exception: ", "")}'),
+        backgroundColor: AppColors.danger,
+      ));
+    }
+  }
+
   /// Usuario elige un cliente de la lista de candidatos.
   void _elegirCliente(AssistantAction action, Cliente cliente) {
     HapticFeedback.selectionClick();
@@ -183,29 +213,6 @@ class _AssistantState extends State<AssistantScreen>
     try {
       if (action.esPendiente && action.actividadId != null) {
         await ActividadesService.completar(action.actividadId!);
-      } else if (action.esVisitaAhora) {
-        if (cliente == null) {
-          throw Exception('Elegí el cliente primero');
-        }
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Row(children: [
-            SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
-            SizedBox(width: 12),
-            Text('Obteniendo ubicación GPS...'),
-          ]),
-          duration: Duration(seconds: 8),
-        ));
-        final pos = await VisitasService.obtenerGps();
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        await VisitasService.registrar(
-          clienteCodigo: cliente.codigo,
-          clienteNombre: cliente.nombre,
-          latitud: pos.latitude,
-          longitud: pos.longitude,
-          motivo: action.motivo ?? 'Visita comercial',
-          notas: action.nota.isNotEmpty ? action.nota : null,
-        );
       } else {
         if (cliente == null && action.clienteMatch != null) {
           throw Exception('Elegí el cliente primero');
@@ -278,26 +285,35 @@ class _AssistantState extends State<AssistantScreen>
       appBar: AppBar(
         backgroundColor: AppColors.bgSidebar,
         elevation: 0,
-        title: Row(
-          children: [
-            _CronosBadge(),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Cronos', style: AppTextStyles.title),
-                Text(
-                  _sending ? 'pensando...' :
-                  _transcribing ? 'transcribiendo...' : 'en línea',
-                  style: TextStyle(
-                    color: _sending || _transcribing
-                        ? AppColors.accent : AppColors.success,
-                    fontSize: 10,
+        title: InkWell(
+          onTap: () => CronosInfoSheet.show(context),
+          borderRadius: BorderRadius.circular(8),
+          child: Row(
+            children: [
+              _CronosBadge(),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    const Text('Cronos', style: AppTextStyles.title),
+                    const SizedBox(width: 4),
+                    Icon(Icons.info_outline,
+                        size: 12, color: AppColors.textMuted.withOpacity(0.6)),
+                  ]),
+                  Text(
+                    _sending ? 'pensando...' :
+                    _transcribing ? 'transcribiendo...' : 'en línea',
+                    style: TextStyle(
+                      color: _sending || _transcribing
+                          ? AppColors.accent : AppColors.success,
+                      fontSize: 10,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
         actions: const [AppBarAvatar()],
       ),
@@ -318,6 +334,7 @@ class _AssistantState extends State<AssistantScreen>
                         confirmadas: _confirmadas,
                         elegidos: _elegidos,
                         onConfirm: _confirmAction,
+                        onConfirmVisita: _confirmVisitaAhora,
                         onElegir: _elegirCliente,
                       );
                     },
@@ -395,55 +412,89 @@ class _Welcome extends StatelessWidget {
   final void Function(String) onChip;
   const _Welcome({required this.onChip});
 
+  // Pool amplio — se muestran 4 a la vez y rotan
+  static const _pool = <ChipSuggestion>[
+    ChipSuggestion(Icons.phone_outlined, 'Recordame llamar a García mañana a las 10', AppColors.primary),
+    ChipSuggestion(Icons.checklist, '¿Qué tengo pendiente hoy?', AppColors.accent),
+    ChipSuggestion(Icons.event, 'Agendá reunión con Pérez el jueves a las 15', AppColors.success),
+    ChipSuggestion(Icons.rocket_launch_outlined, 'Propuesta para Rodríguez la semana que viene', AppColors.warning),
+    ChipSuggestion(Icons.location_on, 'Estoy visitando a López', AppColors.success),
+    ChipSuggestion(Icons.calendar_month, '¿Qué tengo esta semana?', AppColors.accent),
+    ChipSuggestion(Icons.history_toggle_off, '¿Qué actividades tengo vencidas?', AppColors.danger),
+    ChipSuggestion(Icons.skip_next, '¿Cuál es mi próxima tarea?', AppColors.accent),
+    ChipSuggestion(Icons.flight_land, '¿Qué tarea tengo más lejos en el tiempo?', AppColors.accent),
+    ChipSuggestion(Icons.person_search, '¿Qué pendientes tengo con García?', AppColors.primary),
+    ChipSuggestion(Icons.check_circle_outline, 'Ya llamé a García', AppColors.success),
+    ChipSuggestion(Icons.repeat, 'Llamada a Pérez cada martes durante 4 semanas', AppColors.warning),
+    ChipSuggestion(Icons.done_all, '¿Qué visité esta semana?', AppColors.accent),
+    ChipSuggestion(Icons.request_quote_outlined, 'Pasé a cobrarle a Martínez', AppColors.success),
+    ChipSuggestion(Icons.alarm, 'Recordatorio: mandar factura a López mañana', AppColors.warning),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final nombre = Session.current.vendedorNombre.split(' ').first;
-    final suggestions = [
-      ('💡 Recordame llamar a García mañana a las 10', Icons.phone_outlined),
-      ('📋 ¿Qué tengo pendiente hoy?', Icons.checklist),
-      ('📅 Agendá reunión con Pérez el jueves a las 15', Icons.event),
-      ('🚀 Propuesta comercial para Rodríguez la semana que viene', Icons.rocket_launch_outlined),
-    ];
 
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(height: 20),
-            _HeroIcon(),
-            const SizedBox(height: 24),
-            Text('Hola $nombre', style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 24, fontWeight: FontWeight.w600,
-            )),
-            const SizedBox(height: 6),
-            const Text(
-              'Soy Cronos, tu asistente de agenda.\nDecime qué tenés que hacer.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: () => CronosInfoSheet.show(context),
+            child: _HeroIcon(),
+          ),
+          const SizedBox(height: 20),
+          Text('Hola $nombre', style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 24, fontWeight: FontWeight.w600,
+          )),
+          const SizedBox(height: 6),
+          InkWell(
+            onTap: () => CronosInfoSheet.show(context),
+            borderRadius: BorderRadius.circular(6),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Soy Cronos, tu asistente de agenda',
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  ),
+                  SizedBox(width: 4),
+                  Icon(Icons.info_outline, color: AppColors.accent, size: 13),
+                ],
+              ),
             ),
-            const SizedBox(height: 32),
-            ...suggestions.asMap().entries.map((e) => _AnimatedChip(
-                  index: e.key,
-                  text: e.value.$1,
-                  icon: e.value.$2,
-                  onTap: () => onChip(e.value.$1.replaceFirst(RegExp(r'^[^\s]+\s'), '')),
-                )),
-            const SizedBox(height: 24),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.mic, color: AppColors.textMuted, size: 14),
-                SizedBox(width: 6),
-                Text('También podés hablar', style: TextStyle(
-                  color: AppColors.textMuted, fontSize: 11,
-                )),
-              ],
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Probá alguna de estas ideas, o decímelo a tu manera',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+          ),
+          const SizedBox(height: 20),
+          CyclingChips(
+            pool: _pool,
+            visibleCount: 4,
+            interval: const Duration(seconds: 4),
+            onTap: onChip,
+          ),
+          const SizedBox(height: 18),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.mic, color: AppColors.textMuted, size: 14),
+              SizedBox(width: 6),
+              Text('También podés hablar', style: TextStyle(
+                color: AppColors.textMuted, fontSize: 11,
+              )),
+            ],
+          ),
+          const SizedBox(height: 20),
+        ],
       ),
     );
   }
@@ -596,6 +647,7 @@ class _MessageBubble extends StatefulWidget {
   final Set<AssistantAction> confirmadas;
   final Map<AssistantAction, Cliente> elegidos;
   final Future<void> Function(AssistantAction) onConfirm;
+  final Future<void> Function(AssistantAction, String motivo, Position pos) onConfirmVisita;
   final void Function(AssistantAction, Cliente) onElegir;
 
   const _MessageBubble({
@@ -604,6 +656,7 @@ class _MessageBubble extends StatefulWidget {
     required this.confirmadas,
     required this.elegidos,
     required this.onConfirm,
+    required this.onConfirmVisita,
     required this.onElegir,
   });
 
@@ -633,6 +686,29 @@ class _MessageBubbleState extends State<_MessageBubble>
 
   @override
   void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  /// Dispatcher: elige qué tipo de card renderizar según el action.
+  Widget _dispatchCard(AssistantAction a) {
+    if (a.esVisitaAhora) {
+      return _VisitaAhoraCard(
+        action: a,
+        confirmada: widget.confirmadas.contains(a),
+        clienteElegido: widget.elegidos[a],
+        onConfirm: (motivo, pos) => widget.onConfirmVisita(a, motivo, pos),
+        onElegir: (c) => widget.onElegir(a, c),
+      );
+    }
+    if (a.esVisitaRegistrada) {
+      return _VisitaRegistradaCard(action: a);
+    }
+    return _ActionCard(
+      action: a,
+      confirmada: widget.confirmadas.contains(a),
+      clienteElegido: widget.elegidos[a],
+      onConfirm: () => widget.onConfirm(a),
+      onElegir: (c) => widget.onElegir(a, c),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -696,13 +772,7 @@ class _MessageBubbleState extends State<_MessageBubble>
                   const SizedBox(height: 10),
                   ...m.actions!.map((a) => Padding(
                     padding: const EdgeInsets.only(bottom: 6),
-                    child: _ActionCard(
-                      action: a,
-                      confirmada: widget.confirmadas.contains(a),
-                      clienteElegido: widget.elegidos[a],
-                      onConfirm: () => widget.onConfirm(a),
-                      onElegir: (c) => widget.onElegir(a, c),
-                    ),
+                    child: _dispatchCard(a),
                   )),
                 ],
               ],
@@ -758,23 +828,6 @@ class _ActionCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (action.esVisitaAhora)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.my_location, size: 14, color: AppColors.success),
-                        const SizedBox(width: 6),
-                        Text('VISITA CON GPS AHORA',
-                            style: TextStyle(
-                              color: AppColors.success,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1,
-                            )),
-                      ],
-                    ),
-                  ),
                 if (action.tieneCliente)
                   _row(Icons.person, 'Cliente',
                       '${action.clienteResuelto!.nombre} (${action.clienteResuelto!.codigo})')
@@ -786,10 +839,7 @@ class _ActionCard extends StatelessWidget {
                 else if (action.clienteMatch != null)
                   _row(Icons.person_search, 'Cliente',
                       '${action.clienteMatch} (no encontrado)'),
-                if (!action.esVisitaAhora)
-                  _row(Icons.category_outlined, 'Acción', action.accionLabel),
-                if (action.esVisitaAhora)
-                  _row(Icons.badge_outlined, 'Motivo', action.motivo ?? 'Visita comercial'),
+                _row(Icons.category_outlined, 'Acción', action.accionLabel),
                 if (action.cuando != null)
                   _row(Icons.schedule, 'Cuándo', action.cuandoFmt),
                 if (action.nota.isNotEmpty)
@@ -804,9 +854,7 @@ class _ActionCard extends StatelessWidget {
                       transitionBuilder: (w, a) =>
                           ScaleTransition(scale: a, child: w),
                       child: Icon(
-                        confirmada
-                            ? Icons.check_circle
-                            : (action.esVisitaAhora ? Icons.my_location : Icons.check),
+                        confirmada ? Icons.check_circle : Icons.check,
                         key: ValueKey(confirmada),
                         size: 16,
                       ),
@@ -815,12 +863,8 @@ class _ActionCard extends StatelessWidget {
                       duration: const Duration(milliseconds: 260),
                       child: Text(
                         confirmada
-                            ? (action.esPendiente ? 'Completada'
-                                : action.esVisitaAhora ? 'Visita registrada'
-                                : 'Agendada')
-                            : (action.esPendiente ? 'Completar'
-                                : action.esVisitaAhora ? 'Cargar con mi ubicación'
-                                : 'Confirmar'),
+                            ? (action.esPendiente ? 'Completada' : 'Agendada')
+                            : (action.esPendiente ? 'Completar' : 'Confirmar'),
                         key: ValueKey(confirmada),
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                       ),
@@ -1223,4 +1267,453 @@ class _ChatMessage {
     this.isError = false,
     this.isTranscribing = false,
   });
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  _VisitaAhoraCard — GPS en vivo + chips de motivo
+// ══════════════════════════════════════════════════════════════════
+class _VisitaAhoraCard extends StatefulWidget {
+  final AssistantAction action;
+  final bool confirmada;
+  final Cliente? clienteElegido;
+  final Future<void> Function(String motivo, Position pos) onConfirm;
+  final void Function(Cliente) onElegir;
+
+  const _VisitaAhoraCard({
+    required this.action,
+    required this.confirmada,
+    required this.clienteElegido,
+    required this.onConfirm,
+    required this.onElegir,
+  });
+
+  @override
+  State<_VisitaAhoraCard> createState() => _VisitaAhoraCardState();
+}
+
+class _VisitaAhoraCardState extends State<_VisitaAhoraCard> {
+  static const _motivos = ['Visita comercial', 'Cobranza', 'Presentación de producto', 'Reclamo'];
+
+  late String _motivo;
+  Position? _position;
+  String? _gpsError;
+  bool _obteniendo = true;
+  bool _confirmando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _motivo = widget.action.motivo ?? 'Visita comercial';
+    if (!_motivos.contains(_motivo)) _motivo = 'Visita comercial';
+    if (!widget.confirmada) _obtenerGps();
+  }
+
+  Future<void> _obtenerGps() async {
+    setState(() { _obteniendo = true; _gpsError = null; });
+    try {
+      final pos = await VisitasService.obtenerGps();
+      if (!mounted) return;
+      setState(() { _position = pos; _obteniendo = false; });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _gpsError = e.toString().replaceFirst('Exception: ', '');
+        _obteniendo = false;
+      });
+    }
+  }
+
+  Cliente? get _clienteFinal =>
+      widget.action.clienteResuelto ?? widget.clienteElegido;
+
+  Future<void> _onTapConfirm() async {
+    if (_confirmando || widget.confirmada) return;
+    if (_clienteFinal == null) return;
+    if (_position == null) {
+      await _obtenerGps();
+      if (_position == null) return;
+    }
+    setState(() => _confirmando = true);
+    await widget.onConfirm(_motivo, _position!);
+    if (mounted) setState(() => _confirmando = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final puedeConfirmar = _clienteFinal != null && _position != null && !widget.confirmada;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.96, end: 1),
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+      builder: (_, scale, child) => Transform.scale(scale: scale, child: child),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: widget.confirmada
+              ? AppColors.success.withOpacity(0.12)
+              : AppColors.bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: widget.confirmada
+                ? AppColors.success
+                : AppColors.success.withOpacity(0.35),
+            width: widget.confirmada ? 1.5 : 1,
+          ),
+        ),
+        child: Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(Icons.my_location,
+                          size: 13, color: AppColors.success),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text('VISITA CON GPS', style: TextStyle(
+                      color: AppColors.success,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    )),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Cliente
+                _sectionLabel('CLIENTE'),
+                const SizedBox(height: 4),
+                _clienteSection(),
+
+                const SizedBox(height: 12),
+
+                // Motivo — chips tocables
+                _sectionLabel('MOTIVO'),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6, runSpacing: 6,
+                  children: _motivos.map((m) {
+                    final sel = m == _motivo;
+                    return InkWell(
+                      onTap: widget.confirmada ? null : () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _motivo = m);
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: sel ? AppColors.success : AppColors.bgCard,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: sel ? AppColors.success : AppColors.border,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (sel) ...[
+                              const Icon(Icons.check, color: Colors.white, size: 11),
+                              const SizedBox(width: 4),
+                            ],
+                            Text(m, style: TextStyle(
+                              color: sel ? Colors.white : AppColors.textSecondary,
+                              fontSize: 11,
+                              fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
+                            )),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+                // Nota (si hay)
+                if (widget.action.nota.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _sectionLabel('NOTA'),
+                  const SizedBox(height: 4),
+                  Text(widget.action.nota, style: AppTextStyles.body),
+                ],
+
+                const SizedBox(height: 12),
+
+                // GPS status
+                _sectionLabel('UBICACIÓN'),
+                const SizedBox(height: 6),
+                _gpsSection(),
+
+                const SizedBox(height: 14),
+
+                // Botón
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: (puedeConfirmar && !_confirmando) ? _onTapConfirm : null,
+                    icon: _confirmando
+                        ? const SizedBox(width: 14, height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : Icon(widget.confirmada ? Icons.check_circle : Icons.my_location, size: 16),
+                    label: Text(
+                      widget.confirmada
+                          ? 'Visita registrada'
+                          : _obteniendo
+                              ? 'Esperando GPS...'
+                              : _clienteFinal == null
+                                  ? 'Elegí el cliente'
+                                  : 'Registrar visita',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: widget.confirmada
+                          ? AppColors.success
+                          : AppColors.textMuted.withOpacity(0.3),
+                      disabledForegroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            // Check animado arriba a la derecha
+            Positioned(
+              top: 0, right: 0,
+              child: AnimatedScale(
+                scale: widget.confirmada ? 1 : 0,
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.elasticOut,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppColors.success,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.success.withOpacity(0.6),
+                        blurRadius: 8, spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.check, color: Colors.white, size: 14),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String t) => Text(t, style: const TextStyle(
+    color: AppColors.textMuted,
+    fontSize: 9,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 1.2,
+  ));
+
+  Widget _clienteSection() {
+    final c = _clienteFinal;
+    if (c != null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(children: [
+          const Icon(Icons.person, size: 13, color: AppColors.accent),
+          const SizedBox(width: 6),
+          Expanded(child: Text(c.nombre,
+              style: AppTextStyles.body,
+              maxLines: 1, overflow: TextOverflow.ellipsis)),
+          Text('(${c.codigo})', style: AppTextStyles.muted),
+        ]),
+      );
+    }
+
+    final cands = widget.action.candidatos;
+    if (cands != null && cands.isNotEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Hay ${cands.length} posibles:', style: const TextStyle(
+              color: AppColors.warning, fontSize: 10)),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 6, runSpacing: 6,
+            children: cands.map((c) => InkWell(
+              onTap: widget.confirmada ? null : () => widget.onElegir(c),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.accent.withOpacity(0.4)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.person, size: 11, color: AppColors.accent),
+                  const SizedBox(width: 4),
+                  Text(c.nombre,
+                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 11)),
+                  const SizedBox(width: 3),
+                  Text('(${c.codigo})',
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                ]),
+              ),
+            )).toList(),
+          ),
+        ],
+      );
+    }
+
+    return Text(widget.action.clienteMatch ?? 'Sin cliente',
+        style: const TextStyle(color: AppColors.danger, fontSize: 12));
+  }
+
+  Widget _gpsSection() {
+    if (widget.confirmada) {
+      return Row(children: [
+        const Icon(Icons.check_circle, color: AppColors.success, size: 14),
+        const SizedBox(width: 6),
+        if (_position != null)
+          Text('${_position!.latitude.toStringAsFixed(5)}, ${_position!.longitude.toStringAsFixed(5)}',
+              style: AppTextStyles.caption)
+        else
+          const Text('Registrada', style: AppTextStyles.caption),
+      ]);
+    }
+
+    if (_obteniendo) {
+      return Row(children: const [
+        SizedBox(width: 14, height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent)),
+        SizedBox(width: 8),
+        Text('Obteniendo GPS...', style: AppTextStyles.caption),
+      ]);
+    }
+
+    if (_gpsError != null) {
+      return Row(children: [
+        const Icon(Icons.error_outline, color: AppColors.danger, size: 14),
+        const SizedBox(width: 6),
+        Expanded(child: Text(_gpsError!,
+            style: const TextStyle(color: AppColors.danger, fontSize: 11))),
+        TextButton(
+          onPressed: _obtenerGps,
+          child: const Text('Reintentar', style: TextStyle(fontSize: 11)),
+        ),
+      ]);
+    }
+
+    if (_position != null) {
+      final prec = _position!.accuracy.toStringAsFixed(0);
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.success.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.success.withOpacity(0.3)),
+        ),
+        child: Row(children: [
+          const Icon(Icons.location_on, color: AppColors.success, size: 14),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${_position!.latitude.toStringAsFixed(5)}, ${_position!.longitude.toStringAsFixed(5)}',
+                    style: AppTextStyles.caption),
+                Text('Precisión: ${prec}m',
+                    style: AppTextStyles.muted),
+              ],
+            ),
+          ),
+        ]),
+      );
+    }
+
+    return const Text('Sin datos', style: AppTextStyles.muted);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  _VisitaRegistradaCard — display read-only de visita ya hecha
+// ══════════════════════════════════════════════════════════════════
+class _VisitaRegistradaCard extends StatelessWidget {
+  final AssistantAction action;
+  const _VisitaRegistradaCard({required this.action});
+
+  @override
+  Widget build(BuildContext context) {
+    final cuandoDt = action.cuando != null ? DateTime.tryParse(action.cuando!) : null;
+    String fechaStr = '';
+    if (cuandoDt != null) {
+      final d = cuandoDt;
+      fechaStr = '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')} '
+          '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+    }
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.bg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.accent.withOpacity(0.2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.location_on, color: AppColors.success, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(action.clienteResuelto?.nombre ?? action.clienteMatch ?? '',
+                    style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
+                if (action.motivo != null && action.motivo!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(action.motivo!, style: const TextStyle(
+                        color: AppColors.success, fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                      )),
+                    ),
+                  ),
+                if (action.nota.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(action.nota, style: AppTextStyles.muted,
+                      maxLines: 2, overflow: TextOverflow.ellipsis),
+                ],
+              ],
+            ),
+          ),
+          if (fechaStr.isNotEmpty)
+            Text(fechaStr, style: AppTextStyles.muted),
+        ],
+      ),
+    );
+  }
 }
