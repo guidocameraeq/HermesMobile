@@ -25,10 +25,22 @@ class _CheckinState extends State<VisitaCheckinScreen> {
   // Submit
   bool _submitting = false;
 
+  // Agendada detectada
+  Map<String, dynamic>? _agendada;
+  bool _cerrarAgendada = false;
+
   @override
   void initState() {
     super.initState();
     _obtenerGps();
+    _buscarAgendada();
+  }
+
+  Future<void> _buscarAgendada() async {
+    try {
+      final m = await VisitasService.buscarVisitaAgendadaHoy(widget.cliente.codigo);
+      if (mounted) setState(() => _agendada = m);
+    } catch (_) {}
   }
 
   Future<void> _obtenerGps() async {
@@ -59,7 +71,10 @@ class _CheckinState extends State<VisitaCheckinScreen> {
     setState(() => _submitting = true);
 
     try {
-      final vinculadaId = await VisitasService.registrar(
+      final idCerrar = (_cerrarAgendada && _agendada != null)
+          ? int.tryParse(_agendada!['id'].toString())
+          : null;
+      await VisitasService.registrar(
         clienteCodigo: widget.cliente.codigo,
         clienteNombre: widget.cliente.nombre,
         latitud: _position!.latitude,
@@ -67,14 +82,15 @@ class _CheckinState extends State<VisitaCheckinScreen> {
         motivo: _motivo,
         notas: _notasCtrl.text.trim().isNotEmpty ? _notasCtrl.text.trim() : null,
         precisionM: _position!.accuracy,
+        cerrarActividadId: idCerrar,
       );
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(vinculadaId != null
-              ? 'Visita registrada + actividad agendada marcada como completada'
+          content: Text(idCerrar != null
+              ? 'Visita registrada y actividad agendada cerrada.'
               : 'Visita registrada correctamente'),
           backgroundColor: AppColors.success,
           duration: const Duration(seconds: 3),
@@ -99,6 +115,95 @@ class _CheckinState extends State<VisitaCheckinScreen> {
   void dispose() {
     _notasCtrl.dispose();
     super.dispose();
+  }
+
+  Widget _buildAgendadaPrompt() {
+    final m = _agendada!;
+    final iso = m['fecha_programada']?.toString();
+    final d = iso != null ? DateTime.tryParse(iso) : null;
+    final hora = d != null
+        ? '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}'
+        : '--:--';
+    final desc = m['descripcion']?.toString() ?? '';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.accent.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.accent.withOpacity(0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: const [
+            Icon(Icons.schedule, size: 14, color: AppColors.accent),
+            SizedBox(width: 6),
+            Expanded(
+              child: Text('Tenés una visita agendada para hoy',
+                  style: TextStyle(color: AppColors.accent, fontSize: 11,
+                      fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+            ),
+          ]),
+          const SizedBox(height: 6),
+          Text('📅 Hoy a las $hora${desc.isNotEmpty ? "  ·  \"$desc\"" : ""}',
+              style: AppTextStyles.body),
+          const SizedBox(height: 8),
+          const Text('¿Querés cerrarla con esta visita?',
+              style: AppTextStyles.muted),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(
+              child: InkWell(
+                onTap: () => setState(() => _cerrarAgendada = false),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: !_cerrarAgendada ? AppColors.textMuted.withOpacity(0.25) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: !_cerrarAgendada ? AppColors.textMuted : AppColors.border),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text('No, dejarla pendiente', style: TextStyle(
+                    color: !_cerrarAgendada ? AppColors.textPrimary : AppColors.textMuted,
+                    fontSize: 11,
+                    fontWeight: !_cerrarAgendada ? FontWeight.w600 : FontWeight.normal,
+                  )),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: InkWell(
+                onTap: () => setState(() => _cerrarAgendada = true),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _cerrarAgendada ? AppColors.success : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: _cerrarAgendada ? AppColors.success : AppColors.border),
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    if (_cerrarAgendada) ...[
+                      const Icon(Icons.check, color: Colors.white, size: 12),
+                      const SizedBox(width: 4),
+                    ],
+                    Text('Sí, cerrarla', style: TextStyle(
+                      color: _cerrarAgendada ? Colors.white : AppColors.textMuted,
+                      fontSize: 11,
+                      fontWeight: _cerrarAgendada ? FontWeight.w600 : FontWeight.normal,
+                    )),
+                  ]),
+                ),
+              ),
+            ),
+          ]),
+        ],
+      ),
+    );
   }
 
   @override
@@ -140,6 +245,12 @@ class _CheckinState extends State<VisitaCheckinScreen> {
               ],
             ),
           ),
+
+          // ── Agendada detectada (si existe) ─────────────────
+          if (_agendada != null) ...[
+            const SizedBox(height: 14),
+            _buildAgendadaPrompt(),
+          ],
 
           const SizedBox(height: 20),
 

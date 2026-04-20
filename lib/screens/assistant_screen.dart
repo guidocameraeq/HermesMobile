@@ -140,15 +140,15 @@ class _AssistantState extends State<AssistantScreen>
   Cliente? _clienteFinal(AssistantAction action) =>
       action.clienteResuelto ?? _elegidos[action];
 
-  /// Callback desde _VisitaAhoraCard con motivo y GPS ya obtenidos.
-  Future<void> _confirmVisitaAhora(
-      AssistantAction action, String motivo, Position pos) async {
+  /// Callback desde _VisitaAhoraCard con motivo, GPS y decisión de cerrar.
+  Future<void> _confirmVisitaAhora(AssistantAction action, String motivo,
+      Position pos, int? cerrarActividadId) async {
     if (_confirmadas.contains(action)) return;
     final cliente = _clienteFinal(action);
     if (cliente == null) return;
     HapticFeedback.mediumImpact();
     try {
-      final vinculadaId = await VisitasService.registrar(
+      await VisitasService.registrar(
         clienteCodigo: cliente.codigo,
         clienteNombre: cliente.nombre,
         latitud: pos.latitude,
@@ -156,20 +156,16 @@ class _AssistantState extends State<AssistantScreen>
         motivo: motivo,
         notas: action.nota.isNotEmpty ? action.nota : null,
         precisionM: pos.accuracy,
+        cerrarActividadId: cerrarActividadId,
       );
       if (!mounted) return;
       setState(() => _confirmadas.add(action));
 
-      // Si vinculamos con una actividad agendada, informar al vendedor
-      if (vinculadaId != null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Row(children: [
-            Icon(Icons.link, color: Colors.white, size: 16),
-            SizedBox(width: 8),
-            Expanded(child: Text('Visita vinculada a tu actividad agendada y marcada como completada.')),
-          ]),
+      if (cerrarActividadId != null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Visita registrada y actividad agendada cerrada.'),
           backgroundColor: AppColors.success,
-          duration: const Duration(seconds: 4),
+          duration: Duration(seconds: 3),
         ));
       }
     } catch (e) {
@@ -661,7 +657,7 @@ class _MessageBubble extends StatefulWidget {
   final Set<AssistantAction> confirmadas;
   final Map<AssistantAction, Cliente> elegidos;
   final Future<void> Function(AssistantAction) onConfirm;
-  final Future<void> Function(AssistantAction, String motivo, Position pos) onConfirmVisita;
+  final Future<void> Function(AssistantAction, String motivo, Position pos, int? cerrarActividadId) onConfirmVisita;
   final void Function(AssistantAction, Cliente) onElegir;
 
   const _MessageBubble({
@@ -708,7 +704,8 @@ class _MessageBubbleState extends State<_MessageBubble>
         action: a,
         confirmada: widget.confirmadas.contains(a),
         clienteElegido: widget.elegidos[a],
-        onConfirm: (motivo, pos) => widget.onConfirmVisita(a, motivo, pos),
+        onConfirm: (motivo, pos, idCerrar) =>
+            widget.onConfirmVisita(a, motivo, pos, idCerrar),
         onElegir: (c) => widget.onElegir(a, c),
       );
     }
@@ -1290,7 +1287,7 @@ class _VisitaAhoraCard extends StatefulWidget {
   final AssistantAction action;
   final bool confirmada;
   final Cliente? clienteElegido;
-  final Future<void> Function(String motivo, Position pos) onConfirm;
+  final Future<void> Function(String motivo, Position pos, int? cerrarActividadId) onConfirm;
   final void Function(Cliente) onElegir;
 
   const _VisitaAhoraCard({
@@ -1314,12 +1311,47 @@ class _VisitaAhoraCardState extends State<_VisitaAhoraCard> {
   bool _obteniendo = true;
   bool _confirmando = false;
 
+  // Match con actividad agendada
+  Map<String, dynamic>? _agendada;
+  bool _buscandoAgendada = false;
+  bool _cerrarAgendada = false; // default OFF — el vendedor decide explícito
+
   @override
   void initState() {
     super.initState();
     _motivo = widget.action.motivo ?? 'Visita comercial';
     if (!_motivos.contains(_motivo)) _motivo = 'Visita comercial';
-    if (!widget.confirmada) _obtenerGps();
+    if (!widget.confirmada) {
+      _obtenerGps();
+      _buscarAgendada();
+    }
+  }
+
+  Future<void> _buscarAgendada() async {
+    final cli = widget.clienteElegido ?? widget.action.clienteResuelto;
+    if (cli == null) return;
+    setState(() => _buscandoAgendada = true);
+    try {
+      final match = await VisitasService.buscarVisitaAgendadaHoy(cli.codigo);
+      if (!mounted) return;
+      setState(() {
+        _agendada = match;
+        _buscandoAgendada = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _buscandoAgendada = false);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _VisitaAhoraCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Si recién se resolvió el cliente (vía chip), buscamos agendada
+    final prevCli = oldWidget.clienteElegido ?? oldWidget.action.clienteResuelto;
+    final nowCli = widget.clienteElegido ?? widget.action.clienteResuelto;
+    if (prevCli?.codigo != nowCli?.codigo && nowCli != null && _agendada == null) {
+      _buscarAgendada();
+    }
   }
 
   Future<void> _obtenerGps() async {
@@ -1347,8 +1379,11 @@ class _VisitaAhoraCardState extends State<_VisitaAhoraCard> {
       await _obtenerGps();
       if (_position == null) return;
     }
+    final idCerrar = (_cerrarAgendada && _agendada != null)
+        ? int.tryParse(_agendada!['id'].toString())
+        : null;
     setState(() => _confirmando = true);
-    await widget.onConfirm(_motivo, _position!);
+    await widget.onConfirm(_motivo, _position!, idCerrar);
     if (mounted) setState(() => _confirmando = false);
   }
 
@@ -1461,6 +1496,12 @@ class _VisitaAhoraCardState extends State<_VisitaAhoraCard> {
                   Text(widget.action.nota, style: AppTextStyles.body),
                 ],
 
+                // Actividad agendada detectada — pregunta explícita
+                if (_agendada != null) ...[
+                  const SizedBox(height: 14),
+                  _agendadaPrompt(),
+                ],
+
                 const SizedBox(height: 12),
 
                 // GPS status
@@ -1531,6 +1572,106 @@ class _VisitaAhoraCardState extends State<_VisitaAhoraCard> {
         ),
       ),
     );
+  }
+
+  Widget _agendadaPrompt() {
+    final m = _agendada!;
+    final fechaStr = _fmtHora(m['fecha_programada']?.toString());
+    final desc = m['descripcion']?.toString() ?? '';
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.accent.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.accent.withOpacity(0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.schedule, size: 14, color: AppColors.accent),
+            const SizedBox(width: 6),
+            const Expanded(
+              child: Text('Tenés una visita agendada para hoy',
+                  style: TextStyle(color: AppColors.accent, fontSize: 11,
+                      fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+            ),
+          ]),
+          const SizedBox(height: 6),
+          Text('📅 Hoy a las $fechaStr${desc.isNotEmpty ? "  ·  \"$desc\"" : ""}',
+              style: AppTextStyles.body),
+          const SizedBox(height: 8),
+          const Text('¿Querés cerrarla con esta visita?',
+              style: AppTextStyles.muted),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(
+              child: InkWell(
+                onTap: () => setState(() => _cerrarAgendada = false),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: !_cerrarAgendada ? AppColors.textMuted.withOpacity(0.25) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: !_cerrarAgendada ? AppColors.textMuted : AppColors.border,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text('No, dejarla pendiente',
+                      style: TextStyle(
+                        color: !_cerrarAgendada ? AppColors.textPrimary : AppColors.textMuted,
+                        fontSize: 11,
+                        fontWeight: !_cerrarAgendada ? FontWeight.w600 : FontWeight.normal,
+                      )),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: InkWell(
+                onTap: () => setState(() => _cerrarAgendada = true),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _cerrarAgendada ? AppColors.success : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _cerrarAgendada ? AppColors.success : AppColors.border,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_cerrarAgendada) ...[
+                        const Icon(Icons.check, color: Colors.white, size: 12),
+                        const SizedBox(width: 4),
+                      ],
+                      Text('Sí, cerrarla',
+                          style: TextStyle(
+                            color: _cerrarAgendada ? Colors.white : AppColors.textMuted,
+                            fontSize: 11,
+                            fontWeight: _cerrarAgendada ? FontWeight.w600 : FontWeight.normal,
+                          )),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  String _fmtHora(String? iso) {
+    if (iso == null) return '--:--';
+    final d = DateTime.tryParse(iso);
+    if (d == null) return '--:--';
+    return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
   }
 
   Widget _sectionLabel(String t) => Text(t, style: const TextStyle(

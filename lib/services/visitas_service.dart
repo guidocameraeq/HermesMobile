@@ -44,10 +44,10 @@ class VisitasService {
   }
 
   /// Registra una visita en Supabase.
-  /// Si hay una actividad tipo "visita" agendada para este cliente en ±24hs
-  /// (no completada), la auto-vincula + la marca como completada.
-  /// Retorna el id de la actividad vinculada (o null).
-  static Future<int?> registrar({
+  /// Si [cerrarActividadId] está presente, además marca esa actividad como
+  /// completada y la vincula a la visita. El vendedor tiene que PEDIR esto
+  /// explícitamente (ver [buscarVisitaAgendadaHoy]); nunca es automático.
+  static Future<void> registrar({
     required String clienteCodigo,
     required String clienteNombre,
     required double latitud,
@@ -55,11 +55,8 @@ class VisitasService {
     required String motivo,
     String? notas,
     double? precisionM,
+    int? cerrarActividadId,
   }) async {
-    // 1. Buscar actividad "visita" programada próxima a linkear
-    final vinculadaId = await _findActividadVisitaMatching(clienteCodigo);
-
-    // 2. Insertar visita (con precision + link si corresponde)
     await PgService.execute(
       '''INSERT INTO visitas
          (vendedor_nombre, cliente_codigo, cliente_nombre, latitud, longitud,
@@ -75,47 +72,47 @@ class VisitasService {
         'motivo': motivo,
         'notas': notas,
         'prec': precisionM,
-        'vid': vinculadaId,
+        'vid': cerrarActividadId,
       },
     );
 
-    // 3. Si vinculamos, marcar actividad como completada
-    if (vinculadaId != null) {
+    // Si el vendedor pidió cerrar la actividad asociada → marcarla completada
+    if (cerrarActividadId != null) {
       await PgService.execute(
         'UPDATE actividades_cliente '
         'SET completada = TRUE, completada_at = NOW(), resultado = @res '
         'WHERE id = @id AND vendedor_nombre = @vendedor',
         {
-          'id': vinculadaId,
+          'id': cerrarActividadId,
           'vendedor': Session.current.vendedorNombre,
           'res': 'Cumplida por visita GPS',
         },
       );
     }
-    return vinculadaId;
   }
 
-  /// Busca una actividad tipo "visita" del mismo cliente+vendedor,
-  /// no completada, con fecha_programada en ±24hs. Si hay varias, toma la más cercana a ahora.
-  static Future<int?> _findActividadVisitaMatching(String clienteCodigo) async {
+  /// Busca una actividad tipo "visita" agendada para HOY del mismo cliente,
+  /// no completada. Ventana amplia (todo el día) para mostrarla al vendedor
+  /// como candidata — él decide si quiere cerrarla o no.
+  /// Retorna null si no hay, o un Map con {id, fecha_programada, descripcion}.
+  static Future<Map<String, dynamic>?> buscarVisitaAgendadaHoy(
+      String clienteCodigo) async {
     final rows = await PgService.query(
-      '''SELECT id, fecha_programada FROM actividades_cliente
+      '''SELECT id, fecha_programada, descripcion FROM actividades_cliente
          WHERE vendedor_nombre = @vendedor
            AND cliente_codigo = @cliente
            AND tipo = 'visita'
            AND completada = FALSE
            AND fecha_programada IS NOT NULL
-           AND fecha_programada BETWEEN NOW() - INTERVAL '24 hours'
-                                    AND NOW() + INTERVAL '24 hours'
-         ORDER BY ABS(EXTRACT(EPOCH FROM (fecha_programada - NOW())))
+           AND fecha_programada::date = CURRENT_DATE
+         ORDER BY fecha_programada ASC
          LIMIT 1''',
       {
         'vendedor': Session.current.vendedorNombre,
         'cliente': clienteCodigo,
       },
     );
-    if (rows.isEmpty) return null;
-    return int.tryParse(rows.first['id']?.toString() ?? '');
+    return rows.firstOrNull;
   }
 
   /// Visitas del vendedor de hoy.
