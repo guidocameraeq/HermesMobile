@@ -3,6 +3,7 @@ import '../config/theme.dart';
 import '../models/cliente.dart';
 import '../models/session.dart';
 import '../services/clientes_service.dart';
+import '../services/clientes_cache.dart';
 import 'cliente_detail_screen.dart';
 import '../widgets/app_drawer.dart';
 
@@ -22,6 +23,11 @@ class _ClientesTabState extends State<ClientesTab>
   String _filtroSit = 'Todos';
   String _ordenar = 'nombre'; // nombre | ultimaCompra | saldo
 
+  bool _fromCache = false;
+  DateTime? _cacheTs;
+  List<String> _removidos = [];
+  bool _dismissedRemovidos = false;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -34,14 +40,23 @@ class _ClientesTabState extends State<ClientesTab>
   Future<void> _load() async {
     setState(() { _loading = true; _errorMsg = ''; });
     try {
-      final clientes = await ClientesService.getClientes(
+      final result = await ClientesService.getClientesWithMeta(
         Session.current.vendedorNombre,
       );
       if (!mounted) return;
-      setState(() { _todos = clientes; _loading = false; });
+      setState(() {
+        _todos = result.clientes;
+        _fromCache = result.fromCache;
+        _cacheTs = result.cacheTimestamp;
+        if (result.clientesRemovidos.isNotEmpty) {
+          _removidos = result.clientesRemovidos;
+          _dismissedRemovidos = false;
+        }
+        _loading = false;
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _loading = false; _errorMsg = 'Error: $e'; });
+      setState(() { _loading = false; _errorMsg = e.toString().replaceFirst('Exception: ', ''); });
     }
   }
 
@@ -127,6 +142,12 @@ class _ClientesTabState extends State<ClientesTab>
               ? Center(child: Text(_errorMsg, style: AppTextStyles.caption))
               : Column(
                   children: [
+                    // Chip de estado del cache (si es del cache o tiene >24h)
+                    if (_fromCache || ClientesCache.isStale(_cacheTs))
+                      _cacheStatusChip(),
+                    // Alerta si hay clientes removidos
+                    if (_removidos.isNotEmpty && !_dismissedRemovidos)
+                      _removidosBanner(),
                     // Búsqueda
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
@@ -188,6 +209,77 @@ class _ClientesTabState extends State<ClientesTab>
                     ),
                   ],
                 ),
+    );
+  }
+
+  Widget _cacheStatusChip() {
+    final stale = ClientesCache.isStale(_cacheTs);
+    final color = stale ? AppColors.warning : AppColors.textMuted;
+    final age = ClientesCache.ageLabel(_cacheTs);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      color: stale ? AppColors.warning.withOpacity(0.1) : AppColors.bg,
+      child: Row(
+        children: [
+          Icon(_fromCache ? Icons.offline_bolt : Icons.cloud_done_outlined,
+              size: 13, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              _fromCache
+                  ? 'Lista desde cache · $age'
+                  : 'Actualizado $age',
+              style: TextStyle(color: color, fontSize: 11),
+            ),
+          ),
+          if (stale)
+            const Text('Desliza para refrescar',
+                style: TextStyle(color: AppColors.warning, fontSize: 10,
+                    fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  Widget _removidosBanner() {
+    final n = _removidos.length;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.danger.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.danger.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber, size: 16, color: AppColors.danger),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('$n cliente${n == 1 ? "" : "s"} removido${n == 1 ? "" : "s"} de tu cartera',
+                    style: const TextStyle(color: AppColors.danger, fontSize: 11,
+                        fontWeight: FontWeight.w600)),
+                Text(
+                  _removidos.take(3).join(', ') + (_removidos.length > 3 ? '...' : ''),
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+                  maxLines: 2, overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 16, color: AppColors.textMuted),
+            onPressed: () => setState(() => _dismissedRemovidos = true),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
+      ),
     );
   }
 

@@ -9,6 +9,7 @@ import '../widgets/month_selector.dart';
 import '../widgets/skeleton_card.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/mes_picker_sheet.dart';
+import '../widgets/no_vpn_banner.dart';
 import 'drilldowns/facturacion_drilldown.dart';
 import 'drilldowns/tasa_conversion_drilldown.dart';
 import 'drilldowns/foco_drilldown.dart';
@@ -183,6 +184,9 @@ class _ScorecardTabState extends State<ScorecardTab>
       ),
       body: Column(
         children: [
+          const NoVpnBanner(
+            mensaje: 'Los datos de objetivos no van a cargar. Cronos y Mi Agenda siguen funcionando.',
+          ),
           if (_esMesNoActual()) _bannerMesViendo(),
           Expanded(child: _buildBody()),
         ],
@@ -258,8 +262,10 @@ class _ScorecardTabState extends State<ScorecardTab>
 
   Widget _buildBody() {
     if (_loading) {
+      // Primer load: hero + skeletons con shimmer
       return ListView(
         children: const [
+          ScorecardHeroLoader(),
           SkeletonCard(),
           SkeletonCard(),
           SkeletonCard(),

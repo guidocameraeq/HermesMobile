@@ -1,11 +1,81 @@
 import '../models/cliente.dart';
 import 'sql_service.dart';
+import 'clientes_cache.dart';
+import 'connectivity_service.dart';
 
-/// Queries de clientes — todo vía SQL Server (VPN).
+/// Resultado enriquecido de una carga de clientes.
+class ClientesResult {
+  final List<Cliente> clientes;
+  final bool fromCache;
+  final DateTime? cacheTimestamp;
+  final List<String> clientesRemovidos;
+
+  ClientesResult({
+    required this.clientes,
+    required this.fromCache,
+    required this.cacheTimestamp,
+    required this.clientesRemovidos,
+  });
+}
+
+/// Queries de clientes — SQL Server con cache local como fallback.
 class ClientesService {
-  /// Lista de clientes del vendedor con última compra y saldo CxC.
+  /// Resultado enriquecido de getClientes — incluye metadata de cache.
+  /// Hoy [getClientes] devuelve solo la lista (compat). [getClientesWithMeta]
+  /// devuelve toda la info para la UI.
+  static Future<ClientesResult> getClientesWithMeta(
+      String vendedor, {bool forceRefresh = false}) async {
+    // Intento live (SQL Server vía VPN)
+    if (!forceRefresh || true) {
+      try {
+        final live = await _fetchFromSql(vendedor);
+        // Detectar clientes removidos comparando con cache previo
+        final prev = await ClientesCache.load(vendedor);
+        final removidos = <String>{};
+        if (prev != null) {
+          final codsVivos = live.map((c) => c.codigo).toSet();
+          for (final c in prev) {
+            if (!codsVivos.contains(c.codigo)) removidos.add(c.nombre);
+          }
+        }
+        await ClientesCache.save(vendedor, live);
+        ConnectivityService.markOk();
+        return ClientesResult(
+          clientes: live,
+          fromCache: false,
+          cacheTimestamp: DateTime.now(),
+          clientesRemovidos: removidos.toList(),
+        );
+      } catch (_) {
+        ConnectivityService.markFailed();
+      }
+    }
+
+    // Fallback: cache
+    final cached = await ClientesCache.load(vendedor);
+    if (cached != null) {
+      final ts = await ClientesCache.lastUpdate(vendedor);
+      return ClientesResult(
+        clientes: cached,
+        fromCache: true,
+        cacheTimestamp: ts,
+        clientesRemovidos: const [],
+      );
+    }
+
+    // Sin cache y sin VPN
+    throw Exception(
+        'Sin conexión VPN y sin lista local guardada. Conectate a la VPN al menos una vez para descargar tu cartera.');
+  }
+
+  /// Compat: lista simple (usa cache como fallback silenciosamente).
   static Future<List<Cliente>> getClientes(String vendedor) async {
-    // 2 queries independientes → ejecutar en paralelo
+    final r = await getClientesWithMeta(vendedor);
+    return r.clientes;
+  }
+
+  /// Query real al SQL Server.
+  static Future<List<Cliente>> _fetchFromSql(String vendedor) async {
     final results = await Future.wait([
       SqlService.query(
         '''SELECT c.ClienteCodigo, c.ClienteNombre, c.ClienteCategoria,
@@ -64,6 +134,20 @@ class ClientesService {
         maxAtraso: saldoData?.$2 ?? 0,
       );
     }).toList();
+  }
+
+  /// Resuelve el nombre actual de un cliente desde cache local (si existe).
+  /// Sirve para mostrar el nombre más reciente aunque una actividad vieja
+  /// tenga el nombre anterior guardado.
+  static Future<String?> nombreActualDesdeCache(
+      String vendedor, String codigo) async {
+    final cached = await ClientesCache.load(vendedor);
+    if (cached == null) return null;
+    try {
+      return cached.firstWhere((c) => c.codigo == codigo).nombre;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Evolución mensual de un cliente (últimos 6 meses).

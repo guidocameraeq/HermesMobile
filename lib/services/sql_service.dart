@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:sql_conn/sql_conn.dart';
 import '../config/constants.dart';
 import 'error_logger.dart';
+import 'connectivity_service.dart';
 
 /// Conexión a SQL Server via jTDS (JDBC) — requiere VPN activa.
 class SqlService {
@@ -85,16 +86,22 @@ class SqlService {
   ]) async {
     if (!_connected) {
       final ok = await connect();
-      if (!ok) return [];
+      if (!ok) {
+        ConnectivityService.markFailed();
+        throw Exception('SQL Server no alcanzable (VPN desconectada)');
+      }
     }
     try {
       final rows = await SqlConn.read(_connId, sql, params: params);
+      ConnectivityService.markOk();
       return rows.map((r) => Map<String, dynamic>.from(r)).toList();
     } on SqlConnException catch (e) {
       lastError = 'Query error: ${e.message}';
+      ConnectivityService.markFailed();
       return [];
     } catch (e) {
       lastError = 'Query error: $e';
+      ConnectivityService.markFailed();
       return [];
     }
   }

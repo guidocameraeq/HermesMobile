@@ -46,4 +46,30 @@ class Cliente {
     }
     return buf.toString();
   }
+
+  Map<String, dynamic> toJson() => {
+    'codigo': codigo,
+    'nombre': nombre,
+    'categoria': categoria,
+    'situacion': situacion,
+    'localidad': localidad,
+    'provincia': provincia,
+    'ultimaCompra': ultimaCompra?.toIso8601String(),
+    'ultimoMonto': ultimoMonto,
+    'saldo': saldo,
+    'maxAtraso': maxAtraso,
+  };
+
+  factory Cliente.fromJson(Map<String, dynamic> j) => Cliente(
+    codigo: j['codigo']?.toString() ?? '',
+    nombre: j['nombre']?.toString() ?? '',
+    categoria: j['categoria']?.toString() ?? '',
+    situacion: j['situacion']?.toString() ?? '',
+    localidad: j['localidad']?.toString() ?? '',
+    provincia: j['provincia']?.toString() ?? '',
+    ultimaCompra: j['ultimaCompra'] != null ? DateTime.tryParse(j['ultimaCompra'].toString()) : null,
+    ultimoMonto: (j['ultimoMonto'] as num?)?.toDouble() ?? 0,
+    saldo: (j['saldo'] as num?)?.toDouble() ?? 0,
+    maxAtraso: (j['maxAtraso'] as num?)?.toInt() ?? 0,
+  );
 }

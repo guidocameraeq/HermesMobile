@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../config/theme.dart';
+import '../models/session.dart';
 import '../services/actividades_service.dart';
 import '../services/notification_service.dart';
 import '../services/cliente_router.dart';
 import '../services/calendar_service.dart';
+import '../services/clientes_service.dart';
 
 class ActividadDetailScreen extends StatefulWidget {
   final int actividadId;
@@ -17,6 +19,7 @@ class _State extends State<ActividadDetailScreen> {
   Map<String, dynamic>? _data;
   bool _loading = true;
   bool _saving = false;
+  String? _nombreActualCartera;
 
   DateTime? _fecha;
   TimeOfDay? _hora;
@@ -43,6 +46,13 @@ class _State extends State<ActividadDetailScreen> {
       return;
     }
 
+    // Resolver nombre más reciente desde cache de cartera
+    final codigo = d['cliente_codigo']?.toString();
+    if (codigo != null && codigo.isNotEmpty) {
+      _nombreActualCartera = await ClientesService.nombreActualDesdeCache(
+          Session.current.vendedorNombre, codigo);
+    }
+
     // Parsear fecha programada
     final fecha = d['fecha_programada'];
     if (fecha != null) {
@@ -62,7 +72,13 @@ class _State extends State<ActividadDetailScreen> {
 
   bool get _esCompletada => _data?['completada'] == true;
   String get _tipo => _data?['tipo']?.toString() ?? '';
-  String get _cliente => _data?['cliente_nombre']?.toString() ?? '';
+  String get _clienteStored => _data?['cliente_nombre']?.toString() ?? '';
+  // Preferimos el nombre actual de cartera si lo tenemos; si no, el guardado
+  String get _cliente => _nombreActualCartera ?? _clienteStored;
+  bool get _nombreCambiado =>
+      _nombreActualCartera != null &&
+      _clienteStored.isNotEmpty &&
+      _nombreActualCartera != _clienteStored;
   String get _clienteCodigo => _data?['cliente_codigo']?.toString() ?? '';
   String? get _googleEventId {
     final v = _data?['google_event_id']?.toString();
