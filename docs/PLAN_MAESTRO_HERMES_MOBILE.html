@@ -81,7 +81,7 @@
 
 <h1>HERMES MOBILE — Plan Maestro de Desarrollo</h1>
 <p style="font-size:14px;color:#64748b;margin-bottom:5px;">App Android para Equipo Comercial — CRM Bidireccional con Asistente IA</p>
-<p style="font-size:11px;color:#94a3b8;">Documento actualizado: <strong>Abril 2026</strong> · Versión actual: <span class="version-tag">v3.4.0</span> · Repo: github.com/guidocameraeq/HermesMobile</p>
+<p style="font-size:11px;color:#94a3b8;">Documento actualizado: <strong>Abril 2026</strong> · Versión actual: <span class="version-tag">v3.5.1</span> · Repo: github.com/guidocameraeq/HermesMobile</p>
 
 <!-- Panel de progreso -->
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin:20px 0;justify-content:center;">
@@ -98,11 +98,11 @@
     <span class="stat-label">Bloques pendientes</span>
   </div>
   <div class="stat-box">
-    <span class="stat-num">34</span>
+    <span class="stat-num">35</span>
     <span class="stat-label">Releases totales</span>
   </div>
   <div class="stat-box">
-    <span class="stat-num">v3.4</span>
+    <span class="stat-num">v3.5</span>
     <span class="stat-label">Versión actual</span>
   </div>
 </div>
@@ -114,7 +114,7 @@
 <h3 style="margin-bottom:10px;">Tabla de Contenidos</h3>
 <ol>
   <li><a href="#vision">Visión General y Arquitectura</a></li>
-  <li><a href="#historial">Historial de Versiones v1.0 → v3.4</a></li>
+  <li><a href="#historial">Historial de Versiones v1.0 → v3.5</a></li>
   <li><a href="#completado">Fases Completadas</a></li>
   <li><a href="#infraestructura">Infraestructura y Stack Técnico</a></li>
   <li><a href="#tablas">Mapa de Base de Datos</a></li>
@@ -144,7 +144,7 @@
 <div class="flow-diagram">
 VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
 ┌──────────────────────┐                   ┌──────────────────────┐
-│  Hermes Mobile v3.4  │                   │  Hermes Desktop      │
+│  Hermes Mobile v3.5  │                   │  Hermes Desktop      │
 │                      │──── escribe ────► │                      │
 │  • Scorecard         │                   │  • Reportes          │
 │  • Clientes + saldos │                   │  • Dashboards        │
@@ -225,8 +225,21 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
   </div>
   <div class="timeline-item done">
     <span class="timeline-version">v3.4 — Cronos Robusto</span>
-    <span class="timeline-date">Actual</span>
+    <span class="timeline-date">Prompt v4</span>
     <p>Ficha de Cronos en AppBar, chips rotando, visita GPS con chips de motivo + GPS en vivo, filtros mañana/vencidas/mes, intent consulta_visitas, prompt v4 completo.</p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v3.5 — Offline-first + Fixes críticos</span>
+    <span class="timeline-date">Actual</span>
+    <p>
+      Cache de clientes con SharedPreferences (funciona sin VPN), banner "Sin VPN" en Scorecard con ping al SQL Server, shimmer en skeletons, indicador "actualizado hace X".
+      Campos de reporting en DB (<code>updated_at</code>, <code>precision_m</code>, <code>vinculada_actividad_id</code>).
+      UX visita↔actividad explícita (el auto-cierre silencioso se volvió pregunta con 2 botones).
+      <strong>Fix crítico de notificaciones zombies</strong>: cancelación dispersa y IDs random arreglados moviendo todo al service.
+      DataEvents broadcaster para refrescar badges en vivo.
+      Timezone AR en PostgreSQL session (filtros "hoy" correctos).
+      Logging de errores (<code>debugPrint</code> en vez de <code>catch (_)</code>).
+    </p>
   </div>
 </div>
 
@@ -261,6 +274,27 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
 <tr class="done-row"><td><strong>J</strong> (parcial)</td><td>Voz con Whisper + LLM Cronos <em>(falta Push FCM)</em></td><td>v2.3 → v3.4</td><td><span class="badge badge-partial">🟡 ~70%</span></td></tr>
 </table>
 
+<h3>3.3 Bugs críticos resueltos en v3.5</h3>
+<table>
+<tr><th>Bug</th><th>Causa raíz</th><th>Fix</th></tr>
+<tr class="done-row"><td><strong>Notificaciones zombies</strong></td><td>(a) Cancelación dispersa en UI — solo 1 de 5 caminos cancelaba. (b) ID de notif random (<code>DateTime.now() % 100000</code>) no matcheaba el ID de la actividad en DB.</td><td>Todo el lifecycle centralizado en <code>ActividadesService</code>. Notif ID = <code>actividad.id</code> real.</td></tr>
+<tr class="done-row"><td><strong>Badges desactualizados en Acciones</strong></td><td>Contadores cargaban solo en <code>initState</code>. Completar actividad desde otro tab no reflejaba.</td><td><code>DataEvents</code> broadcaster (<code>ValueNotifier</code>). Servicios notifican tras write, pantallas suscritas recargan.</td></tr>
+<tr class="done-row"><td><strong>Filtros "hoy" erróneos</strong></td><td>Queries con <code>CURRENT_DATE</code> resolvían en UTC del server, no AR.</td><td><code>PgService</code> setea <code>SET TIME ZONE 'America/Argentina/Buenos_Aires'</code> al conectar.</td></tr>
+<tr class="done-row"><td><strong>Errores silenciados</strong></td><td><code>catch (_) {}</code> escondía fallos de conectividad. Vendor veía 0 pendientes sin saber que era error de VPN.</td><td><code>debugPrint</code> en cada catch; los errores quedan en <code>ErrorLogger</code> visible en Configuración.</td></tr>
+</table>
+
+<h3>3.4 Arquitectura de datos offline (v3.5)</h3>
+<div class="card done">
+<p>Patrón "offline-first" para la cartera de clientes:</p>
+<ul>
+  <li><code>ClientesCache</code> persiste en <code>SharedPreferences</code> con timestamp</li>
+  <li><code>ClientesService.getClientes()</code> intenta SQL Server con timeout; si falla usa cache; si no hay cache throw</li>
+  <li>UI muestra "Actualizada hace X" y banner amarillo "Sin VPN" cuando corresponde</li>
+  <li>Efecto: Cronos, agenda, visitas, registrar actividades <strong>funcionan sin VPN</strong>. Solo el scorecard y ventas requieren SQL Server en vivo.</li>
+</ul>
+<p>Patrón complementario de broadcaster (<code>DataEvents</code>): notifica cambios a todas las pantallas sin acoplarlas.</p>
+</div>
+
 <!-- 4. INFRAESTRUCTURA -->
 <h2 id="infraestructura">4. Infraestructura y Stack Técnico</h2>
 
@@ -274,7 +308,7 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
     <li><strong>Build:</strong> <code>flutter build apk --release</code></li>
     <li><strong>Distribución:</strong> APK sideload + auto-update</li>
     <li><strong>Tamaño APK:</strong> ~57 MB</li>
-    <li><strong>Última versión:</strong> <span class="version-tag">v3.4.0</span></li>
+    <li><strong>Última versión:</strong> <span class="version-tag">v3.5.1</span></li>
   </ul>
 </div>
 <div class="card">
@@ -292,7 +326,7 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
 </div>
 
 <div class="card">
-  <div class="card-header">Paquetes Flutter instalados (v3.4.0)</div>
+  <div class="card-header">Paquetes Flutter instalados (v3.5.1)</div>
   <div class="grid-3">
     <div><code>postgres</code> — Supabase directo</div>
     <div><code>sql_conn</code> — SQL Server (local)</div>
@@ -312,6 +346,7 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
     <div><code>googleapis</code> — Calendar API</div>
     <div><code>googleapis_auth</code> — OAuth client</div>
     <div><code>extension_google_sign_in_as_googleapis_auth</code></div>
+    <div><code>shared_preferences</code> — cache offline</div>
   </div>
 </div>
 
@@ -655,6 +690,21 @@ agent_prompts (
 
 <p>Ideas y mejoras sobre lo ya hecho, para ir resolviendo en el tiempo:</p>
 
+<div class="card" style="border-left:5px solid #ef4444;background:#fef2f2">
+  <div class="card-header">🛡️ Proxy de API key OpenAI — Supabase Edge Functions <span class="badge badge-alta">Alta</span></div>
+  <p><strong>Problema:</strong> la key de OpenAI vive en <code>constants.dart</code> y se compila al APK. Se puede extraer con <code>strings app-release.apk | grep "sk-proj"</code>. Si la APK se filtra (pendrive, WhatsApp, ex-empleado), cualquiera puede drenar el crédito de OpenAI hasta que se revoque la key.</p>
+  <p><strong>Solución:</strong> crear 2 Supabase Edge Functions en Deno (<code>cronos-chat</code>, <code>cronos-transcribe</code>) que actúen como proxy. La app manda el request con el JWT del vendedor; la función valida, rate-limitea, llama a OpenAI con la key <em>server-side</em>, logea uso en tabla <code>uso_llm</code> y devuelve la respuesta. La key nunca baja al cliente.</p>
+  <ul>
+    <li>Supabase Free: 500k invocaciones/mes incluidas (con 10 vendedores × 50 queries/día × 22 días = 11k/mes, sobra)</li>
+    <li>Permite rate-limit por vendedor + log de uso</li>
+    <li>Permite cambiar la key sin recompilar la app</li>
+    <li>Permite cortar acceso de un vendedor específico sin pushear APK nueva</li>
+    <li><strong>Esfuerzo:</strong> ~1 día (funciones + tabla <code>uso_llm</code> + modificar <code>AssistantService</code> y <code>WhisperService</code>)</li>
+    <li><strong>Cuándo:</strong> antes de crecer a 3-4+ vendedores activos</li>
+  </ul>
+  <p><em>Mientras tanto — mitigación: límite mensual de gasto en OpenAI ($30/mes hard cap), key restringida a Chat+Audio scope, alertas de uso al 50/75/100%.</em></p>
+</div>
+
 <div class="card">
   <div class="card-header">📲 Notificaciones con acciones rápidas <span class="badge badge-media">Media</span></div>
   <p>Botones en el panel de notificaciones (como alarmas de Android): "Posponer 10 min" y "Completada". Permite al vendedor manejar actividades sin abrir la app.</p>
@@ -711,20 +761,21 @@ agent_prompts (
 
 <table>
 <tr><th>#</th><th>Bloque</th><th>Por qué</th><th>Esfuerzo</th></tr>
-<tr><td>1</td><td><strong>Notificaciones con acciones rápidas</strong></td><td>Alto impacto, esfuerzo chico, complementa el bloque I ya hecho</td><td>Chico</td></tr>
-<tr><td>2</td><td><strong>C — Embudo de Prospectos</strong></td><td>Reemplaza el Google Forms. Cambia radicalmente el día a día del vendedor y el overview de gerencia.</td><td>Grande</td></tr>
-<tr><td>3</td><td><strong>F — Matriz de Potencial</strong></td><td>Base analítica para priorizar cartera. Útil después de C.</td><td>Medio</td></tr>
-<tr><td>4</td><td><strong>Finalizar OAuth Google</strong> + agregar test users</td><td>Desbloquea feature ya construida (Calendar)</td><td>5 min (cuando tengan mails)</td></tr>
-<tr><td>5</td><td><strong>D — Leads Google Forms</strong></td><td>Automatiza entrada de leads. Potencia C.</td><td>Medio</td></tr>
-<tr><td>6</td><td><strong>Agente Analista de Clientes</strong></td><td>Aprovecha PromptService. Gran "wow factor" para vendedores.</td><td>Medio</td></tr>
-<tr><td>7</td><td><strong>G — Relevamiento PDV</strong></td><td>Fotos + cuestionario. Trabajo de campo.</td><td>Medio</td></tr>
-<tr><td>8</td><td><strong>H — Objetivo visitas diarias</strong></td><td>Pulido. Aprovecha tabla <code>visitas</code> existente.</td><td>Chico</td></tr>
-<tr><td>9</td><td><strong>J — Push FCM</strong></td><td>Fase avanzada. Requiere setup Firebase.</td><td>Medio</td></tr>
+<tr><td>1</td><td>🛡️ <strong>Proxy OpenAI key → Supabase Edge Functions</strong></td><td>La key está extraíble del APK. Mover a server-side antes de escalar a más vendedores.</td><td>1 día</td></tr>
+<tr><td>2</td><td>📲 <strong>Notificaciones con acciones rápidas</strong></td><td>Alto impacto, esfuerzo chico, complementa el bloque I ya hecho.</td><td>Chico</td></tr>
+<tr><td>3</td><td><strong>C — Embudo de Prospectos</strong></td><td>Reemplaza el Google Forms. Cambia radicalmente el día a día del vendedor y el overview de gerencia.</td><td>Grande</td></tr>
+<tr><td>4</td><td><strong>F — Matriz de Potencial</strong></td><td>Base analítica para priorizar cartera. Útil después de C.</td><td>Medio</td></tr>
+<tr><td>5</td><td><strong>Finalizar OAuth Google</strong> + agregar test users</td><td>Desbloquea feature ya construida (Calendar).</td><td>5 min (cuando tengan mails)</td></tr>
+<tr><td>6</td><td><strong>D — Leads Google Forms</strong></td><td>Automatiza entrada de leads. Potencia C.</td><td>Medio</td></tr>
+<tr><td>7</td><td><strong>Agente Analista de Clientes</strong></td><td>Aprovecha PromptService. Gran "wow factor" para vendedores.</td><td>Medio</td></tr>
+<tr><td>8</td><td><strong>G — Relevamiento PDV</strong></td><td>Fotos + cuestionario. Trabajo de campo.</td><td>Medio</td></tr>
+<tr><td>9</td><td><strong>H — Objetivo visitas diarias</strong></td><td>Pulido. Aprovecha tabla <code>visitas</code> existente.</td><td>Chico</td></tr>
+<tr><td>10</td><td><strong>J — Push FCM</strong></td><td>Fase avanzada. Requiere setup Firebase.</td><td>Medio</td></tr>
 </table>
 
 <div class="footer">
 Plan Maestro Hermes Mobile · Generado automáticamente · Abril 2026<br>
-Versión actual del código: <strong>v3.4.0</strong> · Repo: github.com/guidocameraeq/HermesMobile
+Versión actual del código: <strong>v3.5.1</strong> · Repo: github.com/guidocameraeq/HermesMobile
 </div>
 
 </body>
