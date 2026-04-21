@@ -5,6 +5,7 @@ import '../services/visitas_service.dart';
 import '../services/pedidos_service.dart';
 import '../services/actividades_service.dart';
 import '../services/update_service.dart';
+import '../services/data_events.dart';
 import '../widgets/app_drawer.dart';
 import 'visita_cliente_picker.dart';
 import 'mis_visitas_screen.dart';
@@ -35,6 +36,19 @@ class _AccionesTabState extends State<AccionesTab> with AutomaticKeepAliveClient
     super.initState();
     _loadAll();
     _checkUpdate();
+    // Suscribirse a cambios globales — los badges se actualizan en vivo
+    // cuando cualquier pantalla modifica actividades o visitas
+    DataEvents.actividades.addListener(_loadActividadesPend);
+    DataEvents.visitas.addListener(_loadVisitasHoy);
+    DataEvents.pedidos.addListener(_loadPedidosPend);
+  }
+
+  @override
+  void dispose() {
+    DataEvents.actividades.removeListener(_loadActividadesPend);
+    DataEvents.visitas.removeListener(_loadVisitasHoy);
+    DataEvents.pedidos.removeListener(_loadPedidosPend);
+    super.dispose();
   }
 
   Future<void> _loadAll() async {
@@ -47,21 +61,27 @@ class _AccionesTabState extends State<AccionesTab> with AutomaticKeepAliveClient
     try {
       final c = await VisitasService.conteoHoy();
       if (mounted) setState(() => _visitasHoy = c);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[AccionesTab] _loadVisitasHoy falló: $e');
+    }
   }
 
   Future<void> _loadActividadesPend() async {
     try {
       final c = await ActividadesService.conteoPendientes();
       if (mounted) setState(() => _actividadesPend = c);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[AccionesTab] _loadActividadesPend falló: $e');
+    }
   }
 
   Future<void> _loadPedidosPend() async {
     try {
       final c = await PedidosService.conteoPendientes(Session.current.vendedorNombre);
       if (mounted) setState(() => _pedidosPend = c);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[AccionesTab] _loadPedidosPend falló: $e');
+    }
   }
 
   Future<void> _checkUpdate() async {

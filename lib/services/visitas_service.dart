@@ -2,6 +2,7 @@ import 'package:geolocator/geolocator.dart';
 import '../models/session.dart';
 import 'pg_service.dart';
 import 'notification_service.dart';
+import 'data_events.dart';
 
 /// Servicio de visitas GPS — escritura y lectura desde Supabase.
 class VisitasService {
@@ -91,7 +92,9 @@ class VisitasService {
         },
       );
       await NotificationService.cancel(cerrarActividadId);
+      DataEvents.notifyActividades();
     }
+    DataEvents.notifyVisitas();
   }
 
   /// Busca una actividad tipo "visita" agendada para HOY del mismo cliente,

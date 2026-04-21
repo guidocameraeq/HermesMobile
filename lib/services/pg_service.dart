@@ -25,6 +25,10 @@ class PgService {
       ),
       settings: const ConnectionSettings(sslMode: SslMode.require),
     );
+    // Forzar timezone Argentina para que CURRENT_DATE y ::date resuelvan
+    // en hora local del vendedor, no UTC del server.
+    // Sin esto, una actividad a las 23:00 AR mostraría fuera de filtro "hoy".
+    await _conn!.execute("SET TIME ZONE 'America/Argentina/Buenos_Aires'");
     return _conn!;
   }
 

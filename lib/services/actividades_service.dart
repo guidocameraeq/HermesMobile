@@ -2,6 +2,7 @@ import '../models/session.dart';
 import 'pg_service.dart';
 import 'calendar_service.dart';
 import 'notification_service.dart';
+import 'data_events.dart';
 
 /// CRUD de actividades comerciales por cliente — Supabase.
 class ActividadesService {
@@ -42,6 +43,8 @@ class ActividadesService {
       params,
     );
     final id = rows.isNotEmpty ? int.tryParse(rows.first['id']?.toString() ?? '') : null;
+
+    DataEvents.notifyActividades();
 
     if (id == null || fechaProgramada == null) return id;
 
@@ -117,6 +120,7 @@ class ActividadesService {
     );
     // Evitar que suene una notif zombie de una actividad ya cerrada
     await NotificationService.cancel(id);
+    DataEvents.notifyActividades();
   }
 
   /// Reabrir (marcar como no completada). Si tiene fecha futura, re-programa notif.
@@ -143,6 +147,7 @@ class ActividadesService {
       body: desc.isNotEmpty ? desc : 'Actividad agendada',
       scheduledDate: dt,
     );
+    DataEvents.notifyActividades();
   }
 
   /// Actualizar descripción y/o fecha programada. Sincroniza Calendar si tiene event_id.
@@ -176,6 +181,8 @@ class ActividadesService {
     final completada = act['completada'] == true;
     final tipo = act['tipo']?.toString() ?? '';
     final cliente = act['cliente_nombre']?.toString() ?? '';
+
+    DataEvents.notifyActividades();
 
     // Re-programar notif push (siempre cancelar la vieja primero)
     await NotificationService.cancel(id);
@@ -223,6 +230,7 @@ class ActividadesService {
     if (eventId != null && eventId.isNotEmpty) {
       await CalendarService.I.deleteEvent(eventId);
     }
+    DataEvents.notifyActividades();
   }
 
   /// Obtener una actividad por id.
