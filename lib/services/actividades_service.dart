@@ -1,6 +1,7 @@
 import '../models/session.dart';
 import 'pg_service.dart';
 import 'calendar_service.dart';
+import 'notification_service.dart';
 
 /// CRUD de actividades comerciales por cliente — Supabase.
 class ActividadesService {
@@ -42,22 +43,33 @@ class ActividadesService {
     );
     final id = rows.isNotEmpty ? int.tryParse(rows.first['id']?.toString() ?? '') : null;
 
+    if (id == null || fechaProgramada == null) return id;
+
+    final dt = DateTime.tryParse(fechaProgramada);
+    if (dt == null || !dt.isAfter(DateTime.now())) return id;
+
+    // Programar notificación local usando el id REAL de la actividad.
+    // Así cancelar/completar/eliminar después puede cerrarla correctamente.
+    await NotificationService.schedule(
+      id: id,
+      title: '${tipo[0].toUpperCase()}${tipo.substring(1)} — $clienteNombre',
+      body: (descripcion != null && descripcion.isNotEmpty) ? descripcion : 'Actividad agendada',
+      scheduledDate: dt,
+    );
+
     // Sincronización automática con Google Calendar si corresponde
-    if (id != null && fechaProgramada != null && await CalendarService.I.isAuto) {
-      final dt = DateTime.tryParse(fechaProgramada);
-      if (dt != null && dt.isAfter(DateTime.now())) {
-        final eventId = await CalendarService.I.createEvent(
-          titulo: '${tipo[0].toUpperCase()}${tipo.substring(1)} — $clienteNombre',
-          inicio: dt,
-          duracion: const Duration(minutes: 30),
-          descripcion: descripcion,
+    if (await CalendarService.I.isAuto) {
+      final eventId = await CalendarService.I.createEvent(
+        titulo: '${tipo[0].toUpperCase()}${tipo.substring(1)} — $clienteNombre',
+        inicio: dt,
+        duracion: const Duration(minutes: 30),
+        descripcion: descripcion,
+      );
+      if (eventId != null) {
+        await PgService.execute(
+          'UPDATE actividades_cliente SET google_event_id = @eid WHERE id = @id',
+          {'eid': eventId, 'id': id},
         );
-        if (eventId != null) {
-          await PgService.execute(
-            'UPDATE actividades_cliente SET google_event_id = @eid WHERE id = @id',
-            {'eid': eventId, 'id': id},
-          );
-        }
       }
     }
     return id;
@@ -96,21 +108,40 @@ class ActividadesService {
     );
   }
 
-  /// Marcar como completada.
+  /// Marcar como completada. Cancela la notificación programada (si había).
   static Future<void> completar(int id) async {
     await PgService.execute(
       'UPDATE actividades_cliente SET completada = TRUE, completada_at = NOW() '
       'WHERE id = @id AND vendedor_nombre = @vendedor',
       {'id': id, 'vendedor': Session.current.vendedorNombre},
     );
+    // Evitar que suene una notif zombie de una actividad ya cerrada
+    await NotificationService.cancel(id);
   }
 
-  /// Reabrir (marcar como no completada).
+  /// Reabrir (marcar como no completada). Si tiene fecha futura, re-programa notif.
   static Future<void> reabrir(int id) async {
     await PgService.execute(
       'UPDATE actividades_cliente SET completada = FALSE, completada_at = NULL '
       'WHERE id = @id AND vendedor_nombre = @vendedor',
       {'id': id, 'vendedor': Session.current.vendedorNombre},
+    );
+    // Re-programar notif si la fecha sigue siendo futura
+    final act = await porId(id);
+    if (act == null) return;
+    final fechaStr = act['fecha_programada']?.toString();
+    if (fechaStr == null) return;
+    final dt = DateTime.tryParse(fechaStr);
+    if (dt == null || !dt.isAfter(DateTime.now())) return;
+    final tipo = act['tipo']?.toString() ?? '';
+    final cliente = act['cliente_nombre']?.toString() ?? '';
+    final desc = act['descripcion']?.toString() ?? '';
+    await NotificationService.schedule(
+      id: id,
+      title: '${tipo.isNotEmpty ? "${tipo[0].toUpperCase()}${tipo.substring(1)}" : "Actividad"}'
+             '${cliente.isNotEmpty ? " — $cliente" : ""}',
+      body: desc.isNotEmpty ? desc : 'Actividad agendada',
+      scheduledDate: dt,
     );
   }
 
@@ -139,14 +170,32 @@ class ActividadesService {
       params,
     );
 
-    // Sincronizar con Calendar si esta actividad tiene evento asociado
     final act = await porId(id);
-    final eventId = act?['google_event_id']?.toString();
+    if (act == null) return;
+    final eventId = act['google_event_id']?.toString();
+    final completada = act['completada'] == true;
+    final tipo = act['tipo']?.toString() ?? '';
+    final cliente = act['cliente_nombre']?.toString() ?? '';
+
+    // Re-programar notif push (siempre cancelar la vieja primero)
+    await NotificationService.cancel(id);
+    if (fechaProgramada != null && !completada) {
+      final dt = DateTime.tryParse(fechaProgramada);
+      if (dt != null && dt.isAfter(DateTime.now())) {
+        await NotificationService.schedule(
+          id: id,
+          title: '${tipo.isNotEmpty ? "${tipo[0].toUpperCase()}${tipo.substring(1)}" : "Actividad"}'
+                 '${cliente.isNotEmpty ? " — $cliente" : ""}',
+          body: (descripcion != null && descripcion.isNotEmpty) ? descripcion : 'Actividad agendada',
+          scheduledDate: dt,
+        );
+      }
+    }
+
+    // Sincronizar con Calendar si esta actividad tiene evento asociado
     if (eventId != null && eventId.isNotEmpty && fechaProgramada != null) {
       final dt = DateTime.tryParse(fechaProgramada);
       if (dt != null) {
-        final tipo = act?['tipo']?.toString() ?? '';
-        final cliente = act?['cliente_nombre']?.toString() ?? '';
         await CalendarService.I.updateEvent(
           eventId: eventId,
           titulo: '${tipo.isNotEmpty ? "${tipo[0].toUpperCase()}${tipo.substring(1)}" : "Actividad"} — $cliente',
@@ -158,7 +207,7 @@ class ActividadesService {
     }
   }
 
-  /// Eliminar actividad. Si tiene evento en Calendar, también lo borra.
+  /// Eliminar actividad. Cancela notif + borra evento de Calendar si tenía.
   static Future<void> eliminar(int id) async {
     final act = await porId(id);
     final eventId = act?['google_event_id']?.toString();
@@ -169,6 +218,8 @@ class ActividadesService {
       {'id': id, 'vendedor': Session.current.vendedorNombre},
     );
 
+    // Limpiar efectos secundarios
+    await NotificationService.cancel(id);
     if (eventId != null && eventId.isNotEmpty) {
       await CalendarService.I.deleteEvent(eventId);
     }

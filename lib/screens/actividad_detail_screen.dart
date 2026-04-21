@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../models/session.dart';
 import '../services/actividades_service.dart';
-import '../services/notification_service.dart';
 import '../services/cliente_router.dart';
 import '../services/calendar_service.dart';
 import '../services/clientes_service.dart';
@@ -185,22 +184,7 @@ class _State extends State<ActividadDetailScreen> {
         descripcion: _descCtrl.text.trim(),
         fechaProgramada: fechaStr,
       );
-
-      // Cancelar notif anterior y programar nueva si corresponde
-      await NotificationService.cancel(widget.actividadId);
-      if (_fecha != null && !_esCompletada) {
-        final h = _hora?.hour ?? 9;
-        final m = _hora?.minute ?? 0;
-        final dt = DateTime(_fecha!.year, _fecha!.month, _fecha!.day, h, m);
-        if (dt.isAfter(DateTime.now())) {
-          await NotificationService.schedule(
-            id: widget.actividadId,
-            title: '${_tipo[0].toUpperCase()}${_tipo.substring(1)} — $_cliente',
-            body: _descCtrl.text.trim().isNotEmpty ? _descCtrl.text.trim() : 'Actividad agendada',
-            scheduledDate: dt,
-          );
-        }
-      }
+      // ActividadesService.actualizar() se encarga de cancelar + re-programar notif
 
       if (!mounted) return;
       setState(() => _saving = false);
@@ -220,8 +204,8 @@ class _State extends State<ActividadDetailScreen> {
         await ActividadesService.reabrir(widget.actividadId);
       } else {
         await ActividadesService.completar(widget.actividadId);
-        await NotificationService.cancel(widget.actividadId);
       }
+      // El service se encarga de cancelar/reagendar la notif
       if (!mounted) return;
       await _load();
     } catch (e) {
@@ -314,7 +298,7 @@ class _State extends State<ActividadDetailScreen> {
 
     try {
       await ActividadesService.eliminar(widget.actividadId);
-      await NotificationService.cancel(widget.actividadId);
+      // El service cancela notif + Calendar event
       if (!mounted) return;
       Navigator.pop(context, true); // vuelve con "hubo cambios"
       ScaffoldMessenger.of(context).showSnackBar(

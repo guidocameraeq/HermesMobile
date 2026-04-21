@@ -4,7 +4,6 @@ import '../config/theme.dart';
 import '../models/session.dart';
 import '../services/assistant_service.dart';
 import '../services/actividades_service.dart';
-import '../services/notification_service.dart';
 import '../services/visitas_service.dart';
 import '../services/whisper_service.dart';
 import '../models/cliente.dart';
@@ -235,18 +234,7 @@ class _AssistantState extends State<AssistantScreen>
           fechaProgramada: action.cuando,
           origen: 'cronos',
         );
-        if (action.cuando != null) {
-          final dt = DateTime.tryParse(action.cuando!);
-          if (dt != null && dt.isAfter(DateTime.now())) {
-            final nombre = cliente?.nombre ?? action.clienteMatch ?? '';
-            await NotificationService.schedule(
-              id: DateTime.now().millisecondsSinceEpoch % 100000,
-              title: '${action.accionLabel}${nombre.isNotEmpty ? " — $nombre" : ""}',
-              body: action.nota.isNotEmpty ? action.nota : 'Actividad agendada',
-              scheduledDate: dt,
-            );
-          }
-        }
+        // El service se encarga de programar la notif con el id real
       }
       if (!mounted) return;
       setState(() => _confirmadas.add(action));

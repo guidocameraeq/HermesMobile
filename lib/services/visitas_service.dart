@@ -1,6 +1,7 @@
 import 'package:geolocator/geolocator.dart';
 import '../models/session.dart';
 import 'pg_service.dart';
+import 'notification_service.dart';
 
 /// Servicio de visitas GPS — escritura y lectura desde Supabase.
 class VisitasService {
@@ -77,6 +78,7 @@ class VisitasService {
     );
 
     // Si el vendedor pidió cerrar la actividad asociada → marcarla completada
+    // + cancelar la notificación programada
     if (cerrarActividadId != null) {
       await PgService.execute(
         'UPDATE actividades_cliente '
@@ -88,6 +90,7 @@ class VisitasService {
           'res': 'Cumplida por visita GPS',
         },
       );
+      await NotificationService.cancel(cerrarActividadId);
     }
   }
 
