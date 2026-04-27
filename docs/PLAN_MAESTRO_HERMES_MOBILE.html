@@ -81,7 +81,7 @@
 
 <h1>HERMES MOBILE — Plan Maestro de Desarrollo</h1>
 <p style="font-size:14px;color:#64748b;margin-bottom:5px;">App Android para Equipo Comercial — CRM Bidireccional con Asistente IA</p>
-<p style="font-size:11px;color:#94a3b8;">Documento actualizado: <strong>Abril 2026</strong> · Versión actual: <span class="version-tag">v3.5.1</span> · Repo: github.com/guidocameraeq/HermesMobile</p>
+<p style="font-size:11px;color:#94a3b8;">Documento actualizado: <strong>Abril 2026</strong> · Versión actual: <span class="version-tag">v3.6.0</span> · Repo: github.com/guidocameraeq/HermesMobile</p>
 
 <!-- Panel de progreso -->
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin:20px 0;justify-content:center;">
@@ -98,11 +98,11 @@
     <span class="stat-label">Bloques pendientes</span>
   </div>
   <div class="stat-box">
-    <span class="stat-num">35</span>
+    <span class="stat-num">36</span>
     <span class="stat-label">Releases totales</span>
   </div>
   <div class="stat-box">
-    <span class="stat-num">v3.5</span>
+    <span class="stat-num">v3.6</span>
     <span class="stat-label">Versión actual</span>
   </div>
 </div>
@@ -132,6 +132,7 @@
   <li class="pending"><a href="#bloque-h">Bloque H — Objetivo de Visitas Diarias</a></li>
   <li class="pending"><a href="#bloque-j">Bloque J — Push Notifications (FCM)</a></li>
   <li><a href="#pendientes-tecnicos">Pendientes Técnicos Específicos</a></li>
+  <li><a href="#cronos-analytics">Cronos Analytics — Reportes y Conclusiones</a></li>
   <li><a href="#orden">Próximos Pasos Sugeridos</a></li>
 </ol>
 </div>
@@ -230,7 +231,7 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
   </div>
   <div class="timeline-item done">
     <span class="timeline-version">v3.5 — Offline-first + Fixes críticos</span>
-    <span class="timeline-date">Actual</span>
+    <span class="timeline-date">Abril 2026</span>
     <p>
       Cache de clientes con SharedPreferences (funciona sin VPN), banner "Sin VPN" en Scorecard con ping al SQL Server, shimmer en skeletons, indicador "actualizado hace X".
       Campos de reporting en DB (<code>updated_at</code>, <code>precision_m</code>, <code>vinculada_actividad_id</code>).
@@ -239,6 +240,18 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
       DataEvents broadcaster para refrescar badges en vivo.
       Timezone AR en PostgreSQL session (filtros "hoy" correctos).
       Logging de errores (<code>debugPrint</code> en vez de <code>catch (_)</code>).
+    </p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v3.6 — Cronos Quick Actions + Observabilidad</span>
+    <span class="timeline-date">Actual</span>
+    <p>
+      <strong>6 quick actions</strong> en la pantalla de bienvenida (Pendientes hoy/mañana/semana, Vencidas, Próxima tarea, Visitas hoy) que <strong>bypasean al LLM</strong> con queries SQL directas (&lt;300ms, sin tokens).
+      Historial truncado a últimos 10 mensajes para evitar drift y costo lineal en conversaciones largas.
+      <code>max_tokens</code> 500 → 1500 (fix preventivo del JSON cortado).
+      Fuzzy match con normalización Unicode (sin tildes/signos) — soluciona inconsistencias de Whisper.
+      Auto-completar pendiente único: card con border verde + "Marcar como hecha" cuando la consulta filtrada por cliente devuelve 1 ítem.
+      <strong>Logging estructurado</strong> en tabla <code>cronos_logs</code> (fire-and-forget): cada turno del LLM queda con latencia, parse_ok, conteo de acciones, modelo. Base para el módulo de analytics.
     </p>
   </div>
 </div>
@@ -752,8 +765,250 @@ agent_prompts (
   <p>Leaflet.js embebido en WebView para visualizar las visitas GPS de todos los vendedores. Heatmap por zona, filtros por fecha/vendedor.</p>
 </div>
 
+<!-- 14.5 CRONOS ANALYTICS -->
+<h2 id="cronos-analytics" class="page-break">20. Cronos Analytics — Reportes y Conclusiones</h2>
+
+<div class="info">
+<strong>Contexto:</strong> en v3.6.0 instrumentamos cada turno de Cronos en la tabla <code>cronos_logs</code>. La instrumentación fue barata (fire-and-forget desde la app, no afecta latencia percibida) pero abre una superficie de análisis muy rica. Esta sección documenta <strong>qué reportes podemos sacar, qué decisiones podemos tomar con cada uno, cómo extraerlos, y qué columnas faltarían para reportes más profundos.</strong>
+</div>
+
+<h3>20.1 Datos disponibles hoy</h3>
+
+<p>Tabla <code>cronos_logs</code>:</p>
+<table>
+<tr><th>Columna</th><th>Tipo</th><th>Para qué sirve</th></tr>
+<tr><td><code>id</code></td><td>BIGSERIAL</td><td>PK autoincremental</td></tr>
+<tr><td><code>vendedor_nombre</code></td><td>TEXT</td><td>Quién hizo el turno</td></tr>
+<tr><td><code>user_msg</code></td><td>TEXT</td><td>Lo que dijo o tipeó el vendedor</td></tr>
+<tr><td><code>response_raw</code></td><td>TEXT</td><td>JSON crudo devuelto por el modelo (o body del response si falló HTTP)</td></tr>
+<tr><td><code>response_mensaje</code></td><td>TEXT</td><td>Texto que vio el vendedor en pantalla</td></tr>
+<tr><td><code>acciones_count</code></td><td>INT</td><td>Cuántas tarjetas se generaron (0 = el modelo respondió pero no propuso nada)</td></tr>
+<tr><td><code>parse_ok</code></td><td>BOOLEAN</td><td>FALSE si el JSON no se pudo parsear o hubo error HTTP</td></tr>
+<tr><td><code>latencia_ms</code></td><td>INT</td><td>Tiempo de la llamada (incluye round-trip a OpenAI)</td></tr>
+<tr><td><code>modelo</code></td><td>TEXT</td><td><code>gpt-4o-mini</code> para tráfico LLM, <code>bypass</code> para quick actions</td></tr>
+<tr><td><code>created_at</code></td><td>TIMESTAMPTZ</td><td>Hora del turno (en UTC; al consultar usar <code>AT TIME ZONE 'America/Argentina/Buenos_Aires'</code>)</td></tr>
+</table>
+
+<h3>20.2 Categorías de análisis</h3>
+
+<p>Las queries se pueden correr <strong>directamente en el SQL editor de Supabase</strong> hoy mismo. Las agrupamos en 5 categorías por tipo de decisión que habilitan.</p>
+
+<!-- A. SALUD OPERACIONAL -->
+<div class="card">
+  <div class="card-header">A. Salud operacional <span class="badge badge-alta">Crítico — diario</span></div>
+  <p>¿Cronos está respondiendo bien? ¿Hay regresiones tras cambios de prompt o de OpenAI?</p>
+
+  <h4>A.1 Parse failures (el LLM rompió el JSON)</h4>
+  <pre>SELECT user_msg, response_raw, latencia_ms, created_at
+FROM cronos_logs
+WHERE parse_ok = FALSE AND modelo != 'bypass'
+ORDER BY created_at DESC LIMIT 20;</pre>
+  <p><strong>Conclusión:</strong> Si aparecen frases que repetidamente rompen el JSON, hay que ajustar el system prompt. Si suben tras un cambio de prompt → revertir. Si OpenAI devuelve errores HTTP, lo vemos acá.</p>
+
+  <h4>A.2 Latencia P50 / P90 por modelo</h4>
+  <pre>SELECT modelo,
+       COUNT(*) AS turnos,
+       PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY latencia_ms) AS p50,
+       PERCENTILE_DISC(0.9) WITHIN GROUP (ORDER BY latencia_ms) AS p90,
+       MAX(latencia_ms) AS max_ms
+FROM cronos_logs
+WHERE created_at &gt; NOW() - INTERVAL '7 days'
+GROUP BY modelo;</pre>
+  <p><strong>Conclusión:</strong> Confirma el ahorro de latencia con bypass (~200ms vs ~1500ms). Si el P90 del LLM se va por encima de 3s persistente → degradación de OpenAI; cambiar el modelo o reducir contexto.</p>
+
+  <h4>A.3 % de fallas por día</h4>
+  <pre>SELECT DATE(created_at) AS dia,
+       COUNT(*) FILTER (WHERE parse_ok = FALSE) AS fails,
+       COUNT(*) AS total,
+       ROUND(100.0 * COUNT(*) FILTER (WHERE parse_ok = FALSE) / COUNT(*), 2) AS fail_pct
+FROM cronos_logs
+WHERE modelo != 'bypass' AND created_at &gt; NOW() - INTERVAL '30 days'
+GROUP BY DATE(created_at) ORDER BY 1;</pre>
+  <p><strong>Conclusión:</strong> Tendencia diaria. Meta: &lt;2% de fails. Spikes señalan problema concreto a investigar.</p>
+</div>
+
+<!-- B. COSTO -->
+<div class="card">
+  <div class="card-header">B. Costo y eficiencia <span class="badge badge-alta">Mensual</span></div>
+  <p>¿Cuánto estamos gastando? ¿Las quick actions están ahorrando lo que esperábamos?</p>
+
+  <h4>B.1 Ratio bypass vs LLM</h4>
+  <pre>SELECT modelo, COUNT(*) AS turnos,
+       ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 2) AS pct
+FROM cronos_logs
+WHERE created_at &gt; NOW() - INTERVAL '30 days'
+GROUP BY modelo;</pre>
+  <p><strong>Conclusión:</strong> Validás que las quick actions están siendo usadas. Meta: que <code>bypass</code> &gt;= 40% del tráfico. Si es bajo, los chips no son lo bastante útiles o el vendedor no los descubre — repensar layout o agregar nuevas quick actions.</p>
+
+  <h4>B.2 Costo estimado en USD</h4>
+  <pre>-- Estimación: ~2K tokens-in + ~500 tokens-out promedio por turno LLM
+-- gpt-4o-mini: $0.15/M tokens-in + $0.60/M tokens-out
+SELECT
+  COUNT(*) FILTER (WHERE modelo != 'bypass') AS turnos_llm,
+  ROUND(COUNT(*) FILTER (WHERE modelo != 'bypass')
+        * (2000 * 0.15 + 500 * 0.60) / 1000000.0, 2) AS usd_estimado_30d
+FROM cronos_logs
+WHERE created_at &gt; NOW() - INTERVAL '30 days';</pre>
+  <p><strong>Conclusión:</strong> Permite proyectar a más vendedores. Si vamos a escalar de 10 a 30 vendedores, multiplicar por 3 da el costo esperado. Es <strong>el dato de input para la decisión "vale la pena el proxy?"</strong> (deuda técnica #1).</p>
+</div>
+
+<!-- C. CALIDAD DEL PROMPT -->
+<div class="card">
+  <div class="card-header">C. Calidad del prompt y comprensión del modelo <span class="badge badge-media">Quincenal</span></div>
+  <p>¿Cronos entiende lo que le piden? ¿Hay tipos de pedido que el modelo no resuelve?</p>
+
+  <h4>C.1 Mensajes que NO generaron acciones (modelo desorientado)</h4>
+  <pre>SELECT user_msg, response_mensaje, COUNT(*) AS veces
+FROM cronos_logs
+WHERE modelo != 'bypass'
+  AND acciones_count = 0
+  AND parse_ok = TRUE
+  AND created_at &gt; NOW() - INTERVAL '30 days'
+GROUP BY user_msg, response_mensaje
+ORDER BY veces DESC LIMIT 30;</pre>
+  <p><strong>Conclusión:</strong> Frases reales donde Cronos respondió pero no hizo nada concreto. <strong>Es la fuente más rica para iterar el prompt</strong>: cada fila es una expectativa del vendedor que el modelo no cumplió. Decidir caso por caso si:</p>
+  <ul>
+    <li>Es algo legítimo que el prompt debería soportar → agregar al prompt</li>
+    <li>Es algo fuera del scope → reforzar el rechazo amable en el prompt</li>
+    <li>Es un caso muy frecuente → considerar agregar una quick action</li>
+  </ul>
+
+  <h4>C.2 Frecuencia de "no te puedo ayudar"</h4>
+  <pre>SELECT DATE(created_at), COUNT(*) AS rejects
+FROM cronos_logs
+WHERE response_mensaje ILIKE '%no puedo%'
+   OR response_mensaje ILIKE '%solo puedo%'
+   OR response_mensaje ILIKE '%no soy capaz%'
+GROUP BY 1 ORDER BY 1 DESC LIMIT 30;</pre>
+  <p><strong>Conclusión:</strong> Si esto sube, el prompt es muy restrictivo o los vendedores intentan usar Cronos para cosas no soportadas (lo que abre oportunidades de producto: tal vez quieren cargar pedidos por voz, hacer cobranzas, etc).</p>
+</div>
+
+<!-- D. ADOPCIÓN -->
+<div class="card">
+  <div class="card-header">D. Adopción por vendedor <span class="badge badge-media">Mensual</span></div>
+  <p>¿Quién usa la herramienta? ¿Quién no? ¿Por qué?</p>
+
+  <h4>D.1 Ranking de uso (últimos 30 días)</h4>
+  <pre>SELECT vendedor_nombre,
+       COUNT(*) AS turnos,
+       COUNT(*) FILTER (WHERE modelo = 'bypass')  AS quick_actions,
+       COUNT(*) FILTER (WHERE modelo != 'bypass') AS llm,
+       MAX(created_at) AS ultimo_uso
+FROM cronos_logs
+WHERE created_at &gt; NOW() - INTERVAL '30 days'
+GROUP BY vendedor_nombre
+ORDER BY turnos DESC;</pre>
+  <p><strong>Conclusión:</strong> Detecta:</p>
+  <ul>
+    <li><strong>Power users</strong> (10+ turnos/día) — entrevistarlos para entender el caso de uso real</li>
+    <li><strong>Vendedores que no la abren</strong> — capacitación, resistencia al cambio o el caso de uso no aplica</li>
+    <li><strong>Vendedores que abandonaron</strong> (último uso &gt; 14 días) — algo los frustró; retroalimentar</li>
+  </ul>
+
+  <h4>D.2 Curva de aprendizaje semanal</h4>
+  <pre>SELECT vendedor_nombre,
+       DATE_TRUNC('week', created_at) AS semana,
+       COUNT(*) AS turnos
+FROM cronos_logs
+GROUP BY 1, 2 ORDER BY vendedor_nombre, semana;</pre>
+  <p><strong>Conclusión:</strong> Si el uso de un vendedor crece semana a semana, la herramienta "cuajó". Si se estanca o cae después del primer pico, hay un problema de UX o de fit.</p>
+</div>
+
+<!-- E. PRODUCTO -->
+<div class="card">
+  <div class="card-header">E. Decisiones de producto <span class="badge badge-baja">Trimestral</span></div>
+  <p>¿Qué tendríamos que construir/eliminar/mejorar basándonos en datos?</p>
+
+  <h4>E.1 Top frases que pegan al LLM (candidatas a quick action)</h4>
+  <pre>SELECT LOWER(user_msg) AS frase, COUNT(*) AS veces
+FROM cronos_logs
+WHERE modelo != 'bypass'
+  AND created_at &gt; NOW() - INTERVAL '60 days'
+GROUP BY LOWER(user_msg)
+HAVING COUNT(*) &gt;= 5
+ORDER BY veces DESC LIMIT 20;</pre>
+  <p><strong>Conclusión:</strong> Si "qué tengo este mes" aparece 30 veces y siempre va al LLM, cuesta tokens y latencia. Convertirla en quick action ahorra dinero y mejora UX.</p>
+
+  <h4>E.2 Quick actions más usadas</h4>
+  <pre>SELECT user_msg, COUNT(*) AS uses
+FROM cronos_logs
+WHERE modelo = 'bypass'
+  AND created_at &gt; NOW() - INTERVAL '30 days'
+GROUP BY user_msg
+ORDER BY uses DESC;</pre>
+  <p><strong>Conclusión:</strong> Si una quick action no se usa nunca, sacarla y ganar espacio para otra. Si todas tienen uso similar, mantener.</p>
+
+  <h4>E.3 Horarios pico de uso</h4>
+  <pre>SELECT EXTRACT(hour FROM created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') AS hora,
+       COUNT(*) AS turnos
+FROM cronos_logs
+WHERE created_at &gt; NOW() - INTERVAL '30 days'
+GROUP BY hora ORDER BY hora;</pre>
+  <p><strong>Conclusión:</strong> Confirma uso real en horario laboral (descarta testing/fraude). Identifica franjas críticas — si todos usan Cronos entre 9 y 11 AM, ese es el momento donde no se puede tener downtime de OpenAI.</p>
+</div>
+
+<!-- LIMITACIONES Y MEJORAS -->
+<h3>20.3 Limitaciones actuales y columnas a sumar</h3>
+
+<p>Hoy <strong>no podemos</strong> responder estas preguntas con la tabla actual:</p>
+
+<table>
+<tr><th>Pregunta de negocio</th><th>Por qué no se puede hoy</th><th>Para arreglarlo</th></tr>
+<tr><td>¿El vendedor confirmó la acción propuesta o la descartó?</td><td>No loggeamos los taps en "Confirmar"</td><td>Tabla nueva <code>cronos_action_confirmations</code> o columna <code>confirmed BOOLEAN</code> + endpoint que la actualice</td></tr>
+<tr><td>¿Habló por voz o tipeó?</td><td>No registramos el modo de input</td><td>Columna <code>input_mode TEXT</code> ('voz', 'texto', 'chip')</td></tr>
+<tr><td>¿Qué tipo de intent disparó cada turno? (agendar / consulta / visita_ahora)</td><td>Solo está en JSON crudo dentro de <code>response_raw</code>. Parseable pero costoso</td><td>Columna <code>intent_top TEXT</code> con el tipo de la primera acción</td></tr>
+<tr><td>¿Cuántos tokens consumió cada llamada exactamente?</td><td>No pedimos el campo <code>usage</code> en la respuesta de OpenAI</td><td>Modificar request a OpenAI para pedir <code>usage</code> + columnas <code>tokens_in INT</code>, <code>tokens_out INT</code></td></tr>
+<tr><td>¿Qué sesión / conversación pertenece a cada turno?</td><td>Sin session_id, no podemos agrupar mensajes en conversaciones</td><td>Columna <code>session_id UUID</code> que arranca al abrir la pantalla</td></tr>
+<tr><td>¿Qué cliente fue el target del intent?</td><td>El cliente está dentro del JSON de respuesta</td><td>Columna <code>cliente_codigo_target TEXT</code></td></tr>
+</table>
+
+<p>Estas mejoras son ortogonales y se pueden sumar de a una. Cada una abre nuevas preguntas. <strong>El orden recomendado por valor:</strong></p>
+<ol>
+  <li><code>tokens_in</code> + <code>tokens_out</code> (costo exacto, no estimado)</li>
+  <li><code>input_mode</code> (validar que la voz funciona, no solo que existe)</li>
+  <li><code>confirmed</code> (qué % de las propuestas el vendedor las acepta — proxy de utilidad)</li>
+  <li><code>intent_top</code> + <code>cliente_codigo_target</code> (analítica fina)</li>
+  <li><code>session_id</code> (análisis de conversaciones completas, no turnos sueltos)</li>
+</ol>
+
+<!-- MATERIALIZACIÓN -->
+<h3>20.4 Cómo materializar todo esto</h3>
+
+<div class="grid-3">
+  <div class="card">
+    <div class="card-header" style="font-size:13px;">Opción A — SQL ad-hoc <span class="badge badge-baja">Hoy</span></div>
+    <p>Correr las queries de arriba en el editor de Supabase cuando haga falta. <strong>Cero esfuerzo.</strong> Suficiente para los primeros 1-2 meses para entender patrones.</p>
+  </div>
+  <div class="card">
+    <div class="card-header" style="font-size:13px;">Opción B — Dashboard en Hermes Desktop <span class="badge badge-media">~1 día</span></div>
+    <p>Módulo nuevo "📊 Cronos Analytics" en el desktop con 5-6 gráficos clave: uso/día, ratio bypass/LLM, top frases sin acción, latencia P90, ranking vendedores, parse failures. Lectura solo. Reutilizar el patrón del módulo Ventas/Productos.</p>
+  </div>
+  <div class="card">
+    <div class="card-header" style="font-size:13px;">Opción C — Alertas proactivas <span class="badge badge-baja">~medio día</span></div>
+    <p>Script Python que corre 1 vez/día y manda email/notif si: parse_fail &gt; 5%, latencia P90 &gt; 3s, vendedor inactivo &gt; 7 días, costo proyectado mensual &gt; X. Reutiliza el venv de VisorFacturacion + la conexión a Supabase ya existente.</p>
+  </div>
+</div>
+
+<div class="success">
+<strong>Recomendación:</strong> esperar 2-3 semanas a que se acumulen datos reales antes de invertir en B o C. Mientras tanto la opción A es suficiente para iterar el prompt y validar que las quick actions están funcionando. <strong>El próximo paso natural cuando hagamos el proxy</strong> (deuda técnica #1) es agregar las columnas <code>tokens_in</code> y <code>tokens_out</code> — el proxy ya tiene la respuesta de OpenAI con el campo <code>usage</code> en la mano, es trivial loguearlo de paso.
+</div>
+
+<h3>20.5 Métricas de éxito sugeridas</h3>
+
+<p>Indicadores objetivos para evaluar si Cronos está funcionando bien, medibles desde <code>cronos_logs</code>:</p>
+
+<table>
+<tr><th>Métrica</th><th>Meta</th><th>Cómo se calcula</th><th>Qué nos dice</th></tr>
+<tr><td>Tasa de parse OK</td><td>≥ 98%</td><td><code>COUNT(parse_ok=TRUE) / COUNT(*)</code></td><td>Estabilidad del prompt + del modelo</td></tr>
+<tr><td>Latencia P90 LLM</td><td>≤ 2500ms</td><td>percentile sobre <code>latencia_ms</code> con <code>modelo != 'bypass'</code></td><td>UX percibida</td></tr>
+<tr><td>% bypass del tráfico</td><td>≥ 40%</td><td><code>COUNT(modelo='bypass') / COUNT(*)</code></td><td>Eficiencia + descubrimiento de UX</td></tr>
+<tr><td>Vendedores activos / mes</td><td>≥ 80% del equipo</td><td><code>COUNT(DISTINCT vendedor_nombre)</code> con turnos en el mes</td><td>Adopción real</td></tr>
+<tr><td>Turnos promedio por vendedor activo / día</td><td>≥ 5</td><td>Total turnos / (vendedores activos × días)</td><td>Frecuencia de uso</td></tr>
+<tr><td>Tasa de "no puedo ayudarte"</td><td>≤ 5%</td><td><code>COUNT(response_mensaje ILIKE '%no puedo%') / COUNT(*)</code></td><td>Cobertura del prompt</td></tr>
+</table>
+
 <!-- 15. PRÓXIMOS PASOS -->
-<h2 id="orden">20. Próximos Pasos Sugeridos</h2>
+<h2 id="orden">21. Próximos Pasos Sugeridos</h2>
 
 <div class="info">
 <strong>Orden de ejecución recomendado</strong> (por impacto de negocio):
@@ -775,7 +1030,7 @@ agent_prompts (
 
 <div class="footer">
 Plan Maestro Hermes Mobile · Generado automáticamente · Abril 2026<br>
-Versión actual del código: <strong>v3.5.1</strong> · Repo: github.com/guidocameraeq/HermesMobile
+Versión actual del código: <strong>v3.6.0</strong> · Repo: github.com/guidocameraeq/HermesMobile
 </div>
 
 </body>
