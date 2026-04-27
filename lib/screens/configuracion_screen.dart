@@ -69,7 +69,7 @@ class _ConfiguracionState extends State<ConfiguracionScreen> {
   Future<void> _downloadUpdate() async {
     if (_updateAvailable == null) return;
     setState(() { _downloading = true; _downloadProgress = 0; });
-    final ok = await UpdateService.downloadAndInstall(
+    final ok = await UpdateService.installOrDownload(
       _updateAvailable!,
       onProgress: (p) { if (mounted) setState(() => _downloadProgress = p); },
     );

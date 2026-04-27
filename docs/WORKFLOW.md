@@ -138,6 +138,55 @@ CREATE TRIGGER trg_<nombre> ...;
 SELECT ...;
 ```
 
+## Forzar update obligatorio a todos los vendedores
+
+Desde v3.7.0, la app respeta `app_config.min_version_required` (Supabase). Si la versión local del vendedor es menor que ese valor, al hacer login se le muestra la `ForceUpdateScreen` bloqueante: solo puede actualizar o cerrar sesión.
+
+### Flujo cuando hay un fix crítico
+
+1. Publicás el release nuevo (tag + GitHub release con APK) — flujo normal de la sección anterior.
+2. Después, **subís el `min_version_required`** en Supabase:
+
+```sql
+UPDATE app_config
+SET value = '3.7.1', updated_at = NOW()
+WHERE key = 'min_version_required';
+```
+
+3. La próxima vez que cualquier vendedor abra la app:
+   - Login normal → la app chequea Supabase
+   - Si su versión < 3.7.1 → `ForceUpdateScreen` bloqueante
+   - El vendedor solo puede tocar "Actualizar ahora" → instala → reabre → entra normal
+
+### Volver a permisivo
+
+Si querés desactivar el force update (después de que todos actualizaron, por ej):
+
+```sql
+UPDATE app_config SET value = '3.0.0' WHERE key = 'min_version_required';
+```
+
+Cualquier valor por debajo de la versión más vieja en circulación no bloquea a nadie.
+
+### Killswitch de emergencia
+
+Si el flag se setea mal y bloquea a todos por error (ej: tipeo de versión):
+
+```sql
+UPDATE app_config SET value = '3.0.0' WHERE key = 'min_version_required';
+```
+
+Es reversible al instante. La app re-chequea Supabase en cada login.
+
+### Comportamiento sin red
+
+- Si la app no puede contactar Supabase al hacer login y **nunca antes leyó** un `min_version_required` → no bloquea (no tenemos info para decidir).
+- Si **ya leyó** alguna vez (cache local en `SharedPreferences`) → usa el cacheado. Esto evita que un vendedor en el campo entre con versión vieja porque su VPN está caída.
+
+### Pre-download del APK soft
+
+Independiente del force update: cuando el vendedor hace login y hay un release nuevo en GitHub (aunque no sea forzado), la app **descarga el APK en background**. Después, cuando toca "Actualizar" en Configuración, el instalador abre instantáneo (no espera el minuto de descarga). El APK queda en `getTemporaryDirectory()` cacheado por tag.
+
 ## Google Cloud — OAuth setup
 
 **Estado:** proyecto creado, falta agregar test users.

@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/analytics_service.dart';
 import '../services/biometric_service.dart';
+import '../services/update_service.dart';
 import 'home_screen.dart';
+import 'force_update_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -55,10 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (result.ok) {
       AnalyticsService.track('login', modulo: 'auth_bio');
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      await _navigateAfterLogin();
     } else {
       // Credenciales guardadas inválidas → borrarlas y pedir login normal
       await BiometricService.deshabilitar();
@@ -111,6 +111,41 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// Decide a dónde ir después de un login exitoso:
+  ///  - Si hay force update pendiente → ForceUpdateScreen (bloqueante)
+  ///  - Si no → HomeScreen + pre-download del APK soft en background
+  Future<void> _navigateAfterLogin() async {
+    final force = await UpdateService.checkForceUpdate();
+    if (!mounted) return;
+
+    if (force != null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => ForceUpdateScreen(release: force)),
+      );
+      return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
+    );
+
+    // Soft update: pre-descargar APK si hay release nuevo. Sin await — corre
+    // en background, cuando el vendedor toque "actualizar" en Configuración
+    // ya está listo y el instalador abre instantáneo.
+    unawaited(_predownloadIfAvailable());
+  }
+
+  Future<void> _predownloadIfAvailable() async {
+    try {
+      final release = await UpdateService.checkForUpdate();
+      if (release != null) {
+        await UpdateService.predownload(release);
+      }
+    } catch (_) {}
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -129,10 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
       AnalyticsService.track('login', modulo: 'auth');
       await _preguntarHabilitarBio(user, pass);
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      await _navigateAfterLogin();
     } else {
       setState(() {
         _loading = false;

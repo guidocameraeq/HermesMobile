@@ -3,9 +3,21 @@
 > Snapshot para Claude post-compact. Actualizar en cada release.
 
 **Fecha del snapshot:** 2026-04-22
-**Versión actual:** v3.6.0+35
+**Versión actual:** v3.7.0+36 (en preparación, sin release todavía)
 **Último release publicado:** v3.6.0
 **APK URL:** https://github.com/guidocameraeq/HermesMobile/releases/tag/v3.6.0
+
+## v3.7.0 — Force Update + Iconos (en preparación)
+
+Cambios ya en código, esperando los assets de iconos para empaquetar y releasear:
+
+- **Force update remoto** vía tabla nueva `app_config` en Supabase. Si la versión local del vendedor < `min_version_required`, al login se muestra `ForceUpdateScreen` bloqueante (solo "Actualizar ahora" o cerrar sesión). Reversible al instante con un UPDATE.
+- **Pre-download del APK** en background al detectar release nuevo. Cuando el vendedor toca "Actualizar", el instalador abre instantáneo (sin esperar 1 min de descarga).
+- **Migración SQL aplicada**: `app_config` con row inicial `min_version_required = '3.0.0'` (permisivo).
+- Pendiente para empaquetar: iconos para APK + Cronos (esperando imágenes del user).
+
+Archivos nuevos: `lib/screens/force_update_screen.dart`, `scripts/migration_app_config.sql`.
+Archivos modificados: `lib/services/update_service.dart` (extendido), `lib/screens/login_screen.dart` (gate post-login), `lib/screens/configuracion_screen.dart` (usa pre-download).
 
 ## v3.6.0 — Cronos quick actions, logging y robustez
 
