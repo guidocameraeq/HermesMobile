@@ -63,3 +63,8 @@ android/local.properties
 
 # Pubspec lock (opcional, pero recomendado para apps)
 # pubspec.lock
+
+# Source material de iconos (PNGs originales, SVGs, ICOs) — los assets
+# finales viven en assets/icons/ que sí se trackean. Esta carpeta es solo
+# para tener referencia local del material crudo.
+/(1) G/

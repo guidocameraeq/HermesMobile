@@ -256,12 +256,12 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
     </p>
   </div>
   <div class="timeline-item">
-    <span class="timeline-version">v3.7 — Force Update + Iconos (en preparación)</span>
-    <span class="timeline-date">Pendiente release</span>
+    <span class="timeline-version">v3.7 — Force Update + Identidad visual</span>
+    <span class="timeline-date">Listo para release</span>
     <p>
       <strong>Force update remoto</strong>: tabla <code>app_config</code> con <code>min_version_required</code>. Si la versión local del vendedor es menor, al login se muestra <code>ForceUpdateScreen</code> bloqueante (solo "Actualizar ahora" o cerrar sesión). Reversible al instante desde Supabase con un UPDATE.
       <strong>Pre-download del APK</strong> en background al detectar release soft: el vendedor toca "Actualizar" y el instalador abre instantáneo, sin esperar la descarga.
-      <strong>Iconos propios</strong> para la APK y para Cronos (reemplazo de los assets default Material). En espera de las imágenes finales.
+      <strong>Identidad visual</strong>: icono propio para el APK (Hermes mensajero alado, line art clásico) generado con <code>flutter_launcher_icons</code> en todas las densidades + adaptive icon. Icono de Cronos (anciano alado con guadaña y reloj de arena) reemplaza <code>Icons.auto_awesome</code> en HeroIcon, AppBar Badge y InfoSheet vía <code>Image.asset</code> con <code>colorBlendMode.srcIn</code> (1 asset, tinte dinámico). Animaciones existentes (gradient, pulse, rotación) intactas.
     </p>
   </div>
 </div>

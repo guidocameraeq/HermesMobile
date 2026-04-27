@@ -431,7 +431,15 @@ class _CronosBadgeState extends State<_CronosBadge>
               ),
             ],
           ),
-          child: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
+          child: Padding(
+            padding: const EdgeInsets.all(5),
+            child: Image.asset(
+              'assets/icons/cronos.png',
+              color: Colors.white,
+              colorBlendMode: BlendMode.srcIn,
+              fit: BoxFit.contain,
+            ),
+          ),
         );
       },
     );
@@ -689,7 +697,15 @@ class _HeroIconState extends State<_HeroIcon>
                 ),
                 child: Transform.rotate(
                   angle: t * 0.2,
-                  child: const Icon(Icons.auto_awesome, color: Colors.white, size: 44),
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Image.asset(
+                      'assets/icons/cronos.png',
+                      color: Colors.white,
+                      colorBlendMode: BlendMode.srcIn,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
                 ),
               ),
             ],

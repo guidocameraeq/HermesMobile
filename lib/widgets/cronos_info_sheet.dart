@@ -90,7 +90,15 @@ class CronosInfoSheet extends StatelessWidget {
               ),
             ],
           ),
-          child: const Icon(Icons.auto_awesome, color: Colors.white, size: 32),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Image.asset(
+              'assets/icons/cronos.png',
+              color: Colors.white,
+              colorBlendMode: BlendMode.srcIn,
+              fit: BoxFit.contain,
+            ),
+          ),
         ),
         const SizedBox(width: 14),
         const Expanded(
