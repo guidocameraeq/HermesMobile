@@ -61,25 +61,39 @@ class _HomeScreenState extends State<HomeScreen> {
         currentIndex: _currentIndex,
         onTap: (i) => setState(() => _currentIndex = i),
         type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
+        items: [
+          const BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart_rounded),
             label: 'Scorecard',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.schedule_send),
+            icon: _cronosNavIcon(AppColors.navUnselected),
+            activeIcon: _cronosNavIcon(AppColors.navSelected),
             label: 'Cronos',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.people_outline),
             label: 'Clientes',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.apps),
             label: 'Acciones',
           ),
         ],
       ),
+    );
+  }
+
+  /// Icono del tab Cronos: el line art se tiñe al color del estado
+  /// (selected/unselected) igual que los Icons Material vecinos.
+  Widget _cronosNavIcon(Color color) {
+    return Image.asset(
+      'assets/icons/cronos.png',
+      color: color,
+      colorBlendMode: BlendMode.srcIn,
+      width: 24,
+      height: 24,
+      fit: BoxFit.contain,
     );
   }
 }

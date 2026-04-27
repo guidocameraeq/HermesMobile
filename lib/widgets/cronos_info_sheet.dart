@@ -91,7 +91,7 @@ class CronosInfoSheet extends StatelessWidget {
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(4),
             child: Image.asset(
               'assets/icons/cronos.png',
               color: Colors.white,

@@ -432,7 +432,7 @@ class _CronosBadgeState extends State<_CronosBadge>
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(5),
+            padding: const EdgeInsets.all(2),
             child: Image.asset(
               'assets/icons/cronos.png',
               color: Colors.white,
@@ -698,7 +698,7 @@ class _HeroIconState extends State<_HeroIcon>
                 child: Transform.rotate(
                   angle: t * 0.2,
                   child: Padding(
-                    padding: const EdgeInsets.all(18),
+                    padding: const EdgeInsets.all(8),
                     child: Image.asset(
                       'assets/icons/cronos.png',
                       color: Colors.white,
