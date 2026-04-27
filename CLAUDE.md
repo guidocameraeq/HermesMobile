@@ -168,5 +168,42 @@ El IDE NO tiene el SDK de Flutter configurado → los errores de análisis tipo 
 - `docs/ESTADO_ACTUAL.md` — cada release
 - `docs/ARQUITECTURA.md` — solo cuando se agrega un patrón nuevo
 - `docs/WORKFLOW.md` — solo cuando cambia alguna herramienta
-- `docs/PLAN_MAESTRO_HERMES_MOBILE.html` — cuando completamos un bloque o agregamos pendiente
+- `docs/PLAN_MAESTRO_HERMES_MOBILE.html` — **ver sección dedicada abajo** ⬇️
 - `docs/POST_COMPACT_PROMPT.md` — cuando cambian los archivos críticos o el orden de lectura
+
+## El Plan Maestro HTML es la guía viva del proyecto
+
+`docs/PLAN_MAESTRO_HERMES_MOBILE.html` es **el documento de referencia del proyecto Hermes Mobile**. No es un archivo "para imprimir alguna vez": es la fuente de verdad sobre qué se hizo, qué se está haciendo, qué viene, y por qué. El user lo abre y lo usa como guía. Tu tarea es mantenerlo siempre alineado con la realidad del código.
+
+### Qué tiene que reflejar siempre
+
+1. **Versión actual y stats** (header + panel de stats al inicio): número de releases, badge de versión, fecha de última actualización.
+2. **Footer**: versión actual.
+3. **Timeline de versiones** (sección 2): un item por cada release publicado, con fecha, título corto y resumen narrativo de qué trajo.
+4. **Bloques completados vs pendientes**: si un bloque pendiente se completa, mover de la sección "pendientes" a "completados" + actualizar el TOC (`<li class="pending">` → `<li class="done">`).
+5. **Pendientes técnicos**: si surge una idea/mejora que vale la pena guardar, agregarla como `<div class="card">` en la sección 19. Si se completa, moverla al historial correspondiente.
+6. **Nueva funcionalidad importante**: si construimos algo grande (como Cronos Analytics), agregar una sección dedicada con queries/tablas/diagramas.
+7. **Tabla de Contenidos**: cada sección nueva debe estar en el TOC (`<div class="toc">`).
+
+### Cuándo actualizarlo
+
+| Evento | Qué actualizar |
+|---|---|
+| Publico release (tag + GitHub release) | Header version, footer, stats (releases totales), timeline item nuevo, mover bloques pendientes que se completaron |
+| Completo un bloque del plan original (C, D, F, G, H, J...) | Moverlo de `pending` a `done` (TOC + sección), agregar al historial de "Bloques completados" |
+| Surge una idea técnica nueva (deuda, optimización, feature) | Agregar como `<div class="card">` en "Pendientes Técnicos" (§19) con prioridad y esfuerzo estimado |
+| Resuelvo un bug crítico arquitectónico | Agregar a "Bugs críticos resueltos" (§3.3) con causa raíz + fix |
+| Agrego un patrón arquitectónico nuevo | Agregar al `ARQUITECTURA.md` Y mencionarlo en el plan maestro si afecta la roadmap |
+| Cambia el orden de prioridades | Reordenar la tabla de "Próximos Pasos Sugeridos" |
+
+### Reglas para editar el HTML
+
+- **Mantener el estilo existente**: usar las clases CSS que ya están definidas (`badge-done`, `badge-pending`, `card done`, `card pending`, `timeline-item done`, `info`, `success`, `highlight`, etc). No inventar clases nuevas a menos que sea para una sección categórica nueva.
+- **Validar después de cada cambio**: el archivo es HTML puro renderizable en cualquier browser. Verificar con un parser simple que las etiquetas queden balanceadas (ver `docs/PLAN_MAESTRO_HERMES_MOBILE.html` ya tiene 1000+ líneas y crece).
+- **Renumerar cuidadosamente** si insertás secciones nuevas: la numeración (§1, §2, ...) debe quedar consistente en TOC, headers y referencias internas.
+- **Preservar `class="page-break"`** en headings importantes para mantener el formato impreso.
+- **Las tablas con queries SQL van en `<pre>`** dentro de `<div class="card">` para mantener legibilidad.
+
+### Filosofía
+
+El plan maestro **no es opcional ni decorativo**. El user lo usa como guía operativa. Si algo cambia en el código y no se refleja acá, el plan miente. Si surge una decisión importante y no queda asentada acá, se pierde. Antes de cerrar cualquier ciclo de trabajo significativo, preguntate: "¿el plan maestro refleja esto?". Si la respuesta es no, actualizalo en el mismo commit.
