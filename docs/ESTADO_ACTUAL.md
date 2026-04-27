@@ -2,10 +2,20 @@
 
 > Snapshot para Claude post-compact. Actualizar en cada release.
 
-**Fecha del snapshot:** 2026-04-20
-**Versión actual:** v3.5.1+34
-**Último release publicado:** v3.5.1
-**APK URL:** https://github.com/guidocameraeq/HermesMobile/releases/tag/v3.5.1
+**Fecha del snapshot:** 2026-04-22
+**Versión actual:** v3.6.0+35
+**Último release publicado:** v3.6.0
+**APK URL:** https://github.com/guidocameraeq/HermesMobile/releases/tag/v3.6.0
+
+## v3.6.0 — Cronos quick actions, logging y robustez
+
+- **Quick actions** en bienvenida: 6 chips fijos (Pendientes hoy/mañana/semana, Vencidas, Próxima tarea, Visitas hoy) que bypasean al LLM con queries directas (<300ms).
+- **Historial truncado** a últimos 10 mensajes al armar request al LLM.
+- **`max_tokens` 1500** (era 500) para evitar JSON cortado con multi-acción.
+- **Fuzzy match normalizado** (sin tildes, sin signos) — soluciona Whisper con acentos.
+- **Auto-completar pendiente único**: card con border verde + "Marcar como hecha" cuando filtrar por cliente devuelve 1 ítem.
+- **Logging estructurado** en `cronos_logs` (Supabase) — fire-and-forget. Permite iterar el prompt con datos reales de uso.
+- Tabla nueva: `cronos_logs` (id, vendedor, msg, raw, mensaje, count, parse_ok, latencia, modelo, created_at) + 2 índices.
 
 ---
 
