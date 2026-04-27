@@ -158,7 +158,7 @@ class _ForceUpdateScreenState extends State<ForceUpdateScreen> {
 
                 const SizedBox(height: 28),
 
-                // Card con versión
+                // Card con versión disponible
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -166,53 +166,28 @@ class _ForceUpdateScreenState extends State<ForceUpdateScreen> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppColors.border),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.new_releases,
-                              color: AppColors.success, size: 18),
-                          const SizedBox(width: 10),
-                          Text(
-                            'Versión ${widget.release.tagName.replaceFirst("v", "")}',
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            _formatSize(widget.release.apkSize),
-                            style: const TextStyle(
-                              color: AppColors.textMuted,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (widget.release.body.isNotEmpty) ...[
-                        const SizedBox(height: 14),
-                        const Text(
-                          'NOVEDADES',
-                          style: TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _trimBody(widget.release.body),
+                      const Icon(Icons.new_releases,
+                          color: AppColors.success, size: 18),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Versión ${widget.release.tagName.replaceFirst("v", "")} disponible',
                           style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                            height: 1.4,
+                            color: AppColors.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ],
+                      ),
+                      Text(
+                        _formatSize(widget.release.apkSize),
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -333,12 +308,5 @@ class _ForceUpdateScreenState extends State<ForceUpdateScreen> {
     if (bytes <= 0) return '';
     final mb = bytes / (1024 * 1024);
     return '${mb.toStringAsFixed(1)} MB';
-  }
-
-  /// Limita el body del release a las primeras ~10 líneas para no saturar.
-  String _trimBody(String body) {
-    final lines = body.split('\n').where((l) => l.trim().isNotEmpty).toList();
-    if (lines.length <= 12) return body.trim();
-    return '${lines.take(12).join("\n")}\n…';
   }
 }

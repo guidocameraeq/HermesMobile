@@ -75,29 +75,32 @@ class CronosInfoSheet extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 64, height: 64,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft, end: Alignment.bottomRight,
-              colors: [AppColors.accent, AppColors.primary],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.accent.withOpacity(0.4),
-                blurRadius: 20, spreadRadius: 2,
+        SizedBox(
+          width: 80, height: 80,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 80, height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.accent.withOpacity(0.45),
+                      AppColors.accent.withOpacity(0),
+                    ],
+                    stops: const [0.0, 0.7],
+                  ),
+                ),
+              ),
+              Image.asset(
+                'assets/icons/cronos.png',
+                color: Colors.white,
+                colorBlendMode: BlendMode.srcIn,
+                fit: BoxFit.contain,
+                width: 76, height: 76,
               ),
             ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(4),
-            child: Image.asset(
-              'assets/icons/cronos.png',
-              color: Colors.white,
-              colorBlendMode: BlendMode.srcIn,
-              fit: BoxFit.contain,
-            ),
           ),
         ),
         const SizedBox(width: 14),

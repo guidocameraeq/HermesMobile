@@ -415,30 +415,40 @@ class _CronosBadgeState extends State<_CronosBadge>
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (_, __) {
-        final t = _ctrl.value;
-        return Container(
-          width: 34, height: 34,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft, end: Alignment.bottomRight,
-              colors: [AppColors.accent, AppColors.primary],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.accent.withOpacity(0.35 + 0.25 * t),
-                blurRadius: 8 + 6 * t, spreadRadius: 1,
+        final eased = Curves.easeInOut.transform(_ctrl.value);
+        // Breathe sutil + glow pulsante detrás del icono
+        final scale = 0.92 + 0.08 * eased;
+        return SizedBox(
+          width: 40, height: 40,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Glow azul radial detrás (no círculo sólido)
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.accent.withOpacity(0.35 + 0.25 * eased),
+                      AppColors.accent.withOpacity(0),
+                    ],
+                    stops: const [0.0, 0.75],
+                  ),
+                ),
+              ),
+              // Cronos blanco encima, sobrepasa el glow
+              Transform.scale(
+                scale: scale,
+                child: Image.asset(
+                  'assets/icons/cronos.png',
+                  color: Colors.white,
+                  colorBlendMode: BlendMode.srcIn,
+                  fit: BoxFit.contain,
+                  width: 36, height: 36,
+                ),
               ),
             ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(2),
-            child: Image.asset(
-              'assets/icons/cronos.png',
-              color: Colors.white,
-              colorBlendMode: BlendMode.srcIn,
-              fit: BoxFit.contain,
-            ),
           ),
         );
       },
@@ -660,9 +670,10 @@ class _HeroIconState extends State<_HeroIcon>
   @override
   void initState() {
     super.initState();
+    // Breathe loop: 3s in/out con reverse para movimiento orgánico
     _ctrl = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 3000),
-    )..repeat();
+    )..repeat(reverse: true);
   }
 
   @override
@@ -673,39 +684,41 @@ class _HeroIconState extends State<_HeroIcon>
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (_, __) {
-        final t = (_ctrl.value * 2 * 3.14159);
-        final scale = 1 + 0.04 * (0.5 - (_ctrl.value - 0.5).abs()) * 2;
-        return Transform.scale(
-          scale: scale,
+        // Curva suave (easeInOut equivalente)
+        final eased = Curves.easeInOut.transform(_ctrl.value);
+        // Breathe sutil de la figura: 0.96 ↔ 1.04
+        final scale = 0.96 + 0.08 * eased;
+        // Glow pulsante detrás (más amplitud que el scale)
+        final glowOpacity = 0.18 + 0.32 * eased;
+        final glowSize = 50.0 + 30.0 * eased;
+        return SizedBox(
+          width: 160, height: 160,
           child: Stack(
             alignment: Alignment.center,
             children: [
+              // Glow radial detrás (sin círculo sólido)
               Container(
-                width: 90, height: 90,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft, end: Alignment.bottomRight,
-                    colors: [AppColors.accent, AppColors.primary],
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.accent.withOpacity(glowOpacity),
+                      AppColors.accent.withOpacity(0),
+                    ],
+                    stops: const [0.0, 0.7],
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.accent.withOpacity(0.4),
-                      blurRadius: 30, spreadRadius: 6,
-                    ),
-                  ],
                 ),
-                child: Transform.rotate(
-                  angle: t * 0.2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Image.asset(
-                      'assets/icons/cronos.png',
-                      color: Colors.white,
-                      colorBlendMode: BlendMode.srcIn,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
+                width: glowSize * 2.4, height: glowSize * 2.4,
+              ),
+              // Cronos blanco grande, sin fondo, sobrepasando el área del glow
+              Transform.scale(
+                scale: scale,
+                child: Image.asset(
+                  'assets/icons/cronos.png',
+                  color: Colors.white,
+                  colorBlendMode: BlendMode.srcIn,
+                  fit: BoxFit.contain,
+                  width: 140, height: 140,
                 ),
               ),
             ],
