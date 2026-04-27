@@ -7,6 +7,7 @@ import 'clientes_service.dart';
 import 'actividades_service.dart';
 import 'visitas_service.dart';
 import 'prompt_service.dart';
+import 'cronos_logger.dart';
 
 /// Respuesta parseada del asistente IA.
 class AssistantAction {
@@ -20,6 +21,7 @@ class AssistantAction {
   final int? actividadId; // para completar desde pendientes
   final String? motivo;   // para visita_ahora
   final List<Cliente>? candidatos; // varios matches — usuario debe elegir
+  final bool completable; // pendiente_item con botón "Completar" directo
 
   AssistantAction({
     required this.tipo,
@@ -32,6 +34,7 @@ class AssistantAction {
     this.actividadId,
     this.motivo,
     this.candidatos,
+    this.completable = false,
   });
 
   bool get esActividad => tipo == 'actividad';
@@ -69,6 +72,50 @@ class AssistantResult {
   AssistantResult({required this.mensaje, required this.actions});
 
   bool get tieneAcciones => actions.isNotEmpty;
+}
+
+/// Acciones rápidas — chips fijos de la pantalla de bienvenida que
+/// bypasean al LLM. Cada una corre una query directa contra la DB.
+/// Latencia <300ms, sin costo de tokens, 100% determinístico.
+enum QuickAction {
+  pendientesHoy,
+  pendientesManana,
+  pendientesSemana,
+  pendientesVencidas,
+  visitasHoy,
+  proximaTarea,
+}
+
+extension QuickActionInfo on QuickAction {
+  /// Texto que se muestra en el chip Y como mensaje del usuario en el chat.
+  String get label => switch (this) {
+    QuickAction.pendientesHoy     => 'Pendientes de hoy',
+    QuickAction.pendientesManana  => 'Pendientes de mañana',
+    QuickAction.pendientesSemana  => 'Pendientes de esta semana',
+    QuickAction.pendientesVencidas=> 'Pendientes vencidas',
+    QuickAction.visitasHoy        => 'Visitas de hoy',
+    QuickAction.proximaTarea      => 'Mi próxima tarea',
+  };
+
+  /// Mensaje del assistant cuando NO hay resultados.
+  String get emptyMsg => switch (this) {
+    QuickAction.pendientesHoy     => 'No tenés pendientes para hoy.',
+    QuickAction.pendientesManana  => 'No tenés pendientes para mañana.',
+    QuickAction.pendientesSemana  => 'No tenés pendientes esta semana.',
+    QuickAction.pendientesVencidas=> 'No tenés pendientes vencidas. 👍',
+    QuickAction.visitasHoy        => 'No registraste visitas hoy.',
+    QuickAction.proximaTarea      => 'No tenés próximas tareas agendadas.',
+  };
+
+  /// Mensaje del assistant cuando hay resultados.
+  String okMsg(int count) => switch (this) {
+    QuickAction.pendientesHoy     => 'Tenés $count pendiente${count == 1 ? "" : "s"} para hoy:',
+    QuickAction.pendientesManana  => 'Tenés $count pendiente${count == 1 ? "" : "s"} para mañana:',
+    QuickAction.pendientesSemana  => 'Esta semana tenés $count pendiente${count == 1 ? "" : "s"}:',
+    QuickAction.pendientesVencidas=> 'Tenés $count actividad${count == 1 ? "" : "es"} vencida${count == 1 ? "" : "s"}:',
+    QuickAction.visitasHoy        => 'Hoy registraste $count visita${count == 1 ? "" : "s"}:',
+    QuickAction.proximaTarea      => 'Tu próxima tarea:',
+  };
 }
 
 /// Servicio del asistente IA — con historial de conversación.
@@ -140,7 +187,8 @@ class AssistantService {
   }
 
   /// Transforma filas de actividades_cliente en AssistantActions tipo pendiente_item.
-  static List<AssistantAction> _rowsToPendienteItems(List<Map<String, dynamic>> items) {
+  static List<AssistantAction> _rowsToPendienteItems(
+      List<Map<String, dynamic>> items, {bool completable = false}) {
     final out = <AssistantAction>[];
     for (final item in items.take(15)) {
       final id = int.tryParse(item['id']?.toString() ?? '');
@@ -158,6 +206,7 @@ class AssistantService {
         nota: desc,
         mensaje: '',
         actividadId: id,
+        completable: completable,
         clienteResuelto: cliente.isNotEmpty ? Cliente(
           codigo: codigo, nombre: cliente, categoria: '', situacion: '',
           localidad: '', provincia: '',
@@ -174,12 +223,20 @@ class AssistantService {
 
     final systemPrompt = await _buildSystemPrompt();
 
-    // Armar mensajes con historial completo
+    // Truncar a últimos 10 mensajes para limitar tokens-in y evitar drift
+    // del modelo cuando la conversación es larga. El historial completo
+    // se preserva en memoria para el scroll del chat en la UI.
+    const historialMax = 10;
+    final recent = _historial.length > historialMax
+        ? _historial.sublist(_historial.length - historialMax)
+        : _historial;
+
     final messages = <Map<String, String>>[
       {'role': 'system', 'content': systemPrompt},
-      ..._historial,
+      ...recent,
     ];
 
+    final stopwatch = Stopwatch()..start();
     final response = await http.post(
       Uri.parse('https://api.openai.com/v1/chat/completions'),
       headers: {
@@ -190,11 +247,21 @@ class AssistantService {
         'model': AppConfig.openaiModel,
         'messages': messages,
         'temperature': 0.3,
-        'max_tokens': 500,
+        'max_tokens': 1500,
       }),
     ).timeout(const Duration(seconds: 15));
+    stopwatch.stop();
+    final latenciaMs = stopwatch.elapsedMilliseconds;
 
     if (response.statusCode != 200) {
+      // Log del fallo HTTP (sin await)
+      CronosLogger.log(
+        userMsg: userMessage,
+        responseRaw: response.body,
+        parseOk: false,
+        latenciaMs: latenciaMs,
+        modelo: AppConfig.openaiModel,
+      );
       throw Exception('Error OpenAI: ${response.statusCode}');
     }
 
@@ -276,7 +343,12 @@ class AssistantService {
             items = items.take(limite).toList();
           }
 
-          actions.addAll(_rowsToPendienteItems(items));
+          // Si se filtró por cliente y hay UN solo pendiente, las cards salen
+          // con botón "Completar" directo (resuelve el flujo "ya llamé a X"
+          // sin requerir otro round-trip al LLM).
+          final autoCompletar =
+              clienteMatchQ != null && clienteMatchQ.isNotEmpty && items.length == 1;
+          actions.addAll(_rowsToPendienteItems(items, completable: autoCompletar));
           continue;
         }
 
@@ -343,27 +415,72 @@ class AssistantService {
         ));
       }
 
+      // Log fire-and-forget del turno parseado correctamente
+      CronosLogger.log(
+        userMsg: userMessage,
+        responseRaw: content,
+        responseMensaje: mensaje,
+        accionesCount: actions.length,
+        parseOk: true,
+        latenciaMs: latenciaMs,
+        modelo: AppConfig.openaiModel,
+      );
+
       return AssistantResult(mensaje: mensaje, actions: actions);
     } catch (_) {
+      // JSON inválido — el modelo respondió en texto plano o cortado
+      CronosLogger.log(
+        userMsg: userMessage,
+        responseRaw: content,
+        parseOk: false,
+        latenciaMs: latenciaMs,
+        modelo: AppConfig.openaiModel,
+      );
       return AssistantResult(mensaje: content, actions: []);
     }
+  }
+
+  /// Normaliza texto para fuzzy match: lowercase + sin tildes + sin signos.
+  /// Whisper a veces transcribe "Garcia" / "García" / "garcía" indistinto.
+  static String _normalize(String s) {
+    final lower = s.toLowerCase().trim();
+    const accents = 'áàäâãéèëêíìïîóòöôõúùüûñç';
+    const plain   = 'aaaaaeeeeiiiiooooouuuunc';
+    final buf = StringBuffer();
+    for (final ch in lower.runes) {
+      final c = String.fromCharCode(ch);
+      final i = accents.indexOf(c);
+      if (i >= 0) {
+        buf.write(plain[i]);
+      } else if (RegExp(r'[a-z0-9 ]').hasMatch(c)) {
+        buf.write(c);
+      }
+      // resto (puntuación, símbolos) se ignora
+    }
+    // colapsar espacios múltiples
+    return buf.toString().replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
   /// Resuelve un cliente_match contra la cartera. Retorna todos los candidatos
   /// que coincidan — la UI muestra opciones si hay más de uno.
   static Future<List<Cliente>> _fuzzyMatchClientes(String query) async {
     final clientes = await _getClientes();
-    final q = query.toLowerCase().trim();
+    final qRaw = query.toLowerCase().trim();
+    final qNorm = _normalize(query);
 
-    // 1. Match exacto por código
-    final byCode = clientes.where((c) => c.codigo == q).toList();
+    // 1. Match exacto por código (no se normaliza, los códigos son alfanuméricos)
+    final byCode = clientes.where((c) => c.codigo == qRaw).toList();
     if (byCode.length == 1) return byCode;
 
-    // 2. Match por contención en nombre
-    final matches = clientes.where((c) =>
-        c.nombre.toLowerCase().contains(q) ||
-        q.split(' ').every((word) => c.nombre.toLowerCase().contains(word))
-    ).toList();
+    if (qNorm.isEmpty) return [];
+
+    // 2. Match por contención en nombre (normalizado)
+    final words = qNorm.split(' ').where((w) => w.isNotEmpty).toList();
+    final matches = clientes.where((c) {
+      final nameNorm = _normalize(c.nombre);
+      return nameNorm.contains(qNorm) ||
+          (words.length > 1 && words.every((w) => nameNorm.contains(w)));
+    }).toList();
 
     return matches;
   }
@@ -374,5 +491,69 @@ class AssistantService {
       Cliente cliente) async {
     final items = await ActividadesService.pendientesPorCliente(cliente.codigo);
     return _rowsToPendienteItems(items);
+  }
+
+  /// Ejecuta una acción rápida sin pasar por el LLM. Determinística + barata.
+  /// Mantiene el mismo formato de respuesta que `sendMessage` para que la UI
+  /// no necesite distinguir el origen.
+  ///
+  /// La acción también se registra en `_historial` (user + assistant) para
+  /// que si después el vendedor escribe libre, el modelo tenga contexto.
+  static Future<AssistantResult> executeQuickAction(QuickAction qa) async {
+    final stopwatch = Stopwatch()..start();
+    _historial.add({'role': 'user', 'content': qa.label});
+
+    List<Map<String, dynamic>> items;
+    List<AssistantAction> actions;
+    String mensaje;
+
+    switch (qa) {
+      case QuickAction.pendientesHoy:
+        items = await ActividadesService.pendientesHoy();
+        actions = _rowsToPendienteItems(items);
+        break;
+      case QuickAction.pendientesManana:
+        items = await ActividadesService.pendientesManana();
+        actions = _rowsToPendienteItems(items);
+        break;
+      case QuickAction.pendientesSemana:
+        items = await ActividadesService.pendientesSemana();
+        actions = _rowsToPendienteItems(items);
+        break;
+      case QuickAction.pendientesVencidas:
+        items = await ActividadesService.pendientesVencidas();
+        actions = _rowsToPendienteItems(items);
+        break;
+      case QuickAction.visitasHoy:
+        items = await VisitasService.visitasHoy();
+        actions = _rowsToVisitaItems(items);
+        break;
+      case QuickAction.proximaTarea:
+        items = await ActividadesService.pendientes();
+        // pendientes() ordena por fecha asc → primero es el más próximo
+        items = items.take(1).toList();
+        actions = _rowsToPendienteItems(items);
+        break;
+    }
+
+    mensaje = items.isEmpty ? qa.emptyMsg : qa.okMsg(items.length);
+
+    // Mantener historial coherente — si después el user escribe, el LLM
+    // ve este intercambio como contexto.
+    _historial.add({'role': 'assistant', 'content': mensaje});
+
+    stopwatch.stop();
+
+    // Log fire-and-forget — modelo='bypass' permite distinguir del tráfico LLM
+    CronosLogger.log(
+      userMsg: qa.label,
+      responseMensaje: mensaje,
+      accionesCount: actions.length,
+      parseOk: true,
+      latenciaMs: stopwatch.elapsedMilliseconds,
+      modelo: 'bypass',
+    );
+
+    return AssistantResult(mensaje: mensaje, actions: actions);
   }
 }

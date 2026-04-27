@@ -254,6 +254,39 @@ class _AssistantState extends State<AssistantScreen>
     _send();
   }
 
+  /// Tap en quick-action: bypass al LLM, query directa, render inmediato.
+  Future<void> _tapQuickAction(QuickAction qa) async {
+    if (_sending) return;
+    setState(() {
+      _messages.add(_ChatMessage(isUser: true, text: qa.label));
+      _sending = true;
+    });
+    _scrollToBottom();
+    HapticFeedback.selectionClick();
+
+    try {
+      final result = await AssistantService.executeQuickAction(qa);
+      if (!mounted) return;
+      setState(() {
+        _messages.add(_ChatMessage(
+          isUser: false,
+          text: result.mensaje,
+          actions: result.tieneAcciones ? result.actions : null,
+        ));
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _messages.add(_ChatMessage(
+        isUser: false,
+        text: 'Error: ${e.toString().replaceFirst("Exception: ", "")}',
+        isError: true,
+      )));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+      _scrollToBottom();
+    }
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollCtrl.hasClients) {
@@ -319,7 +352,7 @@ class _AssistantState extends State<AssistantScreen>
         children: [
           Expanded(
             child: _messages.isEmpty
-                ? _Welcome(onChip: _tapSuggestion)
+                ? _Welcome(onChip: _tapSuggestion, onQuickAction: _tapQuickAction)
                 : ListView.builder(
                     controller: _scrollCtrl,
                     padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
@@ -405,28 +438,33 @@ class _CronosBadgeState extends State<_CronosBadge>
   }
 }
 
-/// Pantalla de bienvenida con chips de sugerencias.
+/// Pantalla de bienvenida con quick actions + ejemplos rotativos.
 class _Welcome extends StatelessWidget {
   final void Function(String) onChip;
-  const _Welcome({required this.onChip});
+  final void Function(QuickAction) onQuickAction;
+  const _Welcome({required this.onChip, required this.onQuickAction});
 
-  // Pool amplio — se muestran 4 a la vez y rotan
+  // Quick actions fijas — bypasean al LLM, queries directas (<300ms).
+  static const _quickActions = <_QuickActionItem>[
+    _QuickActionItem(QuickAction.pendientesHoy,      Icons.today,             AppColors.accent),
+    _QuickActionItem(QuickAction.pendientesManana,   Icons.event,             AppColors.primary),
+    _QuickActionItem(QuickAction.pendientesSemana,   Icons.calendar_month,    AppColors.accent),
+    _QuickActionItem(QuickAction.pendientesVencidas, Icons.history_toggle_off, AppColors.danger),
+    _QuickActionItem(QuickAction.proximaTarea,       Icons.skip_next,         AppColors.success),
+    _QuickActionItem(QuickAction.visitasHoy,         Icons.location_on,       AppColors.success),
+  ];
+
+  // Ejemplos rotativos — al LLM. Diseñados para mostrar al vendedor
+  // qué tipo de cosas puede pedir en lenguaje natural.
   static const _pool = <ChipSuggestion>[
-    ChipSuggestion(Icons.phone_outlined, 'Recordame llamar a García mañana a las 10', AppColors.primary),
-    ChipSuggestion(Icons.checklist, '¿Qué tengo pendiente hoy?', AppColors.accent),
-    ChipSuggestion(Icons.event, 'Agendá reunión con Pérez el jueves a las 15', AppColors.success),
-    ChipSuggestion(Icons.rocket_launch_outlined, 'Propuesta para Rodríguez la semana que viene', AppColors.warning),
-    ChipSuggestion(Icons.location_on, 'Estoy visitando a López', AppColors.success),
-    ChipSuggestion(Icons.calendar_month, '¿Qué tengo esta semana?', AppColors.accent),
-    ChipSuggestion(Icons.history_toggle_off, '¿Qué actividades tengo vencidas?', AppColors.danger),
-    ChipSuggestion(Icons.skip_next, '¿Cuál es mi próxima tarea?', AppColors.accent),
-    ChipSuggestion(Icons.flight_land, '¿Qué tarea tengo más lejos en el tiempo?', AppColors.accent),
-    ChipSuggestion(Icons.person_search, '¿Qué pendientes tengo con García?', AppColors.primary),
+    ChipSuggestion(Icons.phone_outlined,   'Recordame llamar a García mañana a las 10', AppColors.primary),
+    ChipSuggestion(Icons.event,            'Agendá reunión con Pérez el jueves a las 15', AppColors.success),
+    ChipSuggestion(Icons.location_on,      'Estoy visitando a López', AppColors.success),
     ChipSuggestion(Icons.check_circle_outline, 'Ya llamé a García', AppColors.success),
-    ChipSuggestion(Icons.repeat, 'Llamada a Pérez cada martes durante 4 semanas', AppColors.warning),
-    ChipSuggestion(Icons.done_all, '¿Qué visité esta semana?', AppColors.accent),
+    ChipSuggestion(Icons.person_search,    'Pendientes con García', AppColors.primary),
+    ChipSuggestion(Icons.rocket_launch_outlined, 'Propuesta para Rodríguez la semana que viene', AppColors.warning),
     ChipSuggestion(Icons.request_quote_outlined, 'Pasé a cobrarle a Martínez', AppColors.success),
-    ChipSuggestion(Icons.alarm, 'Recordatorio: mandar factura a López mañana', AppColors.warning),
+    ChipSuggestion(Icons.alarm,            'Mandar factura a López mañana', AppColors.warning),
   ];
 
   @override
@@ -434,66 +472,170 @@ class _Welcome extends StatelessWidget {
     final nombre = Session.current.vendedorNombre.split(' ').first;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           GestureDetector(
             onTap: () => CronosInfoSheet.show(context),
             child: _HeroIcon(),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           Text('Hola $nombre', style: const TextStyle(
             color: AppColors.textPrimary,
-            fontSize: 24, fontWeight: FontWeight.w600,
+            fontSize: 22, fontWeight: FontWeight.w600,
           )),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           InkWell(
             onTap: () => CronosInfoSheet.show(context),
             borderRadius: BorderRadius.circular(6),
             child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     'Soy Cronos, tu asistente de agenda',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                   ),
                   SizedBox(width: 4),
-                  Icon(Icons.info_outline, color: AppColors.accent, size: 13),
+                  Icon(Icons.info_outline, color: AppColors.accent, size: 12),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'Probá alguna de estas ideas, o decímelo a tu manera',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+          const SizedBox(height: 18),
+
+          // ── Acciones rápidas (bypass al LLM) ────────────────────
+          const _SectionHeader(label: 'ACCIONES RÁPIDAS'),
+          const SizedBox(height: 8),
+          _QuickActionGrid(
+            items: _quickActions,
+            onTap: onQuickAction,
           ),
-          const SizedBox(height: 20),
+
+          const SizedBox(height: 22),
+
+          // ── Ejemplos rotativos (van al LLM) ─────────────────────
+          const _SectionHeader(label: 'TAMBIÉN PODÉS DECIR…'),
+          const SizedBox(height: 8),
           CyclingChips(
             pool: _pool,
-            visibleCount: 4,
+            visibleCount: 3,
             interval: const Duration(seconds: 4),
             onTap: onChip,
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
           const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.mic, color: AppColors.textMuted, size: 14),
+              Icon(Icons.mic, color: AppColors.textMuted, size: 13),
               SizedBox(width: 6),
-              Text('También podés hablar', style: TextStyle(
+              Text('O hablá tocando el micrófono', style: TextStyle(
                 color: AppColors.textMuted, fontSize: 11,
               )),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
         ],
       ),
+    );
+  }
+}
+
+/// Encabezado de sección — typografía discreta (uppercase + tracking).
+class _SectionHeader extends StatelessWidget {
+  final String label;
+  const _SectionHeader({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Text(label, style: const TextStyle(
+          color: AppColors.textMuted,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.4,
+        )),
+      ),
+    );
+  }
+}
+
+/// Item de quick action: enum + ícono + color.
+class _QuickActionItem {
+  final QuickAction action;
+  final IconData icon;
+  final Color color;
+  const _QuickActionItem(this.action, this.icon, this.color);
+}
+
+/// Grilla 2 columnas de chips fijos que bypasean al LLM.
+class _QuickActionGrid extends StatelessWidget {
+  final List<_QuickActionItem> items;
+  final void Function(QuickAction) onTap;
+
+  const _QuickActionGrid({required this.items, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 2.6,
+      ),
+      itemCount: items.length,
+      itemBuilder: (_, i) {
+        final it = items[i];
+        return InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap(it.action);
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.bgCard,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: it.color.withOpacity(0.25)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 28, height: 28,
+                  decoration: BoxDecoration(
+                    color: it.color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                  child: Icon(it.icon, color: it.color, size: 14),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    it.action.label,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      height: 1.2,
+                    ),
+                    maxLines: 2, overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -554,87 +696,6 @@ class _HeroIconState extends State<_HeroIcon>
           ),
         );
       },
-    );
-  }
-}
-
-class _AnimatedChip extends StatefulWidget {
-  final int index;
-  final String text;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _AnimatedChip({
-    required this.index,
-    required this.text,
-    required this.icon,
-    required this.onTap,
-  });
-
-  @override
-  State<_AnimatedChip> createState() => _AnimatedChipState();
-}
-
-class _AnimatedChipState extends State<_AnimatedChip>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _opacity;
-  late final Animation<Offset> _slide;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 380),
-    );
-    _opacity = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
-    _slide = Tween(begin: const Offset(0, 0.2), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
-    Future.delayed(Duration(milliseconds: 100 + widget.index * 70), () {
-      if (mounted) _ctrl.forward();
-    });
-  }
-
-  @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _opacity,
-      child: SlideTransition(
-        position: _slide,
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: InkWell(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              widget.onTap();
-            },
-            borderRadius: BorderRadius.circular(14),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: AppColors.bgCard,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.accent.withOpacity(0.15)),
-              ),
-              child: Row(
-                children: [
-                  Icon(widget.icon, color: AppColors.accent, size: 18),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(widget.text, style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textPrimary, fontSize: 13)),
-                  ),
-                  const Icon(Icons.north_east,
-                      color: AppColors.textMuted, size: 14),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -813,13 +874,17 @@ class _ActionCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: confirmada
               ? AppColors.success.withOpacity(0.1)
-              : AppColors.bg,
+              : action.completable
+                  ? AppColors.success.withOpacity(0.06)
+                  : AppColors.bg,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: confirmada
                 ? AppColors.success
-                : AppColors.accent.withOpacity(0.3),
-            width: confirmada ? 1.5 : 1,
+                : action.completable
+                    ? AppColors.success.withOpacity(0.5)
+                    : AppColors.accent.withOpacity(0.3),
+            width: (confirmada || action.completable) ? 1.5 : 1,
           ),
         ),
         child: Stack(
@@ -863,7 +928,9 @@ class _ActionCard extends StatelessWidget {
                       child: Text(
                         confirmada
                             ? (action.esPendiente ? 'Completada' : 'Agendada')
-                            : (action.esPendiente ? 'Completar' : 'Confirmar'),
+                            : action.completable
+                                ? 'Marcar como hecha'
+                                : (action.esPendiente ? 'Completar' : 'Confirmar'),
                         key: ValueKey(confirmada),
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                       ),
