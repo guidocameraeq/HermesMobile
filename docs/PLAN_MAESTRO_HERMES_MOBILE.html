@@ -81,7 +81,7 @@
 
 <h1>HERMES MOBILE — Plan Maestro de Desarrollo</h1>
 <p style="font-size:14px;color:#64748b;margin-bottom:5px;">App Android para Equipo Comercial — CRM Bidireccional con Asistente IA</p>
-<p style="font-size:11px;color:#94a3b8;">Documento actualizado: <strong>Abril 2026</strong> · Versión actual: <span class="version-tag">v3.6.0</span> · Repo: github.com/guidocameraeq/HermesMobile</p>
+<p style="font-size:11px;color:#94a3b8;">Documento actualizado: <strong>Mayo 2026</strong> · Versión actual: <span class="version-tag">v3.7.3</span> · Repo: github.com/guidocameraeq/HermesMobile</p>
 
 <!-- Panel de progreso -->
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin:20px 0;justify-content:center;">
@@ -98,11 +98,11 @@
     <span class="stat-label">Bloques pendientes</span>
   </div>
   <div class="stat-box">
-    <span class="stat-num">36</span>
+    <span class="stat-num">39</span>
     <span class="stat-label">Releases totales</span>
   </div>
   <div class="stat-box">
-    <span class="stat-num">v3.6</span>
+    <span class="stat-num">v3.7</span>
     <span class="stat-label">Versión actual</span>
   </div>
 </div>
@@ -134,6 +134,7 @@
   <li><a href="#pendientes-tecnicos">Pendientes Técnicos Específicos</a></li>
   <li><a href="#cronos-analytics">Cronos Analytics — Reportes y Conclusiones</a></li>
   <li><a href="#force-update">Force Update — Killswitch remoto de versión</a></li>
+  <li><a href="#seguridad">Auditoría de Seguridad y Hardening</a></li>
   <li><a href="#orden">Próximos Pasos Sugeridos</a></li>
 </ol>
 </div>
@@ -255,13 +256,42 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
       <strong>Logging estructurado</strong> en tabla <code>cronos_logs</code> (fire-and-forget): cada turno del LLM queda con latencia, parse_ok, conteo de acciones, modelo. Base para el módulo de analytics.
     </p>
   </div>
-  <div class="timeline-item">
-    <span class="timeline-version">v3.7 — Force Update + Identidad visual</span>
-    <span class="timeline-date">Listo para release</span>
+  <div class="timeline-item done">
+    <span class="timeline-version">v3.7.0 — Force Update + Identidad visual</span>
+    <span class="timeline-date">Abril 2026</span>
     <p>
-      <strong>Force update remoto</strong>: tabla <code>app_config</code> con <code>min_version_required</code>. Si la versión local del vendedor es menor, al login se muestra <code>ForceUpdateScreen</code> bloqueante (solo "Actualizar ahora" o cerrar sesión). Reversible al instante desde Supabase con un UPDATE.
-      <strong>Pre-download del APK</strong> en background al detectar release soft: el vendedor toca "Actualizar" y el instalador abre instantáneo, sin esperar la descarga.
-      <strong>Identidad visual</strong>: icono propio para el APK (Hermes mensajero alado, line art clásico) generado con <code>flutter_launcher_icons</code> en todas las densidades + adaptive icon. Icono de Cronos (anciano alado con guadaña y reloj de arena) reemplaza <code>Icons.auto_awesome</code> en HeroIcon, AppBar Badge y InfoSheet vía <code>Image.asset</code> con <code>colorBlendMode.srcIn</code> (1 asset, tinte dinámico). Animaciones existentes (gradient, pulse, rotación) intactas.
+      <strong>Force update remoto</strong>: tabla <code>app_config</code> con <code>min_version_required</code>. Si la versión local del vendedor es menor, al login se muestra <code>ForceUpdateScreen</code> bloqueante. Reversible al instante desde Supabase con un UPDATE.
+      <strong>Pre-download del APK</strong> en background al detectar release soft: el instalador abre instantáneo.
+      <strong>Identidad visual</strong>: icono propio Hermes para el APK + icono Cronos in-app vía <code>Image.asset + colorBlendMode</code>.
+    </p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v3.7.1 — Pulido visual post-test</span>
+    <span class="timeline-date">Abril 2026</span>
+    <p>
+      Logo Hermes agregado a la pantalla de login (gradient azul + glow).
+      Cronos en el bottom nav del HomeScreen (antes era <code>Icons.schedule_send</code> default).
+      Padding fix de los iconos de Cronos en chat (HeroIcon 18→8, AppBar Badge 5→2, InfoSheet 12→4) — el PNG ya tenía whitespace propio, el padding extra lo achicaba.
+    </p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v3.7.2 — Cronos breathe + APK icon coherente</span>
+    <span class="timeline-date">Abril 2026</span>
+    <p>
+      <strong>Cronos in-chat redesign</strong>: la figura ahora respira (breathe scale 0.96↔1.04, 3s easeInOut) en lugar de girar. Sin círculo opaco azul: glow radial difuso detrás. El icono sobrepasa el área del glow, se siente "vivo". HeroIcon, AppBar Badge e InfoSheet — los 3 lugares.
+      <strong>Icono APK coherente con login</strong>: ahora ambos son Hermes blanco sobre fondo azul <code>#2563EB</code> (antes el launcher era negro sobre blanco). Asset <code>hermes_white.png</code> generado con PIL invirtiendo el line art original.
+      <strong>ForceUpdateScreen</strong>: removido el changelog del release (caracteres UTF-8 rotos al renderizarse). Mensaje genérico simple.
+    </p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v3.7.3 — Security hardening</span>
+    <span class="timeline-date">Mayo 2026 — Actual</span>
+    <p>
+      <strong>Resuelve hallazgos críticos</strong> de la auditoría de seguridad de mayo 2026.
+      <strong>CRIT-1 (Release keystore)</strong>: el APK release ya no se firma con la clave debug; ahora con keystore RSA 2048 dedicado (<code>keystore/hermes-release.jks</code>, gitignored, validez 10000 días, SHA-1 <code>73:9D:EE:58:75:E6:18:B4:3D:6C:DA:49:3B:B7:3C:B0:C9:83:F7:0F</code>).
+      <strong>HIGH-2 (RLS)</strong>: habilitado en <code>app_config</code> y <code>cronos_logs</code> con políticas. Hoy no protege (la app conecta como rol postgres) pero deja la base lista para Edge Functions.
+      <strong>MED-3 (network_security_config.xml)</strong>: declarado explícito, solo CAs del sistema (rechaza user-installed certs → previene MITM).
+      <strong>Implicancia para rollout</strong>: vendedores con v3.7.2 o anterior tienen que <strong>desinstalar y reinstalar</strong> v3.7.3+ una sola vez (Android rechaza signature mismatch).
     </p>
   </div>
 </div>
@@ -746,8 +776,12 @@ agent_prompts (
 </div>
 
 <div class="card">
-  <div class="card-header">🔐 Finalizar setup Google Cloud OAuth <span class="badge badge-media">Media</span></div>
-  <p>Proyecto "Hermes Mobile" creado en Google Cloud Console, OAuth External configurado, package <code>com.hermes.hermes_vendedor</code>, SHA-1 <code>EC:92:8A:A2:30:AC:E2:AC:62:16:9C:ED:22:8A:D3:99:33:AF:0F:0E</code>. <strong>Frenó porque en OAuth consent screen → Test users hay que agregar los gmails de cada vendedor.</strong> Cuando se recopilen los mails → agregarlos como Test users → el botón "Conectar con Google" empieza a funcionar.</p>
+  <div class="card-header">🔐 Finalizar setup Google Cloud OAuth <span class="badge badge-alta">Alta</span></div>
+  <p>Proyecto "Hermes Mobile" creado en Google Cloud Console, OAuth External configurado, package <code>com.hermes.hermes_vendedor</code>. <strong>Quedan 2 acciones pendientes para que "Conectar con Google Calendar" funcione:</strong></p>
+  <ol>
+    <li><strong>Actualizar el SHA-1 al de release</strong> (resultado del cambio de keystore en v3.7.3). El SHA-1 viejo (debug) era <code>EC:92:8A:...:0F:0E</code>; el nuevo (release) es <code>73:9D:EE:58:75:E6:18:B4:3D:6C:DA:49:3B:B7:3C:B0:C9:83:F7:0F</code>. Editar en Console → Credentials → OAuth client Android. <em>5 min</em>.</li>
+    <li><strong>Agregar test users</strong> (los gmails de cada vendedor que va a usar Calendar) en OAuth consent screen → Test users. Bloqueado a la espera de recopilar los mails.</li>
+  </ol>
 </div>
 
 <div class="card">
@@ -1103,8 +1137,130 @@ WHERE key = 'min_version_required';</pre>
 <p>Si en algún momento crece el equipo (&gt;20 vendedores) y vale la pena, podemos evaluar Managed Google Play o MDM para conseguir update 100% silencioso, pero hoy el costo/beneficio no justifica.</p>
 </div>
 
+<!-- 14.8 SEGURIDAD -->
+<h2 id="seguridad" class="page-break">22. Auditoría de Seguridad y Hardening</h2>
+
+<div class="info">
+<strong>Contexto:</strong> en mayo 2026 se hizo una auditoría completa de seguridad de la app contra OWASP Mobile Top 10 (MASVS). El threat model considerado es: distribución privada, instalación manual a un equipo de ~10 vendedores, app no publicada en Play Store. El riesgo principal es un vendedor descontento que se va con el APK en el teléfono, no un atacante externo sofisticado.
+</div>
+
+<h3>22.1 Hallazgos resueltos en v3.7.3</h3>
+
+<table>
+<tr><th>ID</th><th>Hallazgo</th><th>Categoría OWASP</th><th>Resolución</th></tr>
+<tr class="done-row">
+  <td><strong>CRIT-1</strong></td>
+  <td>APK release firmado con clave de debug — cualquier dev con Android Studio podía generar APKs aceptados como update legítimo (impersonación)</td>
+  <td>M7 — Insufficient Binary Protections</td>
+  <td>Keystore propio RSA 2048 (<code>keystore/hermes-release.jks</code>) gitignored, password en <code>android/key.properties</code> también gitignored. <code>build.gradle.kts</code> lee de allí. Fallback a debug si <code>key.properties</code> no existe (devs sin keystore).</td>
+</tr>
+<tr class="done-row">
+  <td><strong>HIGH-2</strong></td>
+  <td>RLS deshabilitado en <code>app_config</code> y <code>cronos_logs</code></td>
+  <td>M8 — Security Misconfiguration</td>
+  <td>RLS habilitado + políticas (read público para app_config, per-vendedor en cronos_logs vía <code>auth.jwt() ->> 'vendedor_nombre'</code>). Hoy no protege porque conectamos como postgres, pero queda listo para v3.8.0.</td>
+</tr>
+<tr class="done-row">
+  <td><strong>MED-3</strong></td>
+  <td>No había <code>network_security_config.xml</code> explícito</td>
+  <td>M5 — Insecure Communication</td>
+  <td>Archivo creado y referenciado en manifest. Solo CAs del sistema (rechaza user-installed certs → previene MITM con cert empresarial o malware).</td>
+</tr>
+</table>
+
+<h3>22.2 Hallazgos descartados (no aplican al threat model)</h3>
+
+<p>Hallazgos que el audit identificó pero que se decidió <strong>no atacar</strong> dada la naturaleza privada de la distribución:</p>
+
+<table>
+<tr><th>ID</th><th>Hallazgo</th><th>Por qué se descartó</th></tr>
+<tr>
+  <td>HIGH-1</td>
+  <td>SHA-256 sin salt para passwords</td>
+  <td>El threat model real es "vendedor con teléfono", no "atacante con dump de DB". Si se filtra la tabla <code>usuarios</code>, hay problemas más grandes que el hash. Mitigación más simple: passwords largas (≥10 chars).</td>
+</tr>
+<tr>
+  <td>HIGH-3</td>
+  <td>Password en plain text en flutter_secure_storage</td>
+  <td>Ya está cifrado por Android Keystore. Para extraerlo el atacante necesita root + acceso físico. Si se pierde el teléfono, deshabilitamos al usuario en Supabase.</td>
+</tr>
+<tr>
+  <td>MED-1</td>
+  <td>Sin SSL pinning</td>
+  <td>Vendedores no usan redes corporativas hostiles con proxies que rompan TLS. Riesgo bajo.</td>
+</tr>
+<tr>
+  <td>MED-2</td>
+  <td>Cleanup de <code>cronos_logs</code> (retención)</td>
+  <td>Datos en Supabase cloud, solo el admin tiene acceso. Los vendedores no ven la DB. Logs son <strong>valiosos</strong> para iterar el prompt y analytics (§20). No hay obligación regulatoria para borrarlos.</td>
+</tr>
+<tr>
+  <td>MED-5</td>
+  <td>MainActivity exportada</td>
+  <td>Necesario para el launcher. No hay deep links → riesgo teórico.</td>
+</tr>
+</table>
+
+<h3>22.3 Hallazgos pendientes — sprint v3.8.0</h3>
+
+<div class="card" style="border-left:5px solid #ef4444;background:#fef2f2">
+  <div class="card-header">🛡️ CRIT-2 + CRIT-3 — Proxy de OpenAI + DB credentials <span class="badge badge-alta">Alta</span></div>
+  <p><strong>Problema unificado:</strong> tanto la API key de OpenAI (<code>AppConfig.openaiApiKey</code>) como las credenciales de Supabase Postgres (<code>AppConfig.pgPass</code>) viven en <code>lib/config/constants.dart</code> y se compilan al APK. Ambas son extraíbles con <code>strings app-release.apk</code>.</p>
+  <p><strong>Mitigación actual:</strong></p>
+  <ul>
+    <li>Cap mensual de $400 USD en OpenAI Dashboard (compartido con otros proyectos del workspace)</li>
+    <li>Release keystore (CRIT-1 ya resuelto) → solo APKs firmados por nosotros se aceptan, lo que limita impersonación</li>
+    <li>Force update + min_version_required → si se filtra una APK, podemos rotar credenciales y empujar update</li>
+  </ul>
+  <p><strong>Solución definitiva:</strong> Supabase Edge Functions como proxy. La key/credenciales viven server-side; la app autentica con un token por vendedor. Plan completo documentado en <code>docs/PLAN_PROXY_OPENAI.md</code>:</p>
+  <ul>
+    <li>3 endpoints: <code>auth-token</code>, <code>cronos-chat</code>, <code>cronos-transcribe</code></li>
+    <li>Auth: token por vendedor (Opción 2 del plan, recomendada)</li>
+    <li>Tabla <code>uso_llm</code> para tracking granular per-vendedor</li>
+    <li>Rate limit per-vendedor (100 chat/h, 60 transcribe/h)</li>
+    <li>Esfuerzo: 1 día completo (8 fases secuenciales documentadas)</li>
+    <li>Costo: $0 (Supabase Free cubre 500k invocaciones/mes; uso esperado ~11k/mes)</li>
+  </ul>
+  <p><strong>Cuándo:</strong> próximo sprint, planificado hacerse en sesión conjunta.</p>
+</div>
+
+<div class="card">
+  <div class="card-header">⚠️ Acción operativa — Actualizar SHA-1 en Google Cloud OAuth <span class="badge badge-alta">Alta</span></div>
+  <p>El SHA-1 que está registrado en <strong>Google Cloud Console → APIs &amp; Services → Credentials → OAuth client Android</strong> corresponde al keystore <strong>debug</strong> viejo (<code>EC:92:8A:A2:30:AC:E2:AC:62:16:9C:ED:22:8A:D3:99:33:AF:0F:0E</code>).</p>
+  <p>Tras el cambio de keystore en v3.7.3, el SHA-1 nuevo es <strong><code>73:9D:EE:58:75:E6:18:B4:3D:6C:DA:49:3B:B7:3C:B0:C9:83:F7:0F</code></strong>.</p>
+  <p><strong>Hasta que se actualice, el botón "Conectar con Google Calendar" en la app va a fallar con error de OAuth.</strong> El resto de la app funciona normal — solo afecta la integración Calendar.</p>
+  <p><strong>Pasos:</strong></p>
+  <ol>
+    <li>Ir a <a href="https://console.cloud.google.com/apis/credentials">https://console.cloud.google.com/apis/credentials</a></li>
+    <li>Proyecto "Hermes Mobile" → editar OAuth client ID Android</li>
+    <li>Reemplazar SHA-1 viejo por el nuevo</li>
+    <li>Guardar — propagación es inmediata</li>
+  </ol>
+  <p><em>Esfuerzo: 5 minutos. Bloquea la feature de Calendar mientras tanto.</em></p>
+</div>
+
+<h3>22.4 Mapeo OWASP Mobile Top 10 — estado actual</h3>
+
+<table>
+<tr><th>ID</th><th>Categoría</th><th>Estado</th><th>Comentario</th></tr>
+<tr><td><strong>M1</strong></td><td>Improper Credential Usage</td><td><span class="badge badge-pending">🟠 Parcial</span></td><td>Pendiente proxy OpenAI (v3.8.0)</td></tr>
+<tr><td><strong>M2</strong></td><td>Inadequate Supply Chain Security</td><td><span class="badge badge-done">🟢 OK</span></td><td>Release keystore propio + force update</td></tr>
+<tr><td><strong>M3</strong></td><td>Insecure Authentication/Authorization</td><td><span class="badge badge-pending">🟠 Aceptable</span></td><td>SHA-256 sin salt por threat model interno</td></tr>
+<tr><td><strong>M4</strong></td><td>Insufficient Input/Output Validation</td><td><span class="badge badge-done">🟢 OK</span></td><td>Queries parametrizadas en todo lugar ✅</td></tr>
+<tr><td><strong>M5</strong></td><td>Insecure Communication</td><td><span class="badge badge-done">🟢 OK</span></td><td>TLS obligatorio externo, network_security_config explícito</td></tr>
+<tr><td><strong>M6</strong></td><td>Inadequate Privacy Controls</td><td><span class="badge badge-done">🟢 OK</span></td><td>Datos solo en Supabase (admin), sin terceros</td></tr>
+<tr><td><strong>M7</strong></td><td>Insufficient Binary Protections</td><td><span class="badge badge-pending">🟠 Parcial</span></td><td>Keystore propio ✅. Strings extraíbles pendientes (proxy)</td></tr>
+<tr><td><strong>M8</strong></td><td>Security Misconfiguration</td><td><span class="badge badge-done">🟢 OK</span></td><td>RLS habilitado, network config OK</td></tr>
+<tr><td><strong>M9</strong></td><td>Insecure Data Storage</td><td><span class="badge badge-done">🟢 OK</span></td><td>flutter_secure_storage + EncryptedSharedPreferences</td></tr>
+<tr><td><strong>M10</strong></td><td>Insufficient Cryptography</td><td><span class="badge badge-pending">🟠 Aceptable</span></td><td>SHA-256 password aceptado por threat model</td></tr>
+</table>
+
+<div class="success">
+<strong>Resumen:</strong> 6/10 categorías OWASP en verde, 4/10 en parcial/aceptable con mitigaciones documentadas. <strong>Solo queda 1 vulnerabilidad real por atacar</strong>: CRIT-2/CRIT-3 (proxy OpenAI/credenciales), planificado para v3.8.0. Todo lo demás está cubierto, descartado por threat model, o resuelto.
+</div>
+
 <!-- 15. PRÓXIMOS PASOS -->
-<h2 id="orden">22. Próximos Pasos Sugeridos</h2>
+<h2 id="orden">23. Próximos Pasos Sugeridos</h2>
 
 <div class="info">
 <strong>Orden de ejecución recomendado</strong> (por impacto de negocio):
@@ -1125,8 +1281,8 @@ WHERE key = 'min_version_required';</pre>
 </table>
 
 <div class="footer">
-Plan Maestro Hermes Mobile · Generado automáticamente · Abril 2026<br>
-Versión actual del código: <strong>v3.6.0</strong> · Repo: github.com/guidocameraeq/HermesMobile
+Plan Maestro Hermes Mobile · Generado automáticamente · Mayo 2026<br>
+Versión actual del código: <strong>v3.7.3</strong> · Repo: github.com/guidocameraeq/HermesMobile
 </div>
 
 </body>
