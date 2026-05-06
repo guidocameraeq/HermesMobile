@@ -3,9 +3,30 @@
 > Snapshot para Claude post-compact. Actualizar en cada release.
 
 **Fecha del snapshot:** 2026-05-06
-**Versión actual:** v3.7.3+39 (security hardening — sin release todavía)
-**Último release publicado:** v3.7.2
-**APK URL:** https://github.com/guidocameraeq/HermesMobile/releases/tag/v3.7.2
+**Versión actual:** v3.8.0+40 (proxy OpenAI deployado)
+**Último release publicado:** v3.8.0
+**APK URL:** https://github.com/guidocameraeq/HermesMobile/releases/tag/v3.8.0
+
+## v3.8.0 — Proxy OpenAI server-side (CRIT-2 del audit resuelto)
+
+La API key de OpenAI **ya no se compila al APK**. Vive solo en Supabase Secrets, accesible desde Edge Functions con auth de vendedor.
+
+**Componentes:**
+- 3 Edge Functions (Deno) en Supabase: `auth-token`, `cronos-chat`, `cronos-transcribe`
+- 2 tablas nuevas: `vendedor_tokens`, `uso_llm` (con RLS)
+- Cliente Flutter migrado: `auth_token_service.dart` (nuevo), `assistant_service.dart` y `whisper_service.dart` apuntan al proxy
+- `constants.dart`: removida `openaiApiKey`, agregado `supabaseFunctionsUrl`
+- Rate limit per-vendedor: 100 chat/h, 60 transcribe/h
+- Tabla `uso_llm` con tracking granular: tokens, costo USD estimado, latencia, status
+
+**Verificación:** `strings app-release.apk | grep "sk-proj"` → 0 resultados.
+
+**Pendiente operativo:**
+- Cargar `OPENAI_API_KEY` en Supabase Dashboard → Functions → Secrets (5 min, browser)
+- Validar v3.8.0 en device de prueba
+- Después de N días con todos en v3.8.0: rotar la key vieja en OpenAI Dashboard
+
+
 
 ## v3.7.3 — Security hardening (sin release todavía)
 

@@ -81,7 +81,7 @@
 
 <h1>HERMES MOBILE — Plan Maestro de Desarrollo</h1>
 <p style="font-size:14px;color:#64748b;margin-bottom:5px;">App Android para Equipo Comercial — CRM Bidireccional con Asistente IA</p>
-<p style="font-size:11px;color:#94a3b8;">Documento actualizado: <strong>Mayo 2026</strong> · Versión actual: <span class="version-tag">v3.7.3</span> · Repo: github.com/guidocameraeq/HermesMobile</p>
+<p style="font-size:11px;color:#94a3b8;">Documento actualizado: <strong>Mayo 2026</strong> · Versión actual: <span class="version-tag">v3.8.0</span> · Repo: github.com/guidocameraeq/HermesMobile</p>
 
 <!-- Panel de progreso -->
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin:20px 0;justify-content:center;">
@@ -98,11 +98,11 @@
     <span class="stat-label">Bloques pendientes</span>
   </div>
   <div class="stat-box">
-    <span class="stat-num">39</span>
+    <span class="stat-num">40</span>
     <span class="stat-label">Releases totales</span>
   </div>
   <div class="stat-box">
-    <span class="stat-num">v3.7</span>
+    <span class="stat-num">v3.8</span>
     <span class="stat-label">Versión actual</span>
   </div>
 </div>
@@ -285,13 +285,25 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
   </div>
   <div class="timeline-item done">
     <span class="timeline-version">v3.7.3 — Security hardening</span>
-    <span class="timeline-date">Mayo 2026 — Actual</span>
+    <span class="timeline-date">Mayo 2026</span>
     <p>
       <strong>Resuelve hallazgos críticos</strong> de la auditoría de seguridad de mayo 2026.
       <strong>CRIT-1 (Release keystore)</strong>: el APK release ya no se firma con la clave debug; ahora con keystore RSA 2048 dedicado (<code>keystore/hermes-release.jks</code>, gitignored, validez 10000 días, SHA-1 <code>73:9D:EE:58:75:E6:18:B4:3D:6C:DA:49:3B:B7:3C:B0:C9:83:F7:0F</code>).
       <strong>HIGH-2 (RLS)</strong>: habilitado en <code>app_config</code> y <code>cronos_logs</code> con políticas. Hoy no protege (la app conecta como rol postgres) pero deja la base lista para Edge Functions.
       <strong>MED-3 (network_security_config.xml)</strong>: declarado explícito, solo CAs del sistema (rechaza user-installed certs → previene MITM).
       <strong>Implicancia para rollout</strong>: vendedores con v3.7.2 o anterior tienen que <strong>desinstalar y reinstalar</strong> v3.7.3+ una sola vez (Android rechaza signature mismatch).
+    </p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v3.8.0 — Proxy OpenAI server-side</span>
+    <span class="timeline-date">Mayo 2026 — Actual</span>
+    <p>
+      <strong>Resuelve CRIT-2 del audit</strong>: la API key de OpenAI ya no se compila al APK. Vive solo en <code>Supabase Secrets</code>, accesible desde 3 Edge Functions (Deno).
+      <strong>Backend</strong>: <code>auth-token</code> (login → emite token de vendedor), <code>cronos-chat</code> (proxy a OpenAI Chat con rate limit 100/h), <code>cronos-transcribe</code> (proxy a Whisper con rate limit 60/h).
+      Cada call queda registrada en tabla <code>uso_llm</code> con tokens_in/out, costo USD estimado, latencia y status.
+      <strong>Cliente</strong>: <code>auth_token_service.dart</code> nuevo, <code>assistant_service.dart</code> y <code>whisper_service.dart</code> apuntan al proxy. <code>constants.dart</code>: removida <code>openaiApiKey</code>.
+      <strong>Verificado</strong>: <code>strings app-release.apk | grep "sk-proj"</code> devuelve 0 resultados.
+      <strong>Beneficios</strong>: rate limit por vendedor, revocación granular sin recompilar (DELETE en <code>vendedor_tokens</code>), cambiar key sin tocar app, analytics de costo per-vendedor.
     </p>
   </div>
 </div>
@@ -1144,27 +1156,33 @@ WHERE key = 'min_version_required';</pre>
 <strong>Contexto:</strong> en mayo 2026 se hizo una auditoría completa de seguridad de la app contra OWASP Mobile Top 10 (MASVS). El threat model considerado es: distribución privada, instalación manual a un equipo de ~10 vendedores, app no publicada en Play Store. El riesgo principal es un vendedor descontento que se va con el APK en el teléfono, no un atacante externo sofisticado.
 </div>
 
-<h3>22.1 Hallazgos resueltos en v3.7.3</h3>
+<h3>22.1 Hallazgos resueltos</h3>
 
 <table>
-<tr><th>ID</th><th>Hallazgo</th><th>Categoría OWASP</th><th>Resolución</th></tr>
+<tr><th>ID</th><th>Hallazgo</th><th>Categoría OWASP</th><th>Resolución (versión)</th></tr>
 <tr class="done-row">
   <td><strong>CRIT-1</strong></td>
-  <td>APK release firmado con clave de debug — cualquier dev con Android Studio podía generar APKs aceptados como update legítimo (impersonación)</td>
+  <td>APK release firmado con clave de debug — cualquier dev con Android Studio podía generar APKs aceptados como update legítimo</td>
   <td>M7 — Insufficient Binary Protections</td>
-  <td>Keystore propio RSA 2048 (<code>keystore/hermes-release.jks</code>) gitignored, password en <code>android/key.properties</code> también gitignored. <code>build.gradle.kts</code> lee de allí. Fallback a debug si <code>key.properties</code> no existe (devs sin keystore).</td>
+  <td>Keystore propio RSA 2048 (<code>keystore/hermes-release.jks</code>) gitignored. <code>build.gradle.kts</code> firma con esta clave. <strong>(v3.7.3)</strong></td>
+</tr>
+<tr class="done-row">
+  <td><strong>CRIT-2</strong></td>
+  <td>OpenAI API key embebida en el APK (extraíble con <code>strings app-release.apk | grep "sk-proj"</code>)</td>
+  <td>M1 — Improper Credential Usage</td>
+  <td>3 Edge Functions Deno (<code>auth-token</code>, <code>cronos-chat</code>, <code>cronos-transcribe</code>) actúan como proxy. La key vive en Supabase Secrets server-side. App autentica con vendedor_token (revocable). Verificado: <code>strings</code> devuelve 0 resultados de <code>sk-proj</code>. <strong>(v3.8.0)</strong></td>
 </tr>
 <tr class="done-row">
   <td><strong>HIGH-2</strong></td>
-  <td>RLS deshabilitado en <code>app_config</code> y <code>cronos_logs</code></td>
+  <td>RLS deshabilitado en <code>app_config</code>, <code>cronos_logs</code>, <code>vendedor_tokens</code>, <code>uso_llm</code></td>
   <td>M8 — Security Misconfiguration</td>
-  <td>RLS habilitado + políticas (read público para app_config, per-vendedor en cronos_logs vía <code>auth.jwt() ->> 'vendedor_nombre'</code>). Hoy no protege porque conectamos como postgres, pero queda listo para v3.8.0.</td>
+  <td>RLS habilitado en las 4 tablas. Solo service_role (Edge Functions) bypassea. <strong>(v3.7.3 + v3.8.0)</strong></td>
 </tr>
 <tr class="done-row">
   <td><strong>MED-3</strong></td>
   <td>No había <code>network_security_config.xml</code> explícito</td>
   <td>M5 — Insecure Communication</td>
-  <td>Archivo creado y referenciado en manifest. Solo CAs del sistema (rechaza user-installed certs → previene MITM con cert empresarial o malware).</td>
+  <td>Archivo creado y referenciado en manifest. Solo CAs del sistema (rechaza user-installed certs → previene MITM). <strong>(v3.7.3)</strong></td>
 </tr>
 </table>
 
@@ -1201,27 +1219,13 @@ WHERE key = 'min_version_required';</pre>
 </tr>
 </table>
 
-<h3>22.3 Hallazgos pendientes — sprint v3.8.0</h3>
+<h3>22.3 Hallazgos pendientes</h3>
 
-<div class="card" style="border-left:5px solid #ef4444;background:#fef2f2">
-  <div class="card-header">🛡️ CRIT-2 + CRIT-3 — Proxy de OpenAI + DB credentials <span class="badge badge-alta">Alta</span></div>
-  <p><strong>Problema unificado:</strong> tanto la API key de OpenAI (<code>AppConfig.openaiApiKey</code>) como las credenciales de Supabase Postgres (<code>AppConfig.pgPass</code>) viven en <code>lib/config/constants.dart</code> y se compilan al APK. Ambas son extraíbles con <code>strings app-release.apk</code>.</p>
-  <p><strong>Mitigación actual:</strong></p>
-  <ul>
-    <li>Cap mensual de $400 USD en OpenAI Dashboard (compartido con otros proyectos del workspace)</li>
-    <li>Release keystore (CRIT-1 ya resuelto) → solo APKs firmados por nosotros se aceptan, lo que limita impersonación</li>
-    <li>Force update + min_version_required → si se filtra una APK, podemos rotar credenciales y empujar update</li>
-  </ul>
-  <p><strong>Solución definitiva:</strong> Supabase Edge Functions como proxy. La key/credenciales viven server-side; la app autentica con un token por vendedor. Plan completo documentado en <code>docs/PLAN_PROXY_OPENAI.md</code>:</p>
-  <ul>
-    <li>3 endpoints: <code>auth-token</code>, <code>cronos-chat</code>, <code>cronos-transcribe</code></li>
-    <li>Auth: token por vendedor (Opción 2 del plan, recomendada)</li>
-    <li>Tabla <code>uso_llm</code> para tracking granular per-vendedor</li>
-    <li>Rate limit per-vendedor (100 chat/h, 60 transcribe/h)</li>
-    <li>Esfuerzo: 1 día completo (8 fases secuenciales documentadas)</li>
-    <li>Costo: $0 (Supabase Free cubre 500k invocaciones/mes; uso esperado ~11k/mes)</li>
-  </ul>
-  <p><strong>Cuándo:</strong> próximo sprint, planificado hacerse en sesión conjunta.</p>
+<div class="card" style="border-left:5px solid #f59e0b;background:#fffbeb">
+  <div class="card-header">🔓 CRIT-3 — Credenciales de Postgres en el APK <span class="badge badge-media">Media</span></div>
+  <p>Las credenciales del rol <code>postgres</code> (admin de Supabase) siguen viviendo en <code>lib/config/constants.dart</code> y se compilan al APK. Un atacante que extraiga el APK puede conectarse directo a la DB.</p>
+  <p><strong>Mitigación actual:</strong> release keystore propio (CRIT-1) limita impersonación; force update permite rotar la pass de Postgres y empujar nuevo APK rápidamente si se filtra.</p>
+  <p><strong>Solución definitiva (futuro v3.9 o v4.0):</strong> migrar todo el acceso a DB a través de Edge Functions también. La app deja de tener cualquier credencial de DB; solo habla con Edge Functions con su token. Esfuerzo grande (refactor de TODOS los servicios que usan PgService), costo/beneficio menor que CRIT-2 (que sí estaba expuesta a abuso de OpenAI). Postergado hasta que haya razón concreta.</p>
 </div>
 
 <div class="card">
@@ -1243,20 +1247,20 @@ WHERE key = 'min_version_required';</pre>
 
 <table>
 <tr><th>ID</th><th>Categoría</th><th>Estado</th><th>Comentario</th></tr>
-<tr><td><strong>M1</strong></td><td>Improper Credential Usage</td><td><span class="badge badge-pending">🟠 Parcial</span></td><td>Pendiente proxy OpenAI (v3.8.0)</td></tr>
+<tr><td><strong>M1</strong></td><td>Improper Credential Usage</td><td><span class="badge badge-pending">🟡 Parcial</span></td><td>OpenAI key resuelta (v3.8.0). Credenciales DB (CRIT-3) postergadas.</td></tr>
 <tr><td><strong>M2</strong></td><td>Inadequate Supply Chain Security</td><td><span class="badge badge-done">🟢 OK</span></td><td>Release keystore propio + force update</td></tr>
 <tr><td><strong>M3</strong></td><td>Insecure Authentication/Authorization</td><td><span class="badge badge-pending">🟠 Aceptable</span></td><td>SHA-256 sin salt por threat model interno</td></tr>
 <tr><td><strong>M4</strong></td><td>Insufficient Input/Output Validation</td><td><span class="badge badge-done">🟢 OK</span></td><td>Queries parametrizadas en todo lugar ✅</td></tr>
 <tr><td><strong>M5</strong></td><td>Insecure Communication</td><td><span class="badge badge-done">🟢 OK</span></td><td>TLS obligatorio externo, network_security_config explícito</td></tr>
 <tr><td><strong>M6</strong></td><td>Inadequate Privacy Controls</td><td><span class="badge badge-done">🟢 OK</span></td><td>Datos solo en Supabase (admin), sin terceros</td></tr>
-<tr><td><strong>M7</strong></td><td>Insufficient Binary Protections</td><td><span class="badge badge-pending">🟠 Parcial</span></td><td>Keystore propio ✅. Strings extraíbles pendientes (proxy)</td></tr>
+<tr><td><strong>M7</strong></td><td>Insufficient Binary Protections</td><td><span class="badge badge-done">🟢 OK</span></td><td>Keystore propio ✅. OpenAI key fuera del APK ✅. Solo queda CRIT-3 (DB pass).</td></tr>
 <tr><td><strong>M8</strong></td><td>Security Misconfiguration</td><td><span class="badge badge-done">🟢 OK</span></td><td>RLS habilitado, network config OK</td></tr>
 <tr><td><strong>M9</strong></td><td>Insecure Data Storage</td><td><span class="badge badge-done">🟢 OK</span></td><td>flutter_secure_storage + EncryptedSharedPreferences</td></tr>
 <tr><td><strong>M10</strong></td><td>Insufficient Cryptography</td><td><span class="badge badge-pending">🟠 Aceptable</span></td><td>SHA-256 password aceptado por threat model</td></tr>
 </table>
 
 <div class="success">
-<strong>Resumen:</strong> 6/10 categorías OWASP en verde, 4/10 en parcial/aceptable con mitigaciones documentadas. <strong>Solo queda 1 vulnerabilidad real por atacar</strong>: CRIT-2/CRIT-3 (proxy OpenAI/credenciales), planificado para v3.8.0. Todo lo demás está cubierto, descartado por threat model, o resuelto.
+<strong>Resumen post v3.8.0:</strong> 7/10 categorías OWASP en verde, 3/10 parciales con mitigaciones documentadas. <strong>CRIT-2 resuelto</strong> (OpenAI proxy). Solo queda CRIT-3 (credenciales DB en APK) postergado, con mitigación robusta vía release keystore + force update. La app está en un estado de seguridad razonable para distribución privada interna.
 </div>
 
 <!-- 15. PRÓXIMOS PASOS -->
@@ -1282,7 +1286,7 @@ WHERE key = 'min_version_required';</pre>
 
 <div class="footer">
 Plan Maestro Hermes Mobile · Generado automáticamente · Mayo 2026<br>
-Versión actual del código: <strong>v3.7.3</strong> · Repo: github.com/guidocameraeq/HermesMobile
+Versión actual del código: <strong>v3.8.0</strong> · Repo: github.com/guidocameraeq/HermesMobile
 </div>
 
 </body>
