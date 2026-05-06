@@ -1,5 +1,45 @@
 # Workflow — cómo trabajamos
 
+## Release signing keystore
+
+**El APK release se firma con un keystore dedicado en producción** desde v3.7.3. Antes se firmaba con la clave debug (cualquier máquina podía generar APKs aceptados como update — vulnerabilidad CRIT-1 del audit).
+
+### Archivos involucrados
+
+| Archivo | Estado | Contenido |
+|---|---|---|
+| `keystore/hermes-release.jks` | gitignored | Keystore RSA 2048 con la clave privada |
+| `android/key.properties` | gitignored | Passwords del keystore |
+| `android/app/build.gradle.kts` | tracked | Lógica que carga `key.properties` |
+| `.gitignore` | tracked | Excluye `*.jks`, `keystore/`, `android/key.properties` |
+
+### Datos del keystore
+
+- **Alias:** `hermes`
+- **Validez:** 10000 días (≈ 27 años)
+- **SHA-1:** `73:9D:EE:58:75:E6:18:B4:3D:6C:DA:49:3B:B7:3C:B0:C9:83:F7:0F`
+- **SHA-256:** `8b71a20d11783c43a9eea7e518c51c926eaf7d43e0076732fe84753e30726c03`
+
+⚠️ **Si pierdes el keystore, perdés la capacidad de actualizar la app.** Los vendedores con la app instalada NO pueden recibir updates firmados con otra clave (Android rechaza signature mismatch). Solución: desinstalar todos + reinstalar v3.7.3+ con el keystore nuevo. Hacer backup del `.jks` en lugar seguro fuera de la PC.
+
+### Migración desde debug signing (one-time)
+
+Cuando saliste de v3.7.2 (debug-signed) → v3.7.3+ (release-signed) los vendedores tuvieron que **desinstalar manualmente** y reinstalar. Si volvés a perder el keystore en el futuro, repetís este paso.
+
+### Compilar release desde otra máquina
+
+1. Copiar `hermes-release.jks` a `<repo>/keystore/`
+2. Crear `<repo>/android/key.properties` con las credenciales (ver formato actual)
+3. `flutter build apk --release` → firma con la clave correcta
+
+Si `key.properties` no existe, el build cae a debug signing (advertencia clara durante el build).
+
+### Google Cloud OAuth (Calendar)
+
+⚠️ El SHA-1 registrado para OAuth Calendar (que estaba con el debug `EC:92:8A:...`) **debe actualizarse** al nuevo `73:9D:EE:...` en Google Cloud Console → APIs & Services → Credentials → OAuth client ID Android. Hasta hacerlo, el botón "Conectar con Google" va a fallar.
+
+---
+
 ## Releases (build + tag + GitHub release)
 
 ```bash

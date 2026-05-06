@@ -50,8 +50,12 @@ lib/config/constants.dart
 # APK outputs
 *.apk
 *.aab
+
+# Release signing — NUNCA al repo
 *.keystore
 *.jks
+keystore/
+android/key.properties
 
 # Android build cache
 android/.gradle/

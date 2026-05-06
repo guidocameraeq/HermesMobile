@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Política de seguridad de red — Hermes Mobile
+
+  Por default Android 9+ ya bloquea HTTP cleartext, pero declaramos
+  explícitamente para que no haya regresiones si alguien agrega una llamada
+  HTTP sin querer. Confiamos solo en CAs del sistema operativo (no
+  user-installed certs) → previene MITM con certs custom instalados por
+  malware o adversarios con acceso al dispositivo.
+
+  cleartextTrafficPermitted = true: requerido porque SQL Server interno
+  (jTDS) usa TCP plain sobre VPN. La VPN es el contenedor de seguridad.
+  Si en el futuro migramos SQL Server a TLS, cambiar a false.
+
+  Servicios externos por TLS (verificado):
+    - Supabase Postgres: SslMode.require (pg_service.dart:26)
+    - OpenAI Chat + Whisper: HTTPS (assistant_service.dart, whisper_service.dart)
+    - GitHub Releases (updates): HTTPS (update_service.dart)
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <!-- Solo CAs del sistema. NO user-installed (CA empresarial,
+                 cert de proxy MITM, etc) — los rechazamos. -->
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

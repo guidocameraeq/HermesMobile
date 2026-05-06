@@ -2,10 +2,26 @@
 
 > Snapshot para Claude post-compact. Actualizar en cada release.
 
-**Fecha del snapshot:** 2026-04-22
-**Versión actual:** v3.7.0+36 (en preparación, sin release todavía)
-**Último release publicado:** v3.6.0
-**APK URL:** https://github.com/guidocameraeq/HermesMobile/releases/tag/v3.6.0
+**Fecha del snapshot:** 2026-05-06
+**Versión actual:** v3.7.3+39 (security hardening — sin release todavía)
+**Último release publicado:** v3.7.2
+**APK URL:** https://github.com/guidocameraeq/HermesMobile/releases/tag/v3.7.2
+
+## v3.7.3 — Security hardening (sin release todavía)
+
+Tras la auditoría de seguridad de mayo 2026 (resultado en este doc anterior), se aplicaron las correcciones críticas:
+
+- **Release keystore propio** (CRIT-1 del audit). Antes el APK release se firmaba con la clave debug — cualquier dev con Android Studio podía generar un APK aceptado como update legítimo. Ahora se firma con `keystore/hermes-release.jks` (gitignored, RSA 2048, validez 10000 días).
+  - SHA-1 nuevo: `73:9D:EE:58:75:E6:18:B4:3D:6C:DA:49:3B:B7:3C:B0:C9:83:F7:0F`
+  - **Acción pendiente:** actualizar este SHA-1 en Google Cloud Console → OAuth client Android (sino el botón "Conectar con Google" falla).
+  - **Migración:** los vendedores con app debug-signed (v3.7.2 o anterior) deben **desinstalar y reinstalar** v3.7.3+ una sola vez. Android rechaza updates con firma distinta.
+- **RLS habilitado** en `app_config` y `cronos_logs` (HIGH-2). Hoy no protege porque la app conecta como rol postgres, pero deja la base lista para Edge Functions con anon key + JWT.
+- **`network_security_config.xml`** declarado explícitamente. Confía solo en CAs del sistema (no user-installed). Previene MITM con certs custom.
+- **Force update activo**: `min_version_required = '3.7.2'` (antes del rollout v3.7.3 lo subiremos a `'3.7.3'`).
+
+**Pendiente para v3.8.0** (sprint juntos): proxy OpenAI vía Supabase Edge Functions. Plan completo en `docs/PLAN_PROXY_OPENAI.md`.
+
+## v3.7.0 — Force Update + Identidad visual
 
 ## v3.7.0 — Force Update + Identidad visual (listo para release)
 
