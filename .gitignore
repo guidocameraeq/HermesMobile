@@ -57,6 +57,13 @@ lib/config/constants.dart
 keystore/
 android/key.properties
 
+# Tokens y secrets locales — NUNCA al repo
+.env.local
+.env
+
+# Supabase CLI binario (~100 MB, no debe ir al repo)
+.tools/
+
 # Android build cache
 android/.gradle/
 android/app/build/

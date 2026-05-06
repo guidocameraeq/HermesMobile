@@ -16,4 +16,13 @@ class AppConfig {
   static const String sqlUser = 'TU_USUARIO';
   static const String sqlPass = 'TU_PASSWORD';
   static const String sqlInstance = 'TU_INSTANCIA';
+
+  // ── OpenAI ────────────────────────────────────────────────────
+  // La API key vive server-side (Supabase Secrets) desde v3.8.0.
+  // Solo el modelo queda en el cliente.
+  static const String openaiModel = 'gpt-4o-mini';
+
+  // ── Supabase Edge Functions ────────────────────────────────────
+  static const String supabaseFunctionsUrl =
+      'https://TU_PROJECT_ID.supabase.co/functions/v1';
 }

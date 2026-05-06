@@ -8,6 +8,7 @@ import 'actividades_service.dart';
 import 'visitas_service.dart';
 import 'prompt_service.dart';
 import 'cronos_logger.dart';
+import 'auth_token_service.dart';
 
 /// Respuesta parseada del asistente IA.
 class AssistantAction {
@@ -237,10 +238,14 @@ class AssistantService {
     ];
 
     final stopwatch = Stopwatch()..start();
+    final token = await AuthTokenService.getToken();
+    if (token == null || token.isEmpty) {
+      throw Exception('Sesión expirada. Volvé a iniciar sesión.');
+    }
     final response = await http.post(
-      Uri.parse('https://api.openai.com/v1/chat/completions'),
+      Uri.parse('${AppConfig.supabaseFunctionsUrl}/cronos-chat'),
       headers: {
-        'Authorization': 'Bearer ${AppConfig.openaiApiKey}',
+        'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
       body: json.encode({
@@ -249,9 +254,19 @@ class AssistantService {
         'temperature': 0.3,
         'max_tokens': 1500,
       }),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 20));
     stopwatch.stop();
     final latenciaMs = stopwatch.elapsedMilliseconds;
+
+    if (response.statusCode == 401) {
+      // Token revocado o perdido — forzar re-login
+      await AuthTokenService.clearToken();
+      throw Exception('Sesión expirada. Volvé a iniciar sesión.');
+    }
+
+    if (response.statusCode == 429) {
+      throw Exception('Estás haciendo demasiadas consultas. Esperá unos minutos.');
+    }
 
     if (response.statusCode != 200) {
       // Log del fallo HTTP (sin await)
@@ -262,7 +277,7 @@ class AssistantService {
         latenciaMs: latenciaMs,
         modelo: AppConfig.openaiModel,
       );
-      throw Exception('Error OpenAI: ${response.statusCode}');
+      throw Exception('Error del asistente (${response.statusCode})');
     }
 
     final data = json.decode(response.body);

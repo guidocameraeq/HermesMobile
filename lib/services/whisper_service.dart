@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 import '../config/constants.dart';
+import 'auth_token_service.dart';
 
 /// Graba audio y transcribe con Whisper API de OpenAI.
 /// Reemplaza a speech_to_text (local) por mejor calidad en español AR.
@@ -82,10 +83,15 @@ class WhisperService {
       throw Exception('Archivo de audio no encontrado');
     }
 
-    final uri = Uri.parse('https://api.openai.com/v1/audio/transcriptions');
+    final token = await AuthTokenService.getToken();
+    if (token == null || token.isEmpty) {
+      throw Exception('Sesión expirada. Volvé a iniciar sesión.');
+    }
+
+    final uri = Uri.parse('${AppConfig.supabaseFunctionsUrl}/cronos-transcribe');
     final req = http.MultipartRequest('POST', uri);
-    req.headers['Authorization'] = 'Bearer ${AppConfig.openaiApiKey}';
-    req.fields['model'] = 'whisper-1';
+    req.headers['Authorization'] = 'Bearer $token';
+    // model lo fuerza el server a whisper-1 — no le creemos al cliente.
     req.fields['language'] = 'es';
     req.fields['response_format'] = 'text';
     // Prompt sutil para orientar el modelo al dominio comercial argentino
@@ -101,8 +107,15 @@ class WhisperService {
       await file.delete();
     } catch (_) {}
 
+    if (resp.statusCode == 401) {
+      await AuthTokenService.clearToken();
+      throw Exception('Sesión expirada. Volvé a iniciar sesión.');
+    }
+    if (resp.statusCode == 429) {
+      throw Exception('Demasiadas grabaciones seguidas. Esperá un momento.');
+    }
     if (resp.statusCode != 200) {
-      throw Exception('Whisper API error ${resp.statusCode}: $body');
+      throw Exception('Error transcribiendo (${resp.statusCode})');
     }
 
     return body.trim();

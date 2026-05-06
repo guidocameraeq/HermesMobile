@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'pg_service.dart';
+import 'auth_token_service.dart';
 import '../models/session.dart';
 
 class AuthService {
@@ -37,6 +38,14 @@ class AuthService {
         role: role,
       );
 
+      // Pedir un token de proxy al server. Si falla, no rompemos el login —
+      // Cronos no funciona pero el resto de la app sí. El user re-loguea
+      // cuando vuelva conectividad y se reintenta.
+      await AuthTokenService.requestNewToken(
+        username: username.trim(),
+        passwordHash: hash,
+      );
+
       return (ok: true, errorMsg: '');
     } catch (e) {
       return (
@@ -46,7 +55,8 @@ class AuthService {
     }
   }
 
-  static void logout() {
+  static Future<void> logout() async {
     Session.current.clear();
+    await AuthTokenService.clearToken();
   }
 }
