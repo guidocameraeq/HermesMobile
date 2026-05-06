@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS uso_llm (
   tokens_in INT,                           -- prompt_tokens (chat) o NULL
   tokens_out INT,                          -- completion_tokens (chat) o NULL
   audio_seg INT,                           -- duración del audio (transcribe) o NULL
-  costo_usd_estimado NUMERIC(10,5),        -- calculado en la Edge Function
+  costo_usd_estimado NUMERIC(10,7),        -- calculado en la Edge Function (7 decimales para tokens chicos)
   latencia_ms INT,
   status_code INT NOT NULL,
   error TEXT,                              -- mensaje si status != 200
