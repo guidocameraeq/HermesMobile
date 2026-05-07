@@ -315,106 +315,25 @@ Estos son procesos **automáticos** que sigo cuando ocurre el disparador corresp
 
 ### Proceso 6 — Compact del chat
 
-**Disparador:** el user dice "voy a comprimir" / "cerrá sesión" / "compact ya" / `/compact`.
+**Disparadores:** "voy a comprimir" / "cerrá sesión" / "compact ya" / `/compact`.
 
-#### 6.A — Pre-compact checklist (lo ejecuto YO antes de que el user haga /compact)
+Cuando dispare, ejecutar el checklist completo en [`docs/COMPACTION_PROTOCOL.md`](docs/COMPACTION_PROTOCOL.md). Resumen de pasos:
 
-```
-═══════════════════════════════════════════════════════
-PRE-COMPACT CHECKLIST — Hermes Mobile
-═══════════════════════════════════════════════════════
+1. Verificar consistencia leyendo `SESSION_HANDOFF.md`, `STATUS.md`, `TODO.md`
+2. Actualizar `SESSION_HANDOFF.md`, `CHANGELOG.md`, `TODO.md`, y `STATUS.md` si aplica
+3. Crear ADR/REJECTED si aplica (decisiones tomadas, opciones descartadas)
+4. Regenerar `master-plan.html` con verificación item-por-item (no solo conteos)
+5. Commit + push (con autorización del user)
+6. Pasar prompt de retorno al user (formato definido en el protocolo)
 
-[ ] 1. Releer para verificar consistencia:
-      - docs/STATUS.md (lo que está en curso)
-      - docs/TODO.md (qué quedó pendiente esta sesión)
-      - docs/CHANGELOG.md (entrada del día, si existe)
-      - docs/SESSION_HANDOFF.md (versión anterior antes de sobrescribir)
-
-[ ] 2. Actualizar OBLIGATORIO los markdowns:
-      [ ] docs/SESSION_HANDOFF.md — sobrescribir completo:
-          • Estado actual
-          • Lo que se hizo
-          • Lo que quedó en curso
-          • Próximo paso CONCRETO
-          • Bloqueos (si hay)
-          • Archivos tocados
-          • Contexto importante del chat
-
-      [ ] docs/CHANGELOG.md — nueva entrada al tope con fecha de hoy:
-          • Versión publicada (si aplica)
-          • Trabajo (bullets)
-          • Decisiones (ADRs creados)
-          • Próximo paso
-
-      [ ] docs/TODO.md:
-          • Mover tareas completadas a sección "Completadas recientemente"
-          • Agregar tareas nuevas surgidas
-
-[ ] 3. Si hubo decisiones técnicas hoy:
-      [ ] Crear ADR-NNN en docs/decisions/ (numeración sin saltos)
-      [ ] Actualizar índice en docs/decisions/README.md
-
-[ ] 4. Si se descartaron opciones hoy:
-      [ ] Agregar entradas en docs/REJECTED.md
-
-[ ] 5. Si cambió arquitectura:
-      [ ] Actualizar docs/ARCHITECTURE.md
-
-[ ] 6. ⭐ VERIFICAR Y REGENERAR docs/master-plan.html
-      Confirmar que el HTML refleja el estado actual COMPLETO de:
-      [ ] docs/STATUS.md (todos los bloques en §3.0)
-      [ ] docs/TODO.md (todos los pendientes en §19, con criticidades)
-      [ ] docs/decisions/ (todas las ADRs en §23, título + razón)
-      [ ] docs/CHANGELOG.md (timeline §2 actualizado)
-      [ ] header + footer + stats (versión actual, releases totales)
-
-      Si alguna sección del HTML quedó atrás respecto al markdown,
-      regenerarla AHORA antes del compact. Markdown manda, HTML refleja.
-
-[ ] 7. Devolver al user resumen estructurado con paths:
-
-═══════════════════════════════════════════════════════
-RESUMEN PRE-COMPACT — [fecha]
-═══════════════════════════════════════════════════════
-
-Archivos actualizados:
-- docs/SESSION_HANDOFF.md ✅
-- docs/CHANGELOG.md ✅ (entrada nueva)
-- docs/TODO.md ✅ (X tareas movidas)
-- docs/decisions/ADR-XXX-*.md ✅ (si aplica)
-- docs/REJECTED.md ✅ (si aplica)
-- docs/ARCHITECTURE.md ✅ (si aplica)
-- docs/master-plan.html ✅ (secciones X, Y, Z regeneradas)
-
-Próximo paso al retomar:
-[acción concreta]
-
-Bloqueos pendientes:
-[si hay]
-
-Estás listo para /compact.
-═══════════════════════════════════════════════════════
-```
-
-#### 6.B — Lo que pasa automáticamente
-
-- Las memorias en `C:\Users\clientes\.claude\projects\d--SAAS\memory\` se cargan al iniciar la sesión nueva (no se pierden).
-
-#### 6.C — Lo que tiene que hacer el user
-
-Pegar el contenido de `docs/POST_COMPACT_PROMPT.md` como primer mensaje de la sesión nueva.
-
-#### 6.D — Lo que hago yo en la sesión nueva (post-compact)
-
-1. Leer `docs/SESSION_HANDOFF.md` (dónde quedamos)
-2. Leer `docs/STATUS.md` (versión actual + bloques)
-3. Leer `docs/TODO.md` (qué está pendiente — única fuente)
-4. Leer `CLAUDE.md` (este archivo — stack, patrones, procesos)
-5. Leer `docs/ARCHITECTURE.md` (patrones)
-6. Leer `docs/WORKFLOW.md` (cómo hacer cosas operativas)
-7. Si la conversación va a tocar una decisión postergada, leer `docs/decisions/ADR-NNN-*.md`
-8. Si la conversación va a tocar una opción que parecía válida, chequear `docs/REJECTED.md` antes de proponerla
-9. Si toco el master-plan.html, abrirlo y revisar la sección a editar siguiendo los comentarios `<!-- Source of truth: -->`
+**Para detalle paso a paso ver [`docs/COMPACTION_PROTOCOL.md`](docs/COMPACTION_PROTOCOL.md).** Ese archivo contiene:
+- Pre-compact checklist completo (6.A)
+- Queries de verificación item-por-item del HTML
+- Formato del resumen pre-compact (6.B)
+- Lo que pasa automáticamente durante `/compact` (6.C)
+- Lo que el user pega al iniciar sesión nueva (6.D, link a `POST_COMPACT_PROMPT.md`)
+- Lo que hago yo al retomar sesión nueva (6.E)
+- Lecciones aprendidas de simulacros reales
 
 ---
 
