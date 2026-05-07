@@ -157,6 +157,9 @@ Estos son bloques completos del plan maestro, no items sueltos. Detalle completo
 ## ✅ Completadas recientemente
 
 ### Mayo 2026
+- ✅ **2026-05-07** Refactor del sistema de docs al modelo de 6 capas + HTML como dashboard maestro completo (commits `85dbb39`, `800e21e`)
+- ✅ **2026-05-07** ADR-006 (release keystore) y ADR-007 (auth via vendedor_tokens) creados formalizando patrones de v3.7.3 y v3.8.0
+- ✅ **2026-05-07** Pre-Compact Checklist y POST_COMPACT_PROMPT estructurados con 4 capas de defensa
 - ✅ **2026-05-06** Release keystore propio (CRIT-1) — v3.7.3
 - ✅ **2026-05-06** RLS en `app_config` y `cronos_logs` (HIGH-2) — v3.7.3
 - ✅ **2026-05-06** `network_security_config.xml` (MED-3) — v3.7.3

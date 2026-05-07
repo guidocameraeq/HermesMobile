@@ -19,9 +19,10 @@
 
 ---
 
-## [2026-05-07] — Reorganización del sistema de documentación
-**Versión publicada:** ninguna (refactor de docs solamente)
-**Trabajo:**
+## [2026-05-07] — Refactor completo del sistema de docs (2 bloques)
+**Versión publicada:** ninguna (meta-documentación solamente)
+
+### Bloque 1 (commit `85dbb39`) — Reorganización inicial al modelo de 6 capas
 - Auditoría completa contra modelo de 6 capas (identidad, decisiones, estado, sesión, visualización, reglas).
 - Decisión: Opción A2 (renombrar in-place + crear faltantes), nombres en inglés, mantener ADRs separados.
 - Renombres con `git mv` (preserva historia):
@@ -32,12 +33,29 @@
   - `decisiones/` → `decisions/`
 - Archivos creados: `REJECTED.md`, `CHANGELOG.md` (este), `SESSION_HANDOFF.md`.
 - ADRs nuevos: ADR-006 (release keystore), ADR-007 (auth via vendedor_tokens).
-- Inconsistencia resuelta: ARCHITECTURE.md §10 actualizado para reflejar que la OpenAI key ya no se compila al APK (v3.8.0).
-- Romper duplicación de pendientes: `TODO.md` declarado fuente única, `master-plan.html` y `STATUS.md` referencian sin duplicar.
-- CLAUDE.md actualizado: paths nuevos + nota explícita POST_COMPACT_PROMPT vs SESSION_HANDOFF.
+- ARCHITECTURE.md §10 actualizado para reflejar que la OpenAI key ya no se compila al APK (v3.8.0); §11 nuevo formaliza el patrón de proxy via Edge Functions.
 - README.md (raíz) reescrito con identidad real del proyecto.
-**Decisiones:** ADR-006, ADR-007 creados.
+
+### Bloque 2 (commit `800e21e`) — HTML como dashboard maestro completo
+- HTML §19 Pendientes Técnicos: reescrito como **espejo completo** de TODO.md (15 cards con criticidad 🔴🟠🟡🟢, no más resumen).
+- HTML §3.0 Panorámica de bloques: tabla nueva al inicio de §3, espejo de STATUS.md (19 bloques).
+- HTML §23 Decisiones Arquitectónicas: sección nueva con todos los ADRs (título + razón corta + link a archivo full).
+- 5 comentarios HTML invisibles `<!-- Source of truth: -->` en §2, §3, §4, §19, §23.
+- Nota al pie del HTML explicando rol de dashboard autocontenido (caja oscura azul-violeta).
+- CLAUDE.md sección "El Plan Maestro HTML" reescrita como REGLA ABSOLUTA con tabla "cuando cambia X → actualizar Y".
+- CLAUDE.md Proceso 6 (Compact del chat) ampliado con Pre-Compact Checklist completo de 7 pasos. Paso 6 incluye verificación obligatoria del HTML contra todos los markdowns relevantes.
+- Fixes de paths rotos en ADR-002 y ADR-005 (TAREAS_PENDIENTES.md → TODO.md, fix de path roto, no cambio de decisión).
+- Nota arriba en `historico/PLAN_PROXY_OPENAI.md` con mapeo de equivalencias de paths.
+- 13 checks de validación post-implementación, todos pasando. Evidencia concreta en 5 puntos presentada al user antes del push.
+
+**Decisiones:** ADR-006, ADR-007 creados (en Bloque 1).
 **Próximo paso:** activar force update min_version=3.8.0 cuando user valide v3.8.0 en device.
+
+### Bloque 3 — Discusiones meta sobre el sistema (no commits)
+- Honestidad explícita sobre qué hago automático vs qué requiere disparador del user.
+- 4 capas de defensa identificadas: CLAUDE.md autoload, SESSION_HANDOFF, POST_COMPACT_PROMPT, memoria local.
+- 2 reflejos recomendados al user: "cerrá sesión" antes del compact + pegar POST_COMPACT_PROMPT al iniciar sesión nueva.
+- Simulacro de Pre-Compact Checklist ejecutado al cierre de la sesión (esta entrada y la regeneración de SESSION_HANDOFF son parte de ese simulacro).
 
 ## [2026-05-06] — Proxy OpenAI server-side (v3.8.0)
 **Versión publicada:** v3.8.0

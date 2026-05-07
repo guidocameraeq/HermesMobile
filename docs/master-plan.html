@@ -98,7 +98,7 @@
     <span class="stat-label">Bloques pendientes</span>
   </div>
   <div class="stat-box">
-    <span class="stat-num">40</span>
+    <span class="stat-num">39</span>
     <span class="stat-label">Releases totales</span>
   </div>
   <div class="stat-box">
@@ -114,7 +114,7 @@
 <h3 style="margin-bottom:10px;">Tabla de Contenidos</h3>
 <ol>
   <li><a href="#vision">Visión General y Arquitectura</a></li>
-  <li><a href="#historial">Historial de Versiones v1.0 → v3.5</a></li>
+  <li><a href="#historial">Historial de Versiones v1.0 → v3.8</a></li>
   <li><a href="#completado">Fases Completadas</a></li>
   <li><a href="#infraestructura">Infraestructura y Stack Técnico</a></li>
   <li><a href="#tablas">Mapa de Base de Datos</a></li>
@@ -148,7 +148,7 @@
 <div class="flow-diagram">
 VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
 ┌──────────────────────┐                   ┌──────────────────────┐
-│  Hermes Mobile v3.5  │                   │  Hermes Desktop      │
+│  Hermes Mobile v3.8  │                   │  Hermes Desktop      │
 │                      │──── escribe ────► │                      │
 │  • Scorecard         │                   │  • Reportes          │
 │  • Clientes + saldos │                   │  • Dashboards        │
@@ -405,8 +405,8 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
     <li><strong>Repo:</strong> github.com/guidocameraeq/HermesMobile</li>
     <li><strong>Build:</strong> <code>flutter build apk --release</code></li>
     <li><strong>Distribución:</strong> APK sideload + auto-update</li>
-    <li><strong>Tamaño APK:</strong> ~57 MB</li>
-    <li><strong>Última versión:</strong> <span class="version-tag">v3.5.1</span></li>
+    <li><strong>Tamaño APK:</strong> ~58 MB</li>
+    <li><strong>Última versión:</strong> <span class="version-tag">v3.8.0</span></li>
   </ul>
 </div>
 <div class="card">
@@ -424,7 +424,7 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
 </div>
 
 <div class="card">
-  <div class="card-header">Paquetes Flutter instalados (v3.5.1)</div>
+  <div class="card-header">Paquetes Flutter instalados (v3.8.0)</div>
   <div class="grid-3">
     <div><code>postgres</code> — Supabase directo</div>
     <div><code>sql_conn</code> — SQL Server (local)</div>
@@ -861,7 +861,7 @@ agent_prompts (
 <h3 style="color:#ca8a04;">🟡 Media — mejoras importantes pero no críticas</h3>
 
 <div class="card">
-  <div class="card-header">CRIT-3 — Migrar credenciales DB a Edge Functions <span class="badge badge-media">Media</span></div>
+  <div class="card-header">CRIT-3 — Migrar credenciales de DB a Edge Functions <span class="badge badge-media">Media</span></div>
   <p><strong>Qué:</strong> sacar <code>pgPass</code> de <code>constants.dart</code>. Todas las queries pasan por Edge Functions con auth de vendedor.</p>
   <ul>
     <li><strong>Por qué:</strong> mismo problema que CRIT-2 con OpenAI key, pero para DB. Sigue siendo extraíble del APK.</li>
