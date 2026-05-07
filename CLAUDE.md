@@ -315,50 +315,164 @@ Estos son procesos **automáticos** que sigo cuando ocurre el disparador corresp
 
 ### Proceso 6 — Compact del chat
 
-**Disparador:** el user ejecuta `/compact`.
+**Disparador:** el user dice "voy a comprimir" / "cerrá sesión" / "compact ya" / `/compact`.
 
-**Qué pasa automáticamente:**
+#### 6.A — Pre-compact checklist (lo ejecuto YO antes de que el user haga /compact)
+
+```
+═══════════════════════════════════════════════════════
+PRE-COMPACT CHECKLIST — Hermes Mobile
+═══════════════════════════════════════════════════════
+
+[ ] 1. Releer para verificar consistencia:
+      - docs/STATUS.md (lo que está en curso)
+      - docs/TODO.md (qué quedó pendiente esta sesión)
+      - docs/CHANGELOG.md (entrada del día, si existe)
+      - docs/SESSION_HANDOFF.md (versión anterior antes de sobrescribir)
+
+[ ] 2. Actualizar OBLIGATORIO los markdowns:
+      [ ] docs/SESSION_HANDOFF.md — sobrescribir completo:
+          • Estado actual
+          • Lo que se hizo
+          • Lo que quedó en curso
+          • Próximo paso CONCRETO
+          • Bloqueos (si hay)
+          • Archivos tocados
+          • Contexto importante del chat
+
+      [ ] docs/CHANGELOG.md — nueva entrada al tope con fecha de hoy:
+          • Versión publicada (si aplica)
+          • Trabajo (bullets)
+          • Decisiones (ADRs creados)
+          • Próximo paso
+
+      [ ] docs/TODO.md:
+          • Mover tareas completadas a sección "Completadas recientemente"
+          • Agregar tareas nuevas surgidas
+
+[ ] 3. Si hubo decisiones técnicas hoy:
+      [ ] Crear ADR-NNN en docs/decisions/ (numeración sin saltos)
+      [ ] Actualizar índice en docs/decisions/README.md
+
+[ ] 4. Si se descartaron opciones hoy:
+      [ ] Agregar entradas en docs/REJECTED.md
+
+[ ] 5. Si cambió arquitectura:
+      [ ] Actualizar docs/ARCHITECTURE.md
+
+[ ] 6. ⭐ VERIFICAR Y REGENERAR docs/master-plan.html
+      Confirmar que el HTML refleja el estado actual COMPLETO de:
+      [ ] docs/STATUS.md (todos los bloques en §3.0)
+      [ ] docs/TODO.md (todos los pendientes en §19, con criticidades)
+      [ ] docs/decisions/ (todas las ADRs en §23, título + razón)
+      [ ] docs/CHANGELOG.md (timeline §2 actualizado)
+      [ ] header + footer + stats (versión actual, releases totales)
+
+      Si alguna sección del HTML quedó atrás respecto al markdown,
+      regenerarla AHORA antes del compact. Markdown manda, HTML refleja.
+
+[ ] 7. Devolver al user resumen estructurado con paths:
+
+═══════════════════════════════════════════════════════
+RESUMEN PRE-COMPACT — [fecha]
+═══════════════════════════════════════════════════════
+
+Archivos actualizados:
+- docs/SESSION_HANDOFF.md ✅
+- docs/CHANGELOG.md ✅ (entrada nueva)
+- docs/TODO.md ✅ (X tareas movidas)
+- docs/decisions/ADR-XXX-*.md ✅ (si aplica)
+- docs/REJECTED.md ✅ (si aplica)
+- docs/ARCHITECTURE.md ✅ (si aplica)
+- docs/master-plan.html ✅ (secciones X, Y, Z regeneradas)
+
+Próximo paso al retomar:
+[acción concreta]
+
+Bloqueos pendientes:
+[si hay]
+
+Estás listo para /compact.
+═══════════════════════════════════════════════════════
+```
+
+#### 6.B — Lo que pasa automáticamente
+
 - Las memorias en `C:\Users\clientes\.claude\projects\d--SAAS\memory\` se cargan al iniciar la sesión nueva (no se pierden).
 
-**Qué tiene que hacer el user:**
-- Pegar el contenido de `docs/POST_COMPACT_PROMPT.md` como primer mensaje de la sesión nueva.
+#### 6.C — Lo que tiene que hacer el user
 
-**Qué hago yo en la sesión nueva:**
-1. Leer `docs/STATUS.md` (snapshot actual)
-2. Leer `CLAUDE.md` (este archivo — stack, patrones, procesos)
-3. Leer `docs/TODO.md` (qué está pendiente)
-4. Leer `docs/ARCHITECTURE.md` (decisiones core)
-5. Leer `docs/WORKFLOW.md` (cómo hacer cosas operativas)
-6. Si la conversación va a tocar una decisión postergada, leer el ADR correspondiente
-7. Si toco el plan maestro HTML, abrirlo y revisar la sección que voy a editar
+Pegar el contenido de `docs/POST_COMPACT_PROMPT.md` como primer mensaje de la sesión nueva.
+
+#### 6.D — Lo que hago yo en la sesión nueva (post-compact)
+
+1. Leer `docs/SESSION_HANDOFF.md` (dónde quedamos)
+2. Leer `docs/STATUS.md` (versión actual + bloques)
+3. Leer `docs/TODO.md` (qué está pendiente — única fuente)
+4. Leer `CLAUDE.md` (este archivo — stack, patrones, procesos)
+5. Leer `docs/ARCHITECTURE.md` (patrones)
+6. Leer `docs/WORKFLOW.md` (cómo hacer cosas operativas)
+7. Si la conversación va a tocar una decisión postergada, leer `docs/decisions/ADR-NNN-*.md`
+8. Si la conversación va a tocar una opción que parecía válida, chequear `docs/REJECTED.md` antes de proponerla
+9. Si toco el master-plan.html, abrirlo y revisar la sección a editar siguiendo los comentarios `<!-- Source of truth: -->`
 
 ---
 
-## El Plan Maestro HTML es la guía viva del proyecto
+## El Plan Maestro HTML es el dashboard maestro autocontenido
 
-`docs/master-plan.html` es **el documento de referencia del proyecto Hermes Mobile**. No es un archivo "para imprimir alguna vez": es la fuente de verdad sobre qué se hizo, qué se está haciendo, qué viene, y por qué. El user lo abre y lo usa como guía. Tu tarea es mantenerlo siempre alineado con la realidad del código.
+`docs/master-plan.html` es **el dashboard del proyecto Hermes Mobile**. El user lo abre en el browser y quiere ver TODO el estado del proyecto sin abrir ningún markdown. Es autocontenido y completo, no es vitrina con links.
+
+### 🚨 REGLA ABSOLUTA — Actualización OBLIGATORIA
+
+**`master-plan.html` debe actualizarse cada vez que cambia uno de estos archivos:**
+
+| Cuando cambia... | Actualizar en HTML | Sección |
+|---|---|---|
+| `docs/STATUS.md` | Tabla de bloques (§3.0) | §3 Fases Completadas |
+| `docs/TODO.md` | Lista completa de pendientes con criticidades | §19 Pendientes Técnicos |
+| `docs/decisions/ADR-*.md` (nuevo, modificado, superado) | Tabla de ADRs (título + razón corta) | §23 Decisiones Arquitectónicas |
+| `docs/CHANGELOG.md` (nueva entrada) | Timeline item nuevo | §2 Historial de Versiones |
+| `docs/ARCHITECTURE.md` (cambio de stack/patrón) | Stack en §4 + posible mención en §22 | §4 Infraestructura |
+
+**El HTML refleja contenido COMPLETO de los markdowns, no resumen.** Es el dashboard que el usuario abre para ver el proyecto entero de un vistazo. Trabajo doble aceptado a cambio de experiencia visual unificada.
+
+### Si hay desfase entre HTML y markdown
+
+**Markdown manda.** Tomar el contenido del markdown como fuente de verdad y propagarlo al HTML. Nunca al revés.
+
+### Cómo identificar qué sección actualizar
+
+Cada sección principal del HTML lleva un **comentario HTML invisible** indicando su fuente de verdad:
+
+```html
+<!-- Source of truth: docs/STATUS.md -->
+<!-- Sync rule: when STATUS.md changes, mirror full block table here. -->
+<h2 id="completado">3. Fases Completadas</h2>
+```
+
+Buscar `<!-- Source of truth:` en el HTML para ubicar qué sección refleja qué markdown.
 
 ### Qué tiene que reflejar siempre
 
-1. **Versión actual y stats** (header + panel de stats al inicio): número de releases, badge de versión, fecha de última actualización.
+1. **Header + stats**: badge de versión, número de releases, fecha de última actualización.
 2. **Footer**: versión actual.
-3. **Timeline de versiones** (sección 2): un item por cada release publicado, con fecha, título corto y resumen narrativo de qué trajo.
-4. **Bloques completados vs pendientes**: si un bloque pendiente se completa, mover de la sección "pendientes" a "completados" + actualizar el TOC (`<li class="pending">` → `<li class="done">`).
-5. **Pendientes técnicos**: si surge una idea/mejora que vale la pena guardar, agregarla como `<div class="card">` en la sección 19. Si se completa, moverla al historial correspondiente.
-6. **Nueva funcionalidad importante**: si construimos algo grande (como Cronos Analytics), agregar una sección dedicada con queries/tablas/diagramas.
-7. **Tabla de Contenidos**: cada sección nueva debe estar en el TOC (`<div class="toc">`).
+3. **§2 Timeline**: refleja `CHANGELOG.md` — un item por release publicado.
+4. **§3 Tabla panorámica de bloques**: espejo de `STATUS.md`.
+5. **§19 Pendientes**: lista completa con criticidades 🔴🟠🟡🟢, refleja `TODO.md`.
+6. **§23 Decisiones**: tabla con todos los ADRs (título + razón corta), refleja `decisions/`.
+7. **TOC**: cada sección nueva debe estar en el `<div class="toc">`.
 
 ### Reglas para editar el HTML
 
 - **Mantener el estilo existente**: usar las clases CSS que ya están definidas (`badge-done`, `badge-pending`, `card done`, `card pending`, `timeline-item done`, `info`, `success`, `highlight`, etc). No inventar clases nuevas a menos que sea para una sección categórica nueva.
-- **Validar después de cada cambio**: el archivo es HTML puro renderizable en cualquier browser. Verificar con un parser simple que las etiquetas queden balanceadas (ver `docs/master-plan.html` ya tiene 1000+ líneas y crece).
+- **Validar después de cada cambio**: el archivo es HTML puro renderizable en cualquier browser. Verificar con un parser simple que las etiquetas queden balanceadas.
 - **Renumerar cuidadosamente** si insertás secciones nuevas: la numeración (§1, §2, ...) debe quedar consistente en TOC, headers y referencias internas.
 - **Preservar `class="page-break"`** en headings importantes para mantener el formato impreso.
 - **Las tablas con queries SQL van en `<pre>`** dentro de `<div class="card">` para mantener legibilidad.
 
 ### Filosofía
 
-El plan maestro **no es opcional ni decorativo**. El user lo usa como guía operativa. Si algo cambia en el código y no se refleja acá, el plan miente. Si surge una decisión importante y no queda asentada acá, se pierde. Antes de cerrar cualquier ciclo de trabajo significativo, preguntate: "¿el plan maestro refleja esto?". Si la respuesta es no, actualizalo en el mismo commit.
+El plan maestro **no es opcional ni decorativo**. El user lo usa como guía operativa diaria. Si algo cambia en los markdowns y no se refleja acá, el dashboard miente. Si surge una decisión importante y no queda asentada acá, el user no la ve. Antes de cerrar cualquier ciclo de trabajo significativo, preguntate: **"¿el dashboard refleja esto en versión completa, no resumida?"**. Si la respuesta es no, actualizalo en el mismo commit.
 
 ---
 

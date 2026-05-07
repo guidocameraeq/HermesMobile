@@ -1,6 +1,14 @@
 # Plan de acción — Proxy OpenAI vía Supabase Edge Functions
 
-**Estado:** propuesto, sin ejecutar.
+> **📦 Archivado en `docs/historico/` el 2026-05-06.**
+> **Estado real:** ejecutado y completado en v3.8.0 (commit `5e37073`).
+> **Resultado documentado en:** [`ADR-007`](../decisions/ADR-007-auth-via-vendedor-tokens.md), `CHANGELOG.md` entrada 2026-05-06, `ARCHITECTURE.md` §11.
+> **Nota sobre paths:** este documento usa nombres de archivo PRE-reorganización del 2026-05-07
+> (ARQUITECTURA.md, PLAN_MAESTRO_HERMES_MOBILE.html, etc). Mapeo de equivalencias:
+> `ARQUITECTURA.md` → `ARCHITECTURE.md` · `PLAN_MAESTRO_HERMES_MOBILE.html` → `master-plan.html` · `decisiones/` → `decisions/`.
+> No se edita el contenido del archivo (los archivos de `historico/` son inmutables como reglas de la auditoría).
+
+**Estado original:** propuesto, sin ejecutar.
 **Versión target:** v3.8.0
 **Esfuerzo estimado:** 1 día completo (~6-8 horas)
 **Prioridad:** alta — la OpenAI key está embebida en el APK y aunque hay cap mensual, un APK filtrado puede generar gasto antes de que se detecte.

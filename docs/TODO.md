@@ -122,7 +122,7 @@
 
 ## 📅 Bloques pendientes del plan original
 
-Estos son bloques completos del plan maestro, no items sueltos. Detalle completo en `docs/PLAN_MAESTRO_HERMES_MOBILE.html`.
+Estos son bloques completos del plan maestro, no items sueltos. Detalle completo en [`docs/master-plan.html`](master-plan.html) §13–§18.
 
 | Bloque | Descripción | Prioridad | Estado |
 |---|---|---|---|

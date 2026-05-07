@@ -39,7 +39,7 @@ Auditoría de seguridad de mayo 2026 identificó CRIT-3: las credenciales del ro
 
 ### Mantener `pgPass` pero rotarla periódicamente
 - Mitigación parcial: cada 3 meses, rotar pass + force update
-- Aceptable como práctica continua. Se documenta en TAREAS_PENDIENTES.md como tarea recurrente.
+- Aceptable como práctica continua. Se documenta en `TODO.md` como tarea recurrente.
 
 ## Consecuencias
 

@@ -135,6 +135,7 @@
   <li><a href="#cronos-analytics">Cronos Analytics — Reportes y Conclusiones</a></li>
   <li><a href="#force-update">Force Update — Killswitch remoto de versión</a></li>
   <li><a href="#seguridad">Auditoría de Seguridad y Hardening</a></li>
+  <li><a href="#decisiones">Decisiones Arquitectónicas (ADRs)</a></li>
   <li><a href="#orden">Próximos Pasos Sugeridos</a></li>
 </ol>
 </div>
@@ -168,6 +169,8 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
 </div>
 
 <!-- 2. HISTORIAL -->
+<!-- Source of truth: docs/CHANGELOG.md -->
+<!-- Sync rule: when CHANGELOG.md gets a new entry, mirror it as a timeline-item here. HTML is complete reflection. -->
 <h2 id="historial">2. Historial de Versiones</h2>
 
 <div class="timeline">
@@ -309,7 +312,35 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
 </div>
 
 <!-- 3. COMPLETADO -->
+<!-- Source of truth: docs/STATUS.md (tabla de bloques) -->
+<!-- Sync rule: when STATUS.md changes, mirror full block table here. HTML is complete reflection. -->
 <h2 id="completado" class="page-break done">3. Fases Completadas</h2>
+
+<h3>3.0 Panorámica de bloques (espejo de STATUS.md)</h3>
+<p>Esta tabla refleja el contenido completo de la sección "Tabla de bloques del plan original" de <code>docs/STATUS.md</code>. Cuando se actualiza el markdown, esta tabla debe actualizarse también.</p>
+
+<table>
+<tr><th>Bloque</th><th>Descripción</th><th>Estado</th><th>Versión</th></tr>
+<tr class="done-row"><td><strong>Base</strong></td><td>Scorecard, Clientes, Ventas, Pedidos, Visitas GPS</td><td><span class="badge badge-done">✅ Completo</span></td><td>v1.0–v2.2</td></tr>
+<tr class="done-row"><td><strong>A</strong></td><td>Visitas GPS con geolocalización</td><td><span class="badge badge-done">✅ Completo</span></td><td>v1.8.0</td></tr>
+<tr class="done-row"><td><strong>B</strong></td><td>Análisis de líneas de producto en ficha</td><td><span class="badge badge-done">✅ Completo</span></td><td>v1.7.0</td></tr>
+<tr class="done-row"><td><strong>E</strong></td><td>Historia Clínica (actividades por cliente + timeline)</td><td><span class="badge badge-done">✅ Completo</span></td><td>v2.5–v2.8</td></tr>
+<tr class="done-row"><td><strong>I</strong></td><td>Mi Agenda + Notificaciones locales</td><td><span class="badge badge-done">✅ Completo</span></td><td>v2.7–v2.8</td></tr>
+<tr class="done-row"><td><strong>K</strong></td><td>Rediseño UX (drawer, config, linking universal)</td><td><span class="badge badge-done">✅ Completo</span></td><td>v2.9.0</td></tr>
+<tr class="done-row"><td><strong>L</strong></td><td>Google Calendar (off/manual/auto)</td><td><span class="badge badge-done">✅ Completo</span></td><td>v3.1.0</td></tr>
+<tr class="done-row"><td><strong>P</strong></td><td>Módulo Pedidos (pendientes/cerrados)</td><td><span class="badge badge-done">✅ Completo</span></td><td>v1.9.x</td></tr>
+<tr class="done-row"><td><strong>Cronos</strong> (extra)</td><td>Asistente IA + Whisper + Edge Functions proxy</td><td><span class="badge badge-done">✅ Completo</span></td><td>v2.3 → v3.8.0</td></tr>
+<tr class="done-row"><td><strong>Biométrico</strong> (extra)</td><td>Login con huella</td><td><span class="badge badge-done">✅ Completo</span></td><td>v2.8.0</td></tr>
+<tr class="done-row"><td><strong>Force Update</strong> (extra)</td><td>Killswitch remoto via <code>app_config</code></td><td><span class="badge badge-done">✅ Completo</span></td><td>v3.7.0</td></tr>
+<tr class="done-row"><td><strong>Identidad visual</strong> (extra)</td><td>Iconos Hermes + Cronos custom</td><td><span class="badge badge-done">✅ Completo</span></td><td>v3.7.0–v3.7.2</td></tr>
+<tr class="done-row"><td><strong>Security hardening</strong> (extra)</td><td>Keystore release, RLS, network_security_config</td><td><span class="badge badge-done">✅ Completo</span></td><td>v3.7.3</td></tr>
+<tr><td><strong>C</strong></td><td>Embudo CRM de Prospectos</td><td><span class="badge badge-pending">⏳ Pendiente</span></td><td>—</td></tr>
+<tr><td><strong>F</strong></td><td>Matriz de Potencial</td><td><span class="badge badge-pending">⏳ Pendiente</span></td><td>—</td></tr>
+<tr><td><strong>D</strong></td><td>Leads desde Google Forms</td><td><span class="badge badge-pending">⏳ Pendiente</span></td><td>—</td></tr>
+<tr><td><strong>G</strong></td><td>Relevamiento PDV</td><td><span class="badge badge-pending">⏳ Pendiente</span></td><td>—</td></tr>
+<tr><td><strong>H</strong></td><td>Objetivo de Visitas Diarias</td><td><span class="badge badge-pending">⏳ Pendiente</span></td><td>—</td></tr>
+<tr><td><strong>J</strong></td><td>Push Notifications (FCM)</td><td><span class="badge badge-partial">🟡 ~70%</span></td><td>falta FCM server-side</td></tr>
+</table>
 
 <h3>3.1 Base (v1.0 → v2.2)</h3>
 <table>
@@ -361,6 +392,8 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
 </div>
 
 <!-- 4. INFRAESTRUCTURA -->
+<!-- Source of truth: docs/ARCHITECTURE.md + CLAUDE.md (sección Stack) -->
+<!-- Sync rule: when stack changes (new dep, removed component), mirror here. -->
 <h2 id="infraestructura">4. Infraestructura y Stack Técnico</h2>
 
 <div class="grid-2">
@@ -750,79 +783,164 @@ agent_prompts (
   <li>Setup Firebase project + device token registration</li>
 </ul>
 
-<!-- 14. PENDIENTES TÉCNICOS -->
-<h2 id="pendientes-tecnicos" class="page-break">19. Pendientes Técnicos Específicos</h2>
+<!-- Source of truth: docs/TODO.md -->
+<!-- Sync rule: when TODO.md changes, mirror full content here (not summary). HTML is complete reflection. -->
+<h2 id="pendientes-tecnicos" class="page-break">19. Pendientes Técnicos</h2>
 
 <div class="info">
-<strong>📌 Fuente única de verdad:</strong> la lista accionable y siempre actualizada de pendientes vive en <code>docs/TODO.md</code>. Este HTML muestra solo un resumen visual destacado para revisión humana y reuniones — si hay desfase, <code>TODO.md</code> manda. Cuando se completa una tarea, se mueve allí (no se edita esta sección).
+<strong>📌 Fuente única:</strong> esta sección refleja el contenido COMPLETO de <code>docs/TODO.md</code>. Cuando se edita el markdown, esta sección debe actualizarse también para mantener el reflejo completo. Si hay desfase, <code>TODO.md</code> manda y se propaga al HTML.
 </div>
 
-<p>Ideas y mejoras destacadas (resumen no exhaustivo):</p>
+<h3 style="color:#dc2626;">🔴 Urgente — bloquea operación o seguridad</h3>
 
 <div class="card" style="border-left:5px solid #ef4444;background:#fef2f2">
-  <div class="card-header">🛡️ Proxy de API key OpenAI — Supabase Edge Functions <span class="badge badge-alta">Alta</span></div>
-  <p><strong>Problema:</strong> la key de OpenAI vive en <code>constants.dart</code> y se compila al APK. Se puede extraer con <code>strings app-release.apk | grep "sk-proj"</code>. Si la APK se filtra (pendrive, WhatsApp, ex-empleado), cualquiera puede drenar el crédito de OpenAI hasta que se revoque la key.</p>
-  <p><strong>Solución:</strong> crear 2 Supabase Edge Functions en Deno (<code>cronos-chat</code>, <code>cronos-transcribe</code>) que actúen como proxy. La app manda el request con el JWT del vendedor; la función valida, rate-limitea, llama a OpenAI con la key <em>server-side</em>, logea uso en tabla <code>uso_llm</code> y devuelve la respuesta. La key nunca baja al cliente.</p>
+  <div class="card-header">Cargar SHA-1 nuevo en Google Cloud OAuth (Calendar) <span class="badge badge-alta">Crítico</span></div>
+  <p><strong>Qué:</strong> actualizar SHA-1 en Google Cloud Console → OAuth client Android del proyecto "Hermes Mobile".</p>
   <ul>
-    <li>Supabase Free: 500k invocaciones/mes incluidas (con 10 vendedores × 50 queries/día × 22 días = 11k/mes, sobra)</li>
-    <li>Permite rate-limit por vendedor + log de uso</li>
-    <li>Permite cambiar la key sin recompilar la app</li>
-    <li>Permite cortar acceso de un vendedor específico sin pushear APK nueva</li>
-    <li><strong>Esfuerzo:</strong> ~1 día (funciones + tabla <code>uso_llm</code> + modificar <code>AssistantService</code> y <code>WhisperService</code>)</li>
-    <li><strong>Cuándo:</strong> antes de crecer a 3-4+ vendedores activos</li>
-  </ul>
-  <p><em>Mientras tanto — mitigación: límite mensual de gasto en OpenAI ($30/mes hard cap), key restringida a Chat+Audio scope, alertas de uso al 50/75/100%.</em></p>
-</div>
-
-<div class="card">
-  <div class="card-header">📲 Notificaciones con acciones rápidas <span class="badge badge-media">Media</span></div>
-  <p>Botones en el panel de notificaciones (como alarmas de Android): "Posponer 10 min" y "Completada". Permite al vendedor manejar actividades sin abrir la app.</p>
-  <ul>
-    <li><code>AndroidNotificationAction</code> + background isolate (<code>@pragma('vm:entry-point')</code>)</li>
-    <li>Snooze cancela la notif y programa +10 min</li>
-    <li>Complete hace UPDATE en Supabase</li>
-    <li>Cola offline: si no hay internet, encolar y reintentar al abrir app</li>
-    <li>Esfuerzo: ~80 líneas + testing con app totalmente cerrada</li>
+    <li><strong>Valor nuevo:</strong> <code>73:9D:EE:58:75:E6:18:B4:3D:6C:DA:49:3B:B7:3C:B0:C9:83:F7:0F</code></li>
+    <li><strong>Valor viejo a reemplazar:</strong> <code>EC:92:8A:A2:30:AC:E2:AC:62:16:9C:ED:22:8A:D3:99:33:AF:0F:0E</code> (debug)</li>
+    <li><strong>Impacto si no se hace:</strong> botón "Conectar con Google Calendar" falla. Resto de la app OK.</li>
+    <li><strong>Quién:</strong> user (requiere acceso a Google Cloud Console del workspace)</li>
+    <li><strong>Esfuerzo:</strong> 5 min</li>
+    <li><strong>Origen:</strong> v3.7.3 (cambio de keystore)</li>
   </ul>
 </div>
 
-<div class="card">
-  <div class="card-header">🗑️ Soft-delete de actividades <span class="badge badge-baja">Baja</span></div>
-  <p>Hoy <code>ActividadesService.eliminar()</code> hace <code>DELETE</code> hard. Cambiar a <code>UPDATE SET eliminada_at = NOW()</code> + filtrar en lecturas para permitir recuperar eliminadas por accidente y auditoría.</p>
+<div class="card" style="border-left:5px solid #ef4444;background:#fef2f2">
+  <div class="card-header">Activar force update a v3.8.0 <span class="badge badge-alta">Crítico</span></div>
+  <p><strong>Qué:</strong> <code>UPDATE app_config SET value='3.8.0' WHERE key='min_version_required';</code></p>
+  <ul>
+    <li><strong>Impacto si no se hace:</strong> vendedores siguen con APKs viejos que tienen la OpenAI key embebida (CRIT-2 sigue con superficie de exposición hasta que todos actualicen)</li>
+    <li><strong>Pre-requisito:</strong> que el user haya validado v3.8.0 en su device de prueba</li>
+    <li><strong>Quién:</strong> Claude ejecuta cuando el user da OK</li>
+    <li><strong>Esfuerzo:</strong> 30 segundos</li>
+    <li><strong>Origen:</strong> v3.8.0 rollout</li>
+  </ul>
 </div>
 
-<div class="card">
-  <div class="card-header">🔐 Finalizar setup Google Cloud OAuth <span class="badge badge-alta">Alta</span></div>
-  <p>Proyecto "Hermes Mobile" creado en Google Cloud Console, OAuth External configurado, package <code>com.hermes.hermes_vendedor</code>. <strong>Quedan 2 acciones pendientes para que "Conectar con Google Calendar" funcione:</strong></p>
+<h3 style="color:#ea580c;">🟠 Alta — hacer pronto pero no inmediato</h3>
+
+<div class="card pending">
+  <div class="card-header">Rotar la OpenAI API key vieja <span class="badge badge-alta">Alta</span></div>
+  <p><strong>Qué:</strong></p>
   <ol>
-    <li><strong>Actualizar el SHA-1 al de release</strong> (resultado del cambio de keystore en v3.7.3). El SHA-1 viejo (debug) era <code>EC:92:8A:...:0F:0E</code>; el nuevo (release) es <code>73:9D:EE:58:75:E6:18:B4:3D:6C:DA:49:3B:B7:3C:B0:C9:83:F7:0F</code>. Editar en Console → Credentials → OAuth client Android. <em>5 min</em>.</li>
-    <li><strong>Agregar test users</strong> (los gmails de cada vendedor que va a usar Calendar) en OAuth consent screen → Test users. Bloqueado a la espera de recopilar los mails.</li>
+    <li>Generar key nueva en OpenAI Dashboard</li>
+    <li>Editar Secret <code>OPENAI_API_KEY</code> en Supabase Dashboard → Functions → Secrets</li>
+    <li>Revocar la key vieja (<code>sk-proj-WxHg2...</code>) en OpenAI</li>
   </ol>
+  <p><strong>Impacto:</strong> APKs viejos que aún anden dando vueltas (en repo, en celulares no actualizados) dejan de funcionar al instante para OpenAI.</p>
+  <ul>
+    <li><strong>Pre-requisito:</strong> todos los vendedores activos en v3.8.0 (esperar 3-5 días tras force update)</li>
+    <li><strong>Esfuerzo:</strong> 3 minutos</li>
+    <li><strong>Origen:</strong> cierre completo de CRIT-2</li>
+  </ul>
+</div>
+
+<div class="card pending">
+  <div class="card-header">Limpiar APK assets viejos de GitHub Releases <span class="badge badge-alta">Alta</span></div>
+  <p><strong>Qué:</strong> eliminar <code>app-release.apk</code> de v3.6.0, v3.7.0, v3.7.1, v3.7.2, v3.7.3 (mantener tags + release notes).</p>
+  <ul>
+    <li><strong>Impacto:</strong> ya no se puede descargar un APK con la key vieja embebida desde el repo</li>
+    <li><strong>Quién:</strong> Claude vía API de GitHub</li>
+    <li><strong>Esfuerzo:</strong> 5 min</li>
+    <li><strong>Origen:</strong> defensa en profundidad post v3.8.0</li>
+  </ul>
+</div>
+
+<div class="card pending">
+  <div class="card-header">Recopilar emails de vendedores para Google Calendar <span class="badge badge-alta">Alta</span></div>
+  <p><strong>Qué:</strong> recopilar el gmail de cada vendedor que va a usar Calendar.</p>
+  <ul>
+    <li><strong>Por qué:</strong> Google Cloud OAuth está en modo "Testing" — solo emails registrados como Test Users pueden completar el flow</li>
+    <li><strong>Pasos siguientes:</strong> agregar cada email en OAuth consent screen → Test users</li>
+    <li><strong>Quién:</strong> user (recopilación) + después agregar en Console</li>
+    <li><strong>Origen:</strong> v3.1 (Google Calendar) — pendiente desde abril</li>
+  </ul>
+</div>
+
+<h3 style="color:#ca8a04;">🟡 Media — mejoras importantes pero no críticas</h3>
+
+<div class="card">
+  <div class="card-header">CRIT-3 — Migrar credenciales DB a Edge Functions <span class="badge badge-media">Media</span></div>
+  <p><strong>Qué:</strong> sacar <code>pgPass</code> de <code>constants.dart</code>. Todas las queries pasan por Edge Functions con auth de vendedor.</p>
+  <ul>
+    <li><strong>Por qué:</strong> mismo problema que CRIT-2 con OpenAI key, pero para DB. Sigue siendo extraíble del APK.</li>
+    <li><strong>Mitigación actual:</strong> release keystore + force update permite rotar pass de Postgres + recompilar rápido si se filtra</li>
+    <li><strong>Esfuerzo:</strong> grande (refactor de TODOS los servicios que usan PgService directo)</li>
+    <li><strong>Cuándo:</strong> sin urgencia. Atacar cuando crezca el equipo o cambie el threat model.</li>
+    <li>Decisión documentada en <a href="decisions/ADR-005-postergar-crit3-db-creds.md">ADR-005</a></li>
+  </ul>
 </div>
 
 <div class="card">
-  <div class="card-header">📊 Pantalla de gestión de prompts en Desktop <span class="badge badge-baja">Baja</span></div>
-  <p>La tabla <code>agent_prompts</code> está preparada. Falta una UI en Hermes Desktop para: listar agentes, editar prompt con preview, versionar, rollback, activar/desactivar. Esto permitiría iterar prompts sin tocar SQL.</p>
+  <div class="card-header">Rotar password de Postgres después del rollout v3.8.0 <span class="badge badge-media">Media</span></div>
+  <p><strong>Qué:</strong></p>
+  <ol>
+    <li>Cambiar password del rol <code>postgres</code> en Supabase Dashboard</li>
+    <li>Actualizar <code>lib/config/constants.dart</code> con el password nuevo</li>
+    <li>Buildear v3.8.1 + force update</li>
+  </ol>
+  <ul>
+    <li><strong>Impacto:</strong> mata la capacidad de cualquier APK viejo de conectarse a la DB con la pass vieja</li>
+    <li><strong>Pre-requisito:</strong> todos los vendedores en v3.8.0</li>
+    <li><strong>Esfuerzo:</strong> 30 minutos</li>
+    <li><strong>Origen:</strong> mitigación parcial de CRIT-3</li>
+  </ul>
 </div>
 
 <div class="card">
-  <div class="card-header">📈 Agente Analista de Clientes <span class="badge badge-baja">Baja</span></div>
-  <p>Feasible con la arquitectura actual. Usa <code>PromptService.get('analista', {...})</code>. App agrupa facturación, top productos, evolución, saldo, últimas visitas en un JSON y lo manda al LLM con un prompt especializado. Devuelve análisis textual. Costo ~$0.002 por análisis.</p>
+  <div class="card-header">Notificaciones con acciones rápidas (Android Action Buttons) <span class="badge badge-media">Media</span></div>
+  <p><strong>Qué:</strong> botones "Posponer 10 min" y "Completada" en el panel de notificaciones nativo (sin abrir la app).</p>
+  <ul>
+    <li><strong>Tech:</strong> <code>AndroidNotificationAction</code> + background isolate (<code>@pragma('vm:entry-point')</code>)</li>
+    <li><strong>Esfuerzo:</strong> ~80 LOC + testing con app totalmente cerrada</li>
+    <li><strong>Origen:</strong> plan maestro pendiente desde marzo</li>
+  </ul>
 </div>
 
 <div class="card">
-  <div class="card-header">🔍 Drill-downs del scorecard más accionables</div>
-  <p>Mejorar contenido para que cada drill-down no sea solo lista sino que sugiera acción (ej: "El cliente X no compró en 3 meses, sus últimos 5 productos fueron Y, Z..."). Aprovechar LLM.</p>
+  <div class="card-header">Soft-delete de actividades <span class="badge badge-media">Media</span></div>
+  <p><strong>Qué:</strong> cambiar <code>ActividadesService.eliminar()</code> de DELETE hard a <code>UPDATE SET eliminada_at=NOW()</code>.</p>
+  <ul>
+    <li><strong>Por qué:</strong> permite recuperar accidentes + auditoría</li>
+    <li><strong>Esfuerzo:</strong> ~30 min (1 query change + filtros en lecturas)</li>
+  </ul>
+</div>
+
+<h3 style="color:#65a30d;">🟢 Baja — nice to have</h3>
+
+<div class="card">
+  <div class="card-header">Drill-downs del scorecard más accionables <span class="badge badge-baja">Baja</span></div>
+  <p>Mejorar contenido para que cada drill-down sugiera acciones concretas (aprovechar LLM). Esfuerzo: medio.</p>
 </div>
 
 <div class="card">
-  <div class="card-header">💰 Verificación saldos CxC con desktop</div>
-  <p>Comparar que los saldos de cuentas corrientes en la app coinciden exactamente con los reportes de Hermes Desktop.</p>
+  <div class="card-header">Verificación de saldos CxC con Hermes Desktop <span class="badge badge-baja">Baja</span></div>
+  <p>Comparar que coinciden los saldos entre app y desktop. Esfuerzo: chico.</p>
 </div>
 
 <div class="card">
-  <div class="card-header">🗺️ Mapa de visitas en Hermes Desktop</div>
-  <p>Leaflet.js embebido en WebView para visualizar las visitas GPS de todos los vendedores. Heatmap por zona, filtros por fecha/vendedor.</p>
+  <div class="card-header">Mapa de visitas en Hermes Desktop (no en mobile) <span class="badge badge-baja">Baja</span></div>
+  <p>Leaflet en WebView, heatmap por zona/vendedor. Esfuerzo: medio.</p>
+</div>
+
+<div class="card">
+  <div class="card-header">Pantalla de gestión de prompts en Hermes Desktop <span class="badge badge-baja">Baja</span></div>
+  <p>UI para editar <code>agent_prompts</code> con preview, versionar, rollback. Esfuerzo: medio.</p>
+</div>
+
+<div class="card">
+  <div class="card-header">Dashboard de Cronos Analytics en Hermes Desktop <span class="badge badge-baja">Baja</span></div>
+  <p>Documentado en <a href="#cronos-analytics">§20</a> — queries SQL listas, falta UI. Esfuerzo: 1 día.</p>
+</div>
+
+<div class="card">
+  <div class="card-header">Migración a Supabase Auth (en lugar de auth custom) <span class="badge badge-baja">Baja</span></div>
+  <p>Resolvería HIGH-1 (bcrypt automático) + JWT real con refresh tokens.</p>
+  <ul>
+    <li><strong>Esfuerzo:</strong> 2-3 días (migración de tabla usuarios + cambios coordinados con desktop)</li>
+    <li><strong>Cuándo:</strong> si crecemos a >15 vendedores o si el threat model cambia</li>
+  </ul>
 </div>
 
 <!-- 14.5 CRONOS ANALYTICS -->
@@ -1267,8 +1385,64 @@ WHERE key = 'min_version_required';</pre>
 <strong>Resumen post v3.8.0:</strong> 7/10 categorías OWASP en verde, 3/10 parciales con mitigaciones documentadas. <strong>CRIT-2 resuelto</strong> (OpenAI proxy). Solo queda CRIT-3 (credenciales DB en APK) postergado, con mitigación robusta vía release keystore + force update. La app está en un estado de seguridad razonable para distribución privada interna.
 </div>
 
+<!-- Source of truth: docs/decisions/ADR-*.md + docs/decisions/README.md (índice) -->
+<!-- Sync rule: when an ADR is created/modified/superseded, mirror title + razón corta here. HTML is complete reflection of all ADRs. -->
+<h2 id="decisiones" class="page-break">23. Decisiones Arquitectónicas (ADRs)</h2>
+
+<div class="info">
+<strong>📌 Fuente única:</strong> esta sección refleja el contenido COMPLETO de <code>docs/decisions/</code> con título + razón corta. Detalle full (contexto, alternativas, consecuencias) en cada archivo individual del directorio. Cuando se crea un ADR nuevo o cambia un estado, esta sección debe actualizarse también.
+</div>
+
+<table>
+<tr><th>ID</th><th>Título</th><th>Estado</th><th>Razón corta</th></tr>
+<tr>
+  <td><strong><a href="decisions/ADR-001-distribucion-privada.md">ADR-001</a></strong></td>
+  <td>Distribución privada, no Play Store</td>
+  <td><span class="badge badge-done">Aceptado</span></td>
+  <td>Equipo chico (~10 vendedores), no justifica costo de Play / MDM. Sideload con force update propio. Cuenta gratuita "limited distribution" de Google cubre hasta 20 dispositivos.</td>
+</tr>
+<tr>
+  <td><strong><a href="decisions/ADR-002-sha256-sin-salt.md">ADR-002</a></strong></td>
+  <td>SHA-256 sin salt aceptado por threat model</td>
+  <td><span class="badge badge-done">Aceptado</span></td>
+  <td>Atacante real es vendedor con teléfono, no atacante con dump de DB. Migración a bcrypt requiere coordinación con desktop. Mitigación: passwords ≥10 chars.</td>
+</tr>
+<tr>
+  <td><strong><a href="decisions/ADR-003-sin-ssl-pinning.md">ADR-003</a></strong></td>
+  <td>Sin SSL pinning</td>
+  <td><span class="badge badge-done">Aceptado</span></td>
+  <td>Red de vendedores no es hostil. <code>network_security_config.xml</code> ya rechaza user-installed certs. Pinning agrega fragilidad operativa.</td>
+</tr>
+<tr>
+  <td><strong><a href="decisions/ADR-004-force-update-no-shorebird.md">ADR-004</a></strong></td>
+  <td>Force update via app_config, no Shorebird</td>
+  <td><span class="badge badge-done">Aceptado</span></td>
+  <td>Mecanismo propio sin dependencias externas ni costo. 1 tabla + 1 service + 1 screen. Reversible al instante con un UPDATE.</td>
+</tr>
+<tr>
+  <td><strong><a href="decisions/ADR-005-postergar-crit3-db-creds.md">ADR-005</a></strong></td>
+  <td>Postergar migración de credenciales DB a Edge Functions (CRIT-3)</td>
+  <td><span class="badge badge-done">Aceptado</span></td>
+  <td>Esfuerzo masivo (refactor de ~10 services). Threat model contenido vs CRIT-2 (que sí permitía gastar dinero). Mitigado con keystore + force update + rotación.</td>
+</tr>
+<tr>
+  <td><strong><a href="decisions/ADR-006-release-keystore-propio.md">ADR-006</a></strong></td>
+  <td>Release keystore propio para firmar APKs</td>
+  <td><span class="badge badge-done">Aceptado</span></td>
+  <td>Resuelve CRIT-1: APK release ya no se firma con clave debug genérica. RSA 2048, validez 10000 días. SHA-1: <code>73:9D:EE:58:...</code>. Backup del .jks crítico.</td>
+</tr>
+<tr>
+  <td><strong><a href="decisions/ADR-007-auth-via-vendedor-tokens.md">ADR-007</a></strong></td>
+  <td>Auth via vendedor_tokens y proxy OpenAI vía Edge Functions</td>
+  <td><span class="badge badge-done">Aceptado</span></td>
+  <td>Resuelve CRIT-2: OpenAI key fuera del APK. Tokens propios (no Supabase Auth) por compatibilidad con auth existente. Rate limit + tracking en <code>uso_llm</code>. Cambio de key sin recompilar.</td>
+</tr>
+</table>
+
+<p><strong>Opciones rechazadas:</strong> ver <a href="REJECTED.md"><code>docs/REJECTED.md</code></a> para todas las alternativas que evaluamos y descartamos durante estas decisiones (Play Store, MDM, Shorebird, bcrypt, SSL pinning, migración a Supabase Auth, etc).</p>
+
 <!-- 15. PRÓXIMOS PASOS -->
-<h2 id="orden">23. Próximos Pasos Sugeridos</h2>
+<h2 id="orden">24. Próximos Pasos Sugeridos</h2>
 
 <div class="info">
 <strong>Orden de ejecución recomendado</strong> (por impacto de negocio):
@@ -1288,8 +1462,15 @@ WHERE key = 'min_version_required';</pre>
 <tr><td>10</td><td><strong>J — Push FCM</strong></td><td>Fase avanzada. Requiere setup Firebase.</td><td>Medio</td></tr>
 </table>
 
+<div class="info" style="margin-top:30px;background:#1e293b;color:#e2e8f0;border-left-color:#a855f7;">
+<strong style="color:#e9d5ff;">📊 Sobre este documento — dashboard maestro autocontenido</strong>
+<p style="color:#cbd5e1;margin-top:8px;">Este documento es el <strong>dashboard maestro del proyecto</strong>. Refleja el contenido de los markdowns en <code style="background:#334155;padding:1px 6px;border-radius:3px;">docs/</code> pero de forma <strong>completa, no resumida</strong>. Cuando se edita un markdown, la sección correspondiente del HTML debe actualizarse también. <strong>Markdown es fuente, HTML es reflejo completo.</strong></p>
+<p style="color:#cbd5e1;margin-top:8px;">Esto implica trabajo doble (mantener info en markdown + en HTML) — el valor de tener un dashboard visual unificado lo justifica. Cada sección principal arriba lleva un comentario HTML invisible (<code style="background:#334155;padding:1px 6px;border-radius:3px;">&lt;!-- Source of truth: docs/X.md --&gt;</code>) indicando qué markdown refleja.</p>
+<p style="color:#cbd5e1;margin-top:8px;">Cuando hay desfase entre HTML y markdown: <strong>el markdown manda</strong>, y se propaga al HTML.</p>
+</div>
+
 <div class="footer">
-Plan Maestro Hermes Mobile · Generado automáticamente · Mayo 2026<br>
+Plan Maestro Hermes Mobile · Dashboard autocontenido · Mayo 2026<br>
 Versión actual del código: <strong>v3.8.0</strong> · Repo: github.com/guidocameraeq/HermesMobile
 </div>
 

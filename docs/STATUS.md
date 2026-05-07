@@ -144,8 +144,8 @@ El release v3.5.1 agrupa varios commits que venían acumulándose:
 1. ✅ Release v3.5.1 publicado
 2. ✅ Plan maestro HTML actualizado
 3. ✅ `CLAUDE.md` reescrito
-4. ✅ `docs/ESTADO_ACTUAL.md` (este archivo) creado
-5. ✅ `docs/ARQUITECTURA.md` creado
+4. ✅ `docs/ESTADO_ACTUAL.md` creado *(renombrado a `STATUS.md` en 2026-05-07)*
+5. ✅ `docs/ARQUITECTURA.md` creado *(renombrado a `ARCHITECTURE.md` en 2026-05-07)*
 6. ✅ `docs/WORKFLOW.md` creado
 7. ✅ `docs/POST_COMPACT_PROMPT.md` creado
 8. ✅ Memorias de Claude actualizadas

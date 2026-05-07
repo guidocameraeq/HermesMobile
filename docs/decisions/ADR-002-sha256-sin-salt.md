@@ -28,7 +28,7 @@ Mantenemos SHA-256 sin salt por ahora. No migramos a bcrypt.
 ### Migrar a Supabase Auth (auth.users)
 - Pro: bcrypt automático + JWT con refresh + MFA opcional
 - Con: refactor grande de auth, cambio de modelo de roles, ~2-3 días.
-- Postergado: vale la pena si crecemos a >15 vendedores o cambia el threat model. Documentado en TAREAS_PENDIENTES.md como "Baja prioridad".
+- Postergado: vale la pena si crecemos a >15 vendedores o cambia el threat model. Documentado en `TODO.md` como "Baja prioridad".
 
 ## Consecuencias
 
