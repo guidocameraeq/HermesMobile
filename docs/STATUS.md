@@ -1,11 +1,44 @@
-# Estado actual — Hermes Mobile
+# Status — Hermes Mobile
 
-> Snapshot para Claude post-compact. Actualizar en cada release.
+> **Snapshot del estado actual del proyecto.** Para tareas pendientes
+> accionables, fuente única es [`TODO.md`](TODO.md). Este archivo solo
+> resume "qué versión hay y qué bloques completos / en curso".
 
-**Fecha del snapshot:** 2026-05-06
+**Fecha del snapshot:** 2026-05-07
 **Versión actual:** v3.8.0+40 (proxy OpenAI deployado)
 **Último release publicado:** v3.8.0
 **APK URL:** https://github.com/guidocameraeq/HermesMobile/releases/tag/v3.8.0
+
+---
+
+## Tabla de bloques del plan original
+
+| Bloque | Descripción | Estado | Versión |
+|---|---|---|---|
+| **Base** | Scorecard, Clientes, Ventas, Pedidos, Visitas GPS | ✅ Completo | v1.0–v2.2 |
+| **A** | Visitas GPS con geolocalización | ✅ Completo | v1.8.0 |
+| **B** | Análisis de líneas de producto en ficha | ✅ Completo | v1.7.0 |
+| **E** | Historia Clínica (actividades por cliente + timeline) | ✅ Completo | v2.5–v2.8 |
+| **I** | Mi Agenda + Notificaciones locales | ✅ Completo | v2.7–v2.8 |
+| **K** | Rediseño UX (drawer, config, linking universal) | ✅ Completo | v2.9.0 |
+| **L** | Google Calendar (off/manual/auto) | ✅ Completo | v3.1.0 |
+| **P** | Módulo Pedidos (pendientes/cerrados) | ✅ Completo | v1.9.x |
+| **Cronos** (extra) | Asistente IA + Whisper + Edge Functions proxy | ✅ Completo | v2.3 → v3.8.0 |
+| **Biométrico** (extra) | Login con huella | ✅ Completo | v2.8.0 |
+| **Force Update** (extra) | Killswitch remoto via `app_config` | ✅ Completo | v3.7.0 |
+| **Identidad visual** (extra) | Iconos Hermes + Cronos custom | ✅ Completo | v3.7.0–v3.7.2 |
+| **Security hardening** (extra) | Keystore release, RLS, network_security_config | ✅ Completo | v3.7.3 |
+| **C** | Embudo CRM de Prospectos | ⏳ Pendiente | — |
+| **F** | Matriz de Potencial | ⏳ Pendiente | — |
+| **D** | Leads desde Google Forms | ⏳ Pendiente | — |
+| **G** | Relevamiento PDV | ⏳ Pendiente | — |
+| **H** | Objetivo de Visitas Diarias | ⏳ Pendiente | — |
+| **J** | Push Notifications (FCM) | 🟡 ~70% | falta solo FCM server-side |
+
+**Para detalle granular de tareas pendientes** (operativas, técnicas, deudas):
+ver [`TODO.md`](TODO.md). Este archivo NO duplica la lista — solo resume bloques.
+
+---
 
 ## v3.8.0 — Proxy OpenAI server-side (CRIT-2 del audit resuelto)
 

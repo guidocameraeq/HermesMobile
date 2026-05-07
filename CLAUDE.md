@@ -166,27 +166,49 @@ El IDE NO tiene el SDK de Flutter configurado → los errores de análisis tipo 
 
 Esta es la **fuente única de verdad** sobre qué archivo existe, dónde está, y para qué sirve. Si tenés que buscar algo, empezá acá.
 
+> **Modelo de 6 capas (auditoría 2026-05-07):** la documentación está organizada según un modelo arquitectónico que cubre identidad, decisiones, estado, sesión, visualización y reglas. Nombres en inglés (estándar global, mejor reconocimiento por IDEs), contenido en castellano argentino.
+
 ### Estructura de carpetas
 
 ```
 D:\SAAS\APK\
-├── CLAUDE.md                        ← este archivo (onboarding para Claude)
-├── README.md                        ← README mínimo del repo
+├── CLAUDE.md                        ← Capa 6: reglas para Claude (este archivo)
+├── README.md                        ← Capa 1: identidad del repo
 └── docs\
-    ├── PLAN_MAESTRO_HERMES_MOBILE.html  ← documento principal, abrir en browser
-    ├── ESTADO_ACTUAL.md             ← snapshot de la versión actual
-    ├── TAREAS_PENDIENTES.md         ← lista única operativa de pendientes
-    ├── ARQUITECTURA.md              ← decisiones arquitectónicas con razón
-    ├── WORKFLOW.md                  ← procesos: release, signing, migrations, force update
-    ├── POST_COMPACT_PROMPT.md       ← prompt para reorientar Claude post-compact
-    ├── decisiones\                  ← Architecture Decision Records (ADRs)
-    │   ├── README.md                ← cómo funcionan los ADRs
-    │   ├── ADR-001-...
-    │   ├── ADR-002-...
-    │   └── ...
+    ├── ARCHITECTURE.md              ← Capa 1: patrones arquitectónicos con razón
+    ├── DECISIONS.md → carpeta decisions/  ← Capa 2: ADRs separados (mejor que un archivo único)
+    ├── REJECTED.md                  ← Capa 2: opciones descartadas con razón
+    ├── STATUS.md                    ← Capa 3: snapshot del estado actual + tabla de bloques
+    ├── TODO.md                      ← Capa 3: ⭐ ÚNICA FUENTE de tareas pendientes accionables
+    ├── CHANGELOG.md                 ← Capa 3: registro cronológico por sesión/release
+    ├── SESSION_HANDOFF.md           ← Capa 4: dónde quedamos al cerrar la sesión (Claude lo escribe)
+    ├── master-plan.html             ← Capa 5: documento "lindo" para humanos (browser)
+    ├── WORKFLOW.md                  ← Procesos operativos (release, signing, migrations)
+    ├── POST_COMPACT_PROMPT.md       ← Bloque copy-paste para que el USER pegue al inicio de sesión
+    ├── decisions\                   ← ADRs separados (patrón Nygard)
+    │   ├── README.md                ← formato y reglas + índice
+    │   ├── ADR-001-distribucion-privada.md
+    │   ├── ADR-002-sha256-sin-salt.md
+    │   ├── ADR-003-sin-ssl-pinning.md
+    │   ├── ADR-004-force-update-no-shorebird.md
+    │   ├── ADR-005-postergar-crit3-db-creds.md
+    │   ├── ADR-006-release-keystore-propio.md
+    │   └── ADR-007-auth-via-vendedor-tokens.md
     └── historico\                   ← planes ya ejecutados (referencia, no se actualizan)
         └── PLAN_PROXY_OPENAI.md     ← ejecutado en v3.8.0
 ```
+
+### ⚠️ Diferencia crítica: POST_COMPACT_PROMPT.md vs SESSION_HANDOFF.md
+
+Estos archivos **se confunden fácilmente** pero son distintos:
+
+| Aspecto | `POST_COMPACT_PROMPT.md` | `SESSION_HANDOFF.md` |
+|---|---|---|
+| **Quién lo escribe** | Es estático, lo mantenemos cuando cambia el orden de lectura | Lo escribe Claude (yo) al cerrar la sesión |
+| **Cuándo se usa** | El user lo copia/pega al INICIO de una sesión nueva | Lo leo yo al inicio para saber dónde quedamos |
+| **Contenido** | Lista de archivos a leer, instrucciones para reorientarme | Estado actual + último trabajo + próximo paso concreto |
+| **Frecuencia de cambio** | Raro (solo si cambia la estructura de docs) | Cada cierre de sesión (sobrescribir completo) |
+| **Es para** | Mí, vía pegado del user | Mí, leído del archivo |
 
 ### Memoria local de Claude (fuera del repo)
 
@@ -204,15 +226,29 @@ Estos se cargan **automáticamente** al inicio de cada sesión nueva (incluyendo
 
 | Si querés... | El archivo es... |
 |---|---|
-| Saber qué versión está vigente y qué cambió último | `docs/ESTADO_ACTUAL.md` |
-| Ver el plan completo del proyecto (gráfico, timeline, secciones) | `docs/PLAN_MAESTRO_HERMES_MOBILE.html` |
-| Ver/agregar tareas pendientes operativas | `docs/TAREAS_PENDIENTES.md` |
-| Entender por qué un patrón está implementado así | `docs/ARQUITECTURA.md` |
+| Saber qué versión está vigente y qué bloques están completos | `docs/STATUS.md` |
+| Ver el plan completo del proyecto (gráfico, timeline, secciones) | `docs/master-plan.html` |
+| Ver/agregar tareas pendientes operativas (**fuente única**) | `docs/TODO.md` |
+| Entender por qué un patrón está implementado así | `docs/ARCHITECTURE.md` |
 | Saber cómo hacer release/signing/migrations | `docs/WORKFLOW.md` |
-| Ver por qué descartamos una "best practice" estándar | `docs/decisiones/ADR-NNN-...` |
-| Reorientar Claude tras un compact | `docs/POST_COMPACT_PROMPT.md` |
+| Ver por qué descartamos una "best practice" estándar | `docs/decisions/ADR-NNN-*.md` |
+| Ver la lista de opciones descartadas y por qué | `docs/REJECTED.md` |
+| Ver el registro cronológico por sesión/release | `docs/CHANGELOG.md` |
+| Saber dónde quedamos al cerrar la sesión anterior | `docs/SESSION_HANDOFF.md` |
+| Reorientar Claude tras un compact (lo pega el user) | `docs/POST_COMPACT_PROMPT.md` |
 | Encontrar contexto de un plan ya ejecutado | `docs/historico/` |
 | Stack técnico, servicios, patrones arquitectónicos | `CLAUDE.md` (este) |
+
+### 🚨 REGLA ABSOLUTA — única fuente de verdad de pendientes
+
+**`docs/TODO.md` es la ÚNICA fuente de verdad para tareas pendientes accionables.**
+
+- ✅ `STATUS.md` puede tener un resumen del estado de bloques (ej: "Bloque C pendiente"). NO duplica lista de tareas.
+- ✅ `master-plan.html` §19 muestra cards visuales destacadas. NO duplica la lista — referencia a `TODO.md`.
+- ✅ `SESSION_HANDOFF.md` puede mencionar 1-2 tareas relevantes al contexto de cierre. NO es la lista completa.
+- ❌ NO crear listas de pendientes en otros archivos. Si encontrás una, consolidala en `TODO.md` y reemplazala por una referencia.
+
+Si hay desfase entre `TODO.md` y otro doc, **`TODO.md` manda**. Actualizar el otro doc para que refleje (o referencie sin duplicar).
 
 ---
 
@@ -227,13 +263,13 @@ Estos son procesos **automáticos** que sigo cuando ocurre el disparador corresp
 **Checklist obligatorio (antes de considerar el release "hecho"):**
 1. ✅ `pubspec.yaml` con versión nueva
 2. ✅ APK firmado con release keystore (validar con `apksigner verify --print-certs`)
-3. ✅ `docs/ESTADO_ACTUAL.md` con snapshot de la versión nueva
-4. ✅ `docs/PLAN_MAESTRO_HERMES_MOBILE.html` actualizado:
+3. ✅ `docs/STATUS.md` con snapshot de la versión nueva
+4. ✅ `docs/master-plan.html` actualizado:
    - Header: version-tag + fecha
    - Stats: releases totales (+1), versión actual
    - Timeline: nuevo item con descripción narrativa
    - Footer: versión actual
-5. ✅ Si el release completa una tarea de `TAREAS_PENDIENTES.md`, moverla a "Completadas recientemente"
+5. ✅ Si el release completa una tarea de `TODO.md`, moverla a "Completadas recientemente"
 6. ✅ Commit con prefijo `docs:` (puede ir en el mismo commit del feat o aparte)
 7. ✅ Push tag + release notes en GitHub
 
@@ -242,7 +278,7 @@ Estos son procesos **automáticos** que sigo cuando ocurre el disparador corresp
 **Disparador:** introduzco un patrón reusable que afecta varios archivos (ej: DataEvents, ClienteRouter, RLS pattern, etc).
 
 **Checklist:**
-1. ✅ `docs/ARQUITECTURA.md` con sección nueva: contexto, decisión, razón, cómo aplicarlo
+1. ✅ `docs/ARCHITECTURE.md` con sección nueva: contexto, decisión, razón, cómo aplicarlo
 2. ✅ `CLAUDE.md` (este archivo) con mención breve en "Patrones arquitectónicos críticos"
 3. ✅ Si el patrón es bien crítico (afecta el día a día de cualquier feature futura), también en `project_hermes_mobile.md` (memoria)
 4. ✅ Si el patrón cambia la roadmap o cierra una deuda, mencionarlo en plan maestro HTML
@@ -254,15 +290,15 @@ Estos son procesos **automáticos** que sigo cuando ocurre el disparador corresp
 **Checklist:**
 1. ✅ Plan maestro HTML: mover de "pendientes" a "completados", actualizar TOC (`pending` → `done`)
 2. ✅ `project_hermes_mobile_roadmap.md` (memoria): marcar como completado
-3. ✅ `docs/TAREAS_PENDIENTES.md`: si tenía tareas asociadas, moverlas a completadas
-4. ✅ `docs/ESTADO_ACTUAL.md`: mencionar el bloque en el resumen de la versión
+3. ✅ `docs/TODO.md`: si tenía tareas asociadas, moverlas a completadas
+4. ✅ `docs/STATUS.md`: mencionar el bloque en el resumen de la versión
 
 ### Proceso 4 — Tarea/idea/deuda técnica nueva
 
 **Disparador:** el user menciona una mejora futura, o yo encuentro algo que vale la pena guardar.
 
 **Checklist:**
-1. ✅ `docs/TAREAS_PENDIENTES.md` con la tarea categorizada por criticidad (🔴/🟠/🟡/🟢) — **siempre acá primero**
+1. ✅ `docs/TODO.md` con la tarea categorizada por criticidad (🔴/🟠/🟡/🟢) — **siempre acá primero**
 2. ✅ Si es plan grande (días de trabajo), crear archivo dedicado en `docs/` (ej: `PLAN_FEATURE_X.md`)
 3. ✅ Plan maestro HTML §19 Pendientes Técnicos: agregar `<div class="card">` con prioridad y esfuerzo
 4. ✅ Cuando se ejecuta el plan grande, **moverlo a `docs/historico/`** después de release
@@ -272,8 +308,8 @@ Estos son procesos **automáticos** que sigo cuando ocurre el disparador corresp
 **Disparador:** descartamos una "best practice" estándar, o elegimos entre varias opciones técnicas.
 
 **Checklist:**
-1. ✅ Crear `docs/decisiones/ADR-NNN-titulo-corto.md` con formato estándar (ver `docs/decisiones/README.md`)
-2. ✅ Actualizar el índice en `docs/decisiones/README.md`
+1. ✅ Crear `docs/decisions/ADR-NNN-titulo-corto.md` con formato estándar (ver `docs/decisions/README.md`)
+2. ✅ Actualizar el índice en `docs/decisions/README.md`
 3. ✅ Numeración secuencial sin saltos
 4. ✅ ADRs son **inmutables**: si la decisión cambia, crear ADR nuevo que reemplace, no editar el viejo
 
@@ -288,10 +324,10 @@ Estos son procesos **automáticos** que sigo cuando ocurre el disparador corresp
 - Pegar el contenido de `docs/POST_COMPACT_PROMPT.md` como primer mensaje de la sesión nueva.
 
 **Qué hago yo en la sesión nueva:**
-1. Leer `docs/ESTADO_ACTUAL.md` (snapshot actual)
+1. Leer `docs/STATUS.md` (snapshot actual)
 2. Leer `CLAUDE.md` (este archivo — stack, patrones, procesos)
-3. Leer `docs/TAREAS_PENDIENTES.md` (qué está pendiente)
-4. Leer `docs/ARQUITECTURA.md` (decisiones core)
+3. Leer `docs/TODO.md` (qué está pendiente)
+4. Leer `docs/ARCHITECTURE.md` (decisiones core)
 5. Leer `docs/WORKFLOW.md` (cómo hacer cosas operativas)
 6. Si la conversación va a tocar una decisión postergada, leer el ADR correspondiente
 7. Si toco el plan maestro HTML, abrirlo y revisar la sección que voy a editar
@@ -300,7 +336,7 @@ Estos son procesos **automáticos** que sigo cuando ocurre el disparador corresp
 
 ## El Plan Maestro HTML es la guía viva del proyecto
 
-`docs/PLAN_MAESTRO_HERMES_MOBILE.html` es **el documento de referencia del proyecto Hermes Mobile**. No es un archivo "para imprimir alguna vez": es la fuente de verdad sobre qué se hizo, qué se está haciendo, qué viene, y por qué. El user lo abre y lo usa como guía. Tu tarea es mantenerlo siempre alineado con la realidad del código.
+`docs/master-plan.html` es **el documento de referencia del proyecto Hermes Mobile**. No es un archivo "para imprimir alguna vez": es la fuente de verdad sobre qué se hizo, qué se está haciendo, qué viene, y por qué. El user lo abre y lo usa como guía. Tu tarea es mantenerlo siempre alineado con la realidad del código.
 
 ### Qué tiene que reflejar siempre
 
@@ -315,7 +351,7 @@ Estos son procesos **automáticos** que sigo cuando ocurre el disparador corresp
 ### Reglas para editar el HTML
 
 - **Mantener el estilo existente**: usar las clases CSS que ya están definidas (`badge-done`, `badge-pending`, `card done`, `card pending`, `timeline-item done`, `info`, `success`, `highlight`, etc). No inventar clases nuevas a menos que sea para una sección categórica nueva.
-- **Validar después de cada cambio**: el archivo es HTML puro renderizable en cualquier browser. Verificar con un parser simple que las etiquetas queden balanceadas (ver `docs/PLAN_MAESTRO_HERMES_MOBILE.html` ya tiene 1000+ líneas y crece).
+- **Validar después de cada cambio**: el archivo es HTML puro renderizable en cualquier browser. Verificar con un parser simple que las etiquetas queden balanceadas (ver `docs/master-plan.html` ya tiene 1000+ líneas y crece).
 - **Renumerar cuidadosamente** si insertás secciones nuevas: la numeración (§1, §2, ...) debe quedar consistente en TOC, headers y referencias internas.
 - **Preservar `class="page-break"`** en headings importantes para mantener el formato impreso.
 - **Las tablas con queries SQL van en `<pre>`** dentro de `<div class="card">` para mantener legibilidad.
@@ -329,8 +365,8 @@ El plan maestro **no es opcional ni decorativo**. El user lo usa como guía oper
 ## ⚠️ Anti-patterns a evitar
 
 - ❌ Documentar una decisión solo en el chat (se pierde con el compact)
-- ❌ Crear archivos .md sueltos fuera de `docs/` o `docs/decisiones/` o `docs/historico/`
+- ❌ Crear archivos .md sueltos fuera de `docs/` o `docs/decisions/` o `docs/historico/`
 - ❌ Editar un ADR ya creado (crear uno nuevo que reemplace)
 - ❌ Saltarse el checklist de release porque "es un cambio chico"
 - ❌ Mover un plan ejecutado a `docs/historico/` sin antes confirmar que está cerrado
-- ❌ Modificar `docs/PLAN_MAESTRO_HERMES_MOBILE.html` con clases CSS inventadas — usar las existentes
+- ❌ Modificar `docs/master-plan.html` con clases CSS inventadas — usar las existentes

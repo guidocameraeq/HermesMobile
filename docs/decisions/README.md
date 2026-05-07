@@ -58,8 +58,10 @@ Qué cambia con esto. Qué nos compromete a futuro.
 
 | # | Título | Estado | Fecha |
 |---|---|---|---|
-| 001 | Distribución privada, no Play Store | Aceptado | 2026-04-22 |
-| 002 | SHA-256 sin salt aceptado por threat model interno | Aceptado | 2026-05-06 |
-| 003 | Sin SSL pinning (red de vendedores no es hostil) | Aceptado | 2026-05-06 |
-| 004 | Force update via app_config en lugar de Shorebird | Aceptado | 2026-04-25 |
-| 005 | Postergar migración de credenciales DB a Edge Functions (CRIT-3) | Aceptado | 2026-05-06 |
+| [001](ADR-001-distribucion-privada.md) | Distribución privada, no Play Store | Aceptado | 2026-04-22 |
+| [002](ADR-002-sha256-sin-salt.md) | SHA-256 sin salt aceptado por threat model interno | Aceptado | 2026-05-06 |
+| [003](ADR-003-sin-ssl-pinning.md) | Sin SSL pinning (red de vendedores no es hostil) | Aceptado | 2026-05-06 |
+| [004](ADR-004-force-update-no-shorebird.md) | Force update via app_config en lugar de Shorebird | Aceptado | 2026-04-25 |
+| [005](ADR-005-postergar-crit3-db-creds.md) | Postergar migración de credenciales DB a Edge Functions (CRIT-3) | Aceptado | 2026-05-06 |
+| [006](ADR-006-release-keystore-propio.md) | Release keystore propio para firmar APKs (CRIT-1 resuelto) | Aceptado | 2026-05-06 |
+| [007](ADR-007-auth-via-vendedor-tokens.md) | Auth via vendedor_tokens y proxy OpenAI vía Edge Functions (CRIT-2 resuelto) | Aceptado | 2026-05-06 |

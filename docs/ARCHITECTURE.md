@@ -180,14 +180,55 @@ Antes la Acciones tab tenía catchs silenciosos → si SQL Server estaba caído,
 
 ## 10. Estructura de constants y credenciales
 
-`lib/config/constants.dart` es **gitignored**. Contiene:
-- OpenAI API key (GPT + Whisper)
-- Supabase credentials
-- SQL Server credentials
+`lib/config/constants.dart` es **gitignored**. Contiene desde v3.8.0:
+- ~~OpenAI API key~~ — **removida en v3.8.0**, ahora vive en Supabase Secrets
+- Supabase credentials (rol postgres — sigue siendo CRIT-3 documentado)
+- SQL Server credentials (red interna VPN, no es CRIT)
+- `openaiModel` (solo el nombre del modelo, no la key)
+- `supabaseFunctionsUrl` (URL pública de las Edge Functions)
 
 `lib/config/constants.example.dart` es el template versionado con placeholders tipo `"TU_PASSWORD"`. Cuando alguien clona el repo, copia este archivo a `constants.dart` y completa.
 
-⚠️ **Deuda técnica conocida:** la key de OpenAI se compila al APK y se puede extraer con `strings app-release.apk | grep "sk-proj"`. Plan: moverla a Supabase Edge Function que actúe como proxy. Documentado en Plan Maestro HTML.
+⚠️ **Deuda técnica residual (CRIT-3):** las credenciales de Supabase Postgres siguen compilándose al APK. Mitigado con release keystore (ADR-006) + force update + capacidad de rotar la pass. Migración completa pospuesta — ver [ADR-005](decisions/ADR-005-postergar-crit3-db-creds.md). El patrón usado para resolver CRIT-2 (OpenAI) está documentado en el §11 abajo y formalizado en [ADR-007](decisions/ADR-007-auth-via-vendedor-tokens.md).
+
+---
+
+## 11. Auth via vendedor_tokens y proxy de OpenAI vía Edge Functions
+
+**Archivos:** `lib/services/auth_token_service.dart`, `lib/services/assistant_service.dart`, `lib/services/whisper_service.dart`, `supabase/functions/*`
+
+**Patrón introducido en v3.8.0** para sacar la API key de OpenAI del cliente.
+
+### Flujo
+
+```
+1. Login local (auth_service.dart) valida contra tabla usuarios con SHA-256
+2. Auth exitoso → llama a Edge Function /auth-token con username+hash
+3. La función emite un token random hex (32 bytes), upsert en vendedor_tokens
+4. App guarda el token en flutter_secure_storage
+5. Cada call a Cronos (chat o voz) → header "Authorization: Bearer <vendedor_token>"
+6. Edge Function valida token → vendedor_nombre → rate limit → forward a OpenAI
+7. Respuesta de OpenAI vuelve al cliente, costo se loggea en uso_llm
+```
+
+### Por qué
+
+CRIT-2 del audit OWASP (mayo 2026): la OpenAI key estaba embebida en el APK y era extraíble con `strings`. Un APK filtrado podía drenar el cap de OpenAI. La solución arquitectónica fue mover la key a server-side (Supabase Secrets) e introducir un proxy autenticado.
+
+### Aplicación
+
+- **Cualquier llamada nueva a OpenAI desde la app** debe pasar por Edge Function. Nunca llamar a `api.openai.com` directo.
+- **Si se agrega un endpoint nuevo de OpenAI** (ej: imágenes con DALL-E), crear nueva Edge Function siguiendo el patrón de `cronos-chat`/`cronos-transcribe`.
+- **Para cualquier servicio externo similar** (no solo OpenAI): aplicar este patrón en lugar de embeber credenciales.
+- El token de vendedor se revoca con `DELETE FROM vendedor_tokens WHERE vendedor_nombre = ...`. Útil para deshabilitar a un vendedor sin recompilar.
+- El secret `OPENAI_API_KEY` se rota desde Supabase Dashboard sin tocar app ni recompilar.
+
+### Anti-patterns para este patrón
+
+- ❌ Llamar directo a OpenAI desde la app
+- ❌ Guardar el token en `SharedPreferences` plano (debe ser `flutter_secure_storage`)
+- ❌ Skipear la auth header en alguna call de testing/debug
+- ❌ Activar `--verify-jwt` en las Edge Functions (validamos nosotros con vendedor_tokens; ver [ADR-007](decisions/ADR-007-auth-via-vendedor-tokens.md))
 
 ---
 
