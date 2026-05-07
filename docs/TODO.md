@@ -157,6 +157,8 @@ Estos son bloques completos del plan maestro, no items sueltos. Detalle completo
 ## ✅ Completadas recientemente
 
 ### Mayo 2026
+- ✅ **2026-05-07** Extracción del protocolo de compactación a archivo dedicado `docs/COMPACTION_PROTOCOL.md` (commit `0dd6bbc`) — alineación con P3 y P4 de los 4 proyectos
+- ✅ **2026-05-07** Primer simulacro real del Pre-Compact Checklist (commit `bd4dc83`) detectó y fixeó 6 inconsistencias HTML que solo conteos no veían
 - ✅ **2026-05-07** Refactor del sistema de docs al modelo de 6 capas + HTML como dashboard maestro completo (commits `85dbb39`, `800e21e`)
 - ✅ **2026-05-07** ADR-006 (release keystore) y ADR-007 (auth via vendedor_tokens) creados formalizando patrones de v3.7.3 y v3.8.0
 - ✅ **2026-05-07** Pre-Compact Checklist y POST_COMPACT_PROMPT estructurados con 4 capas de defensa

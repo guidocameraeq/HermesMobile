@@ -51,11 +51,34 @@
 **Decisiones:** ADR-006, ADR-007 creados (en Bloque 1).
 **Próximo paso:** activar force update min_version=3.8.0 cuando user valide v3.8.0 en device.
 
-### Bloque 3 — Discusiones meta sobre el sistema (no commits)
+### Bloque 3 — Discusiones meta + primer simulacro Pre-Compact (commit `bd4dc83`)
 - Honestidad explícita sobre qué hago automático vs qué requiere disparador del user.
 - 4 capas de defensa identificadas: CLAUDE.md autoload, SESSION_HANDOFF, POST_COMPACT_PROMPT, memoria local.
 - 2 reflejos recomendados al user: "cerrá sesión" antes del compact + pegar POST_COMPACT_PROMPT al iniciar sesión nueva.
-- Simulacro de Pre-Compact Checklist ejecutado al cierre de la sesión (esta entrada y la regeneración de SESSION_HANDOFF son parte de ese simulacro).
+- **Primer simulacro real del Pre-Compact Checklist ejecutado.** El Paso 6 de verificación HTML detectó 6 inconsistencias que solo conteos no veían:
+  1. "Última versión: v3.5.1" hardcodeado en HTML
+  2. "Paquetes Flutter instalados (v3.5.1)"
+  3. Stats panel "40 releases" vs git con 39 tags
+  4. "CRIT-3 Migrar credenciales DB" vs TODO.md "de DB"
+  5. Diagrama ASCII "Hermes Mobile v3.5"
+  6. TOC "Historial v1.0 → v3.5"
+  Todos fixeados en el commit. Conclusión: la verificación item-por-item con `diff` (no solo conteos) es necesaria.
+
+### Bloque 4 — Extracción del protocolo a archivo dedicado (commit `0dd6bbc`)
+- `docs/COMPACTION_PROTOCOL.md` NUEVO (215 líneas) con todo el Proceso 6 movido desde CLAUDE.md.
+- CLAUDE.md aliviado de 486 → 405 líneas (−81 líneas), Proceso 6 reemplazado por sección corta de 22 líneas con resumen + link al archivo dedicado.
+- **Alineación con P3 y P4** de los 4 proyectos del sistema: protocolo en archivo dedicado en todos.
+- Convención de nombre con underscore (`COMPACTION_PROTOCOL.md`) coherente con `SESSION_HANDOFF.md` y `POST_COMPACT_PROMPT.md`.
+- Aprovechado para enriquecer el protocolo con:
+  - Marco introductorio con disparadores
+  - Sección de queries bash listas para verificación item-por-item del HTML
+  - Sección "Lecciones aprendidas" documentando los 6 fallos del primer simulacro
+  - Sección "Cómo se mantiene este archivo"
+
+### Bloque 5 — Segundo simulacro Pre-Compact (esta misma entrada)
+- Ejecución del Pre-Compact Checklist siguiendo el protocolo recién extraído.
+- Verificación HTML item-por-item: 19 bloques, 15 pendientes, 7 ADRs — todos consistentes con markdowns.
+- SESSION_HANDOFF, CHANGELOG y TODO regenerados con estado de cierre.
 
 ## [2026-05-06] — Proxy OpenAI server-side (v3.8.0)
 **Versión publicada:** v3.8.0
