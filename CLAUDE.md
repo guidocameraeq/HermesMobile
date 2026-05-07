@@ -162,14 +162,141 @@ El IDE NO tiene el SDK de Flutter configurado → los errores de análisis tipo 
 - **No hay Push FCM** desde servidor (futuro bloque J)
 - **Notificaciones acciones rápidas** (Posponer/Completar desde el panel) — pendiente técnico
 
-## Archivos de docs que tenés que mantener actualizados
+## 🗺️ Mapa completo de documentación
 
-- `CLAUDE.md` (este) — cuando cambia algún patrón o servicio
-- `docs/ESTADO_ACTUAL.md` — cada release
-- `docs/ARQUITECTURA.md` — solo cuando se agrega un patrón nuevo
-- `docs/WORKFLOW.md` — solo cuando cambia alguna herramienta
-- `docs/PLAN_MAESTRO_HERMES_MOBILE.html` — **ver sección dedicada abajo** ⬇️
-- `docs/POST_COMPACT_PROMPT.md` — cuando cambian los archivos críticos o el orden de lectura
+Esta es la **fuente única de verdad** sobre qué archivo existe, dónde está, y para qué sirve. Si tenés que buscar algo, empezá acá.
+
+### Estructura de carpetas
+
+```
+D:\SAAS\APK\
+├── CLAUDE.md                        ← este archivo (onboarding para Claude)
+├── README.md                        ← README mínimo del repo
+└── docs\
+    ├── PLAN_MAESTRO_HERMES_MOBILE.html  ← documento principal, abrir en browser
+    ├── ESTADO_ACTUAL.md             ← snapshot de la versión actual
+    ├── TAREAS_PENDIENTES.md         ← lista única operativa de pendientes
+    ├── ARQUITECTURA.md              ← decisiones arquitectónicas con razón
+    ├── WORKFLOW.md                  ← procesos: release, signing, migrations, force update
+    ├── POST_COMPACT_PROMPT.md       ← prompt para reorientar Claude post-compact
+    ├── decisiones\                  ← Architecture Decision Records (ADRs)
+    │   ├── README.md                ← cómo funcionan los ADRs
+    │   ├── ADR-001-...
+    │   ├── ADR-002-...
+    │   └── ...
+    └── historico\                   ← planes ya ejecutados (referencia, no se actualizan)
+        └── PLAN_PROXY_OPENAI.md     ← ejecutado en v3.8.0
+```
+
+### Memoria local de Claude (fuera del repo)
+
+```
+C:\Users\clientes\.claude\projects\d--SAAS\memory\
+├── MEMORY.md                        ← índice de memorias (1 línea por archivo)
+├── project_hermes_mobile.md         ← stack/servicios/patrones críticos
+├── project_hermes_mobile_roadmap.md ← roadmap CRM
+└── feedback_*.md                    ← feedback puntual del user
+```
+
+Estos se cargan **automáticamente** al inicio de cada sesión nueva (incluyendo post-compact). Son la red de seguridad si todo lo del repo se pierde.
+
+### Tabla de qué archivo modificar para qué
+
+| Si querés... | El archivo es... |
+|---|---|
+| Saber qué versión está vigente y qué cambió último | `docs/ESTADO_ACTUAL.md` |
+| Ver el plan completo del proyecto (gráfico, timeline, secciones) | `docs/PLAN_MAESTRO_HERMES_MOBILE.html` |
+| Ver/agregar tareas pendientes operativas | `docs/TAREAS_PENDIENTES.md` |
+| Entender por qué un patrón está implementado así | `docs/ARQUITECTURA.md` |
+| Saber cómo hacer release/signing/migrations | `docs/WORKFLOW.md` |
+| Ver por qué descartamos una "best practice" estándar | `docs/decisiones/ADR-NNN-...` |
+| Reorientar Claude tras un compact | `docs/POST_COMPACT_PROMPT.md` |
+| Encontrar contexto de un plan ya ejecutado | `docs/historico/` |
+| Stack técnico, servicios, patrones arquitectónicos | `CLAUDE.md` (este) |
+
+---
+
+## 🔄 Procesos estandarizados (REGLAS QUE DEBO SEGUIR)
+
+Estos son procesos **automáticos** que sigo cuando ocurre el disparador correspondiente. No son sugerencias, son obligaciones.
+
+### Proceso 1 — Cada release publicado
+
+**Disparador:** hago `git tag vX.Y.Z` + creo GitHub release con APK adjunto.
+
+**Checklist obligatorio (antes de considerar el release "hecho"):**
+1. ✅ `pubspec.yaml` con versión nueva
+2. ✅ APK firmado con release keystore (validar con `apksigner verify --print-certs`)
+3. ✅ `docs/ESTADO_ACTUAL.md` con snapshot de la versión nueva
+4. ✅ `docs/PLAN_MAESTRO_HERMES_MOBILE.html` actualizado:
+   - Header: version-tag + fecha
+   - Stats: releases totales (+1), versión actual
+   - Timeline: nuevo item con descripción narrativa
+   - Footer: versión actual
+5. ✅ Si el release completa una tarea de `TAREAS_PENDIENTES.md`, moverla a "Completadas recientemente"
+6. ✅ Commit con prefijo `docs:` (puede ir en el mismo commit del feat o aparte)
+7. ✅ Push tag + release notes en GitHub
+
+### Proceso 2 — Patrón arquitectónico nuevo
+
+**Disparador:** introduzco un patrón reusable que afecta varios archivos (ej: DataEvents, ClienteRouter, RLS pattern, etc).
+
+**Checklist:**
+1. ✅ `docs/ARQUITECTURA.md` con sección nueva: contexto, decisión, razón, cómo aplicarlo
+2. ✅ `CLAUDE.md` (este archivo) con mención breve en "Patrones arquitectónicos críticos"
+3. ✅ Si el patrón es bien crítico (afecta el día a día de cualquier feature futura), también en `project_hermes_mobile.md` (memoria)
+4. ✅ Si el patrón cambia la roadmap o cierra una deuda, mencionarlo en plan maestro HTML
+
+### Proceso 3 — Bloque del plan original completado
+
+**Disparador:** terminamos un bloque de letra (C, D, F, G, H, J, etc) o un sub-bloque significativo.
+
+**Checklist:**
+1. ✅ Plan maestro HTML: mover de "pendientes" a "completados", actualizar TOC (`pending` → `done`)
+2. ✅ `project_hermes_mobile_roadmap.md` (memoria): marcar como completado
+3. ✅ `docs/TAREAS_PENDIENTES.md`: si tenía tareas asociadas, moverlas a completadas
+4. ✅ `docs/ESTADO_ACTUAL.md`: mencionar el bloque en el resumen de la versión
+
+### Proceso 4 — Tarea/idea/deuda técnica nueva
+
+**Disparador:** el user menciona una mejora futura, o yo encuentro algo que vale la pena guardar.
+
+**Checklist:**
+1. ✅ `docs/TAREAS_PENDIENTES.md` con la tarea categorizada por criticidad (🔴/🟠/🟡/🟢) — **siempre acá primero**
+2. ✅ Si es plan grande (días de trabajo), crear archivo dedicado en `docs/` (ej: `PLAN_FEATURE_X.md`)
+3. ✅ Plan maestro HTML §19 Pendientes Técnicos: agregar `<div class="card">` con prioridad y esfuerzo
+4. ✅ Cuando se ejecuta el plan grande, **moverlo a `docs/historico/`** después de release
+
+### Proceso 5 — Decisión técnica con trade-offs no obvios
+
+**Disparador:** descartamos una "best practice" estándar, o elegimos entre varias opciones técnicas.
+
+**Checklist:**
+1. ✅ Crear `docs/decisiones/ADR-NNN-titulo-corto.md` con formato estándar (ver `docs/decisiones/README.md`)
+2. ✅ Actualizar el índice en `docs/decisiones/README.md`
+3. ✅ Numeración secuencial sin saltos
+4. ✅ ADRs son **inmutables**: si la decisión cambia, crear ADR nuevo que reemplace, no editar el viejo
+
+### Proceso 6 — Compact del chat
+
+**Disparador:** el user ejecuta `/compact`.
+
+**Qué pasa automáticamente:**
+- Las memorias en `C:\Users\clientes\.claude\projects\d--SAAS\memory\` se cargan al iniciar la sesión nueva (no se pierden).
+
+**Qué tiene que hacer el user:**
+- Pegar el contenido de `docs/POST_COMPACT_PROMPT.md` como primer mensaje de la sesión nueva.
+
+**Qué hago yo en la sesión nueva:**
+1. Leer `docs/ESTADO_ACTUAL.md` (snapshot actual)
+2. Leer `CLAUDE.md` (este archivo — stack, patrones, procesos)
+3. Leer `docs/TAREAS_PENDIENTES.md` (qué está pendiente)
+4. Leer `docs/ARQUITECTURA.md` (decisiones core)
+5. Leer `docs/WORKFLOW.md` (cómo hacer cosas operativas)
+6. Si la conversación va a tocar una decisión postergada, leer el ADR correspondiente
+7. Si toco el plan maestro HTML, abrirlo y revisar la sección que voy a editar
+
+---
 
 ## El Plan Maestro HTML es la guía viva del proyecto
 
@@ -185,17 +312,6 @@ El IDE NO tiene el SDK de Flutter configurado → los errores de análisis tipo 
 6. **Nueva funcionalidad importante**: si construimos algo grande (como Cronos Analytics), agregar una sección dedicada con queries/tablas/diagramas.
 7. **Tabla de Contenidos**: cada sección nueva debe estar en el TOC (`<div class="toc">`).
 
-### Cuándo actualizarlo
-
-| Evento | Qué actualizar |
-|---|---|
-| Publico release (tag + GitHub release) | Header version, footer, stats (releases totales), timeline item nuevo, mover bloques pendientes que se completaron |
-| Completo un bloque del plan original (C, D, F, G, H, J...) | Moverlo de `pending` a `done` (TOC + sección), agregar al historial de "Bloques completados" |
-| Surge una idea técnica nueva (deuda, optimización, feature) | Agregar como `<div class="card">` en "Pendientes Técnicos" (§19) con prioridad y esfuerzo estimado |
-| Resuelvo un bug crítico arquitectónico | Agregar a "Bugs críticos resueltos" (§3.3) con causa raíz + fix |
-| Agrego un patrón arquitectónico nuevo | Agregar al `ARQUITECTURA.md` Y mencionarlo en el plan maestro si afecta la roadmap |
-| Cambia el orden de prioridades | Reordenar la tabla de "Próximos Pasos Sugeridos" |
-
 ### Reglas para editar el HTML
 
 - **Mantener el estilo existente**: usar las clases CSS que ya están definidas (`badge-done`, `badge-pending`, `card done`, `card pending`, `timeline-item done`, `info`, `success`, `highlight`, etc). No inventar clases nuevas a menos que sea para una sección categórica nueva.
@@ -207,3 +323,14 @@ El IDE NO tiene el SDK de Flutter configurado → los errores de análisis tipo 
 ### Filosofía
 
 El plan maestro **no es opcional ni decorativo**. El user lo usa como guía operativa. Si algo cambia en el código y no se refleja acá, el plan miente. Si surge una decisión importante y no queda asentada acá, se pierde. Antes de cerrar cualquier ciclo de trabajo significativo, preguntate: "¿el plan maestro refleja esto?". Si la respuesta es no, actualizalo en el mismo commit.
+
+---
+
+## ⚠️ Anti-patterns a evitar
+
+- ❌ Documentar una decisión solo en el chat (se pierde con el compact)
+- ❌ Crear archivos .md sueltos fuera de `docs/` o `docs/decisiones/` o `docs/historico/`
+- ❌ Editar un ADR ya creado (crear uno nuevo que reemplace)
+- ❌ Saltarse el checklist de release porque "es un cambio chico"
+- ❌ Mover un plan ejecutado a `docs/historico/` sin antes confirmar que está cerrado
+- ❌ Modificar `docs/PLAN_MAESTRO_HERMES_MOBILE.html` con clases CSS inventadas — usar las existentes
