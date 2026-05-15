@@ -344,11 +344,12 @@ class _State extends State<ActividadDetailScreen> {
         backgroundColor: AppColors.bgSidebar,
         title: const Text('Actividad', style: AppTextStyles.title),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: AppColors.danger),
-            onPressed: _eliminar,
-            tooltip: 'Eliminar',
-          ),
+          if (Session.current.can('mobile.action.eliminar_actividad'))
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+              onPressed: _eliminar,
+              tooltip: 'Eliminar',
+            ),
         ],
       ),
       body: Stack(
@@ -485,22 +486,24 @@ class _State extends State<ActividadDetailScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton.icon(
-                        onPressed: _toggleCompletada,
-                        icon: Icon(_esCompletada ? Icons.replay : Icons.check, size: 20),
-                        label: Text(_esCompletada ? 'Reabrir actividad' : 'Marcar como completada',
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _esCompletada ? AppColors.textMuted : AppColors.success,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    if (Session.current.can('mobile.action.completar_actividad')) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          onPressed: _toggleCompletada,
+                          icon: Icon(_esCompletada ? Icons.replay : Icons.check, size: 20),
+                          label: Text(_esCompletada ? 'Reabrir actividad' : 'Marcar como completada',
+                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _esCompletada ? AppColors.textMuted : AppColors.success,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),

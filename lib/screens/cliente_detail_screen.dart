@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../models/cliente.dart';
+import '../models/session.dart';
 import '../services/clientes_service.dart';
 import '../services/lineas_service.dart';
 import '../services/actividades_service.dart';
@@ -111,7 +112,8 @@ class _ClienteDetailState extends State<ClienteDetailScreen> {
                   const SizedBox(height: 12),
                   _buildQuickActions(c),
                   const SizedBox(height: 16),
-                  if (widget.cliente.saldo > 0) ...[
+                  if (Session.current.can('mobile.data.saldo_cxc') &&
+                      widget.cliente.saldo > 0) ...[
                     _buildSaldoCard(),
                     const SizedBox(height: 16),
                   ],
@@ -135,10 +137,12 @@ class _ClienteDetailState extends State<ClienteDetailScreen> {
                   const SizedBox(height: 16),
                   _buildEvolucion(),
                   const SizedBox(height: 16),
-                  _buildFacturas(),
-                  if (_saldoDocs.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    _buildSaldoDetalle(),
+                  if (Session.current.can('mobile.data.facturas_pendientes')) ...[
+                    _buildFacturas(),
+                    if (_saldoDocs.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      _buildSaldoDetalle(),
+                    ],
                   ],
                   const SizedBox(height: 32),
                 ],
@@ -166,6 +170,7 @@ class _ClienteDetailState extends State<ClienteDetailScreen> {
   }
 
   Widget _buildQuickActions(Cliente c) {
+    final canCrear = Session.current.can('mobile.action.crear_actividad');
     return Row(
       children: [
         Expanded(
@@ -180,14 +185,16 @@ class _ClienteDetailState extends State<ClienteDetailScreen> {
             )),
           ),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _QuickActionBtn(
-            icon: Icons.add_circle_outline,
-            label: 'Cargar actividad',
-            onTap: () => _openActividadForm(c),
+        if (canCrear) ...[
+          const SizedBox(width: 8),
+          Expanded(
+            child: _QuickActionBtn(
+              icon: Icons.add_circle_outline,
+              label: 'Cargar actividad',
+              onTap: () => _openActividadForm(c),
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
