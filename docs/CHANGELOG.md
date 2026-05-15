@@ -19,6 +19,16 @@
 
 ---
 
+## [2026-05-15] — Hotfix v3.9.2 (COALESCE text/jsonb)
+**Versión publicada:** v3.9.2
+**Trabajo:**
+- **Fix**: la query con `COALESCE(r.permisos, '{}'::jsonb)` fallaba con `42804: COALESCE types text and jsonb cannot be matched` cuando la columna `roles.permisos` era `text` en lugar de `jsonb`. Hermes Desktop al actualizar roles está dejando la columna como `text` con un string JSON adentro.
+- **Solución agnóstica**: cast a text en la query (`r.permisos::text`). Funciona con ambos tipos: si es text, no-op; si es jsonb, serializa a string. El cliente Dart sigue haciendo `jsonDecode` del String.
+- Pubspec: 3.9.1+42 → 3.9.2+43.
+**Próximo paso:** activar `min_version_required = '3.9.2'`.
+
+---
+
 ## [2026-05-15] — Hotfix v3.9.1 (jsonb parsing + force update pre-login)
 **Versión publicada:** v3.9.1
 **Trabajo:**

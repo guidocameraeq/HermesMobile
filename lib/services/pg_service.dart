@@ -43,7 +43,10 @@ class PgService {
     final conn = await _getConn();
     final result = await conn.execute(
       Sql.named(
-        'SELECT u.role, u.vendedor_nombre, COALESCE(r.permisos, \'{}\'::jsonb) AS permisos '
+        // Cast a text en la query: agnóstico al tipo de la columna permisos
+        // (text o jsonb). El resultado siempre es String JSON; el cliente
+        // hace jsonDecode. Evita el COALESCE de tipos mixtos.
+        'SELECT u.role, u.vendedor_nombre, COALESCE(r.permisos::text, \'{}\') AS permisos '
         'FROM usuarios u '
         'LEFT JOIN roles r ON r.nombre = u.role '
         'WHERE LOWER(u.username) = LOWER(@user) AND u.password_hash = @hash',
