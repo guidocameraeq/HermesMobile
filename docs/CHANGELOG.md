@@ -19,6 +19,17 @@
 
 ---
 
+## [2026-05-15] — Hotfix v3.9.1 (jsonb parsing + force update pre-login)
+**Versión publicada:** v3.9.1
+**Trabajo:**
+- **Fix crítico**: el package `postgres` de Dart devuelve `jsonb` como `String`, no como `Map`. `pg_service.verifyUser` asumía Map → `permisos` quedaba vacío → gate `mobile.access` rechazaba a TODOS los usuarios. Ahora hace `jsonDecode` si llega como String (con fallback a Map por si un driver futuro cambia el comportamiento). Detectado por el user al probar v3.9.0 en device.
+- **Force update pre-login**: el check de `min_version_required` se movió al `initState` de `LoginScreen` (antes era post-login). Si la versión local está bloqueada, se navega a `ForceUpdateScreen` sin permitir intento de login. Esto cubre el caso donde el flujo de login está roto en una versión y necesitamos forzar el upgrade igual.
+- **Splash mínimo** mientras se chequea force update (CircularProgressIndicator).
+- El check post-login en `_navigateAfterLogin` queda como defensa en profundidad por si la app está abierta cuando se sube `min_version_required`.
+**Próximo paso:** activar `min_version_required = '3.9.1'` apenas el APK se publique en GitHub. Cualquier device con v3.9.0 va a ver el prompt de upgrade al próximo abrir.
+
+---
+
 ## [2026-05-15] — Roles + permisos JSONB (v3.9.0)
 **Versión publicada:** v3.9.0
 **Trabajo:**

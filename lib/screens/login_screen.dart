@@ -25,10 +25,35 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _bioHabilitado = false;
   bool _bioDisponible = false;
+  bool _checkingForceUpdate = true;
 
   @override
   void initState() {
     super.initState();
+    _bootstrap();
+  }
+
+  /// Pre-login: chequea force update ANTES de mostrar el form.
+  /// Si la versión local está bloqueada, navega a ForceUpdateScreen sin
+  /// permitir intento de login. Esto cubre el caso donde el flujo de login
+  /// está roto (ej: bug de auth en una versión) y necesitamos forzar el
+  /// upgrade igual.
+  Future<void> _bootstrap() async {
+    try {
+      final force = await UpdateService.checkForceUpdate();
+      if (!mounted) return;
+      if (force != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => ForceUpdateScreen(release: force)),
+        );
+        return;
+      }
+    } catch (_) {
+      // Si falla por red, seguimos con el flow normal — no bloqueamos sin info.
+    }
+    if (!mounted) return;
+    setState(() => _checkingForceUpdate = false);
     _checkBio();
   }
 
@@ -182,6 +207,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_checkingForceUpdate) {
+      // Splash mínimo mientras se chequea force update. Si hay update forzada,
+      // _bootstrap navega a ForceUpdateScreen sin renderizar el form de login.
+      return const Scaffold(
+        backgroundColor: Color(0xFF0A0C10),
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFF2563EB)),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: const Color(0xFF0A0C10),
       body: Center(

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:postgres/postgres.dart';
 import '../config/constants.dart';
 
@@ -51,10 +52,20 @@ class PgService {
     );
     if (result.isEmpty) return null;
     final row = result.first.toColumnMap();
+    // jsonb llega como String desde el package postgres (Dart). Defensivo:
+    // si por alguna razón ya viene como Map (driver futuro), también lo soporta.
     final permisosRaw = row['permisos'];
-    final Map<String, dynamic> permisos = permisosRaw is Map
-        ? Map<String, dynamic>.from(permisosRaw)
-        : <String, dynamic>{};
+    final Map<String, dynamic> permisos;
+    if (permisosRaw is Map) {
+      permisos = Map<String, dynamic>.from(permisosRaw);
+    } else if (permisosRaw is String && permisosRaw.isNotEmpty) {
+      final decoded = jsonDecode(permisosRaw);
+      permisos = decoded is Map
+          ? Map<String, dynamic>.from(decoded)
+          : <String, dynamic>{};
+    } else {
+      permisos = <String, dynamic>{};
+    }
     return (
       role: (row['role'] as String?) ?? '',
       vendedorNombre: row['vendedor_nombre'] as String?,
