@@ -232,6 +232,53 @@ CRIT-2 del audit OWASP (mayo 2026): la OpenAI key estaba embebida en el APK y er
 
 ---
 
+## 12. Roles y permisos via Session.can()
+
+**Archivos:** `lib/services/auth_service.dart`, `lib/models/session.dart`, `lib/services/pg_service.dart`, `supabase/functions/auth-token/index.ts`
+
+**Patrón introducido en v3.9.0** para integrar el sistema de roles compartido con Hermes Desktop.
+
+### Flujo
+
+```
+1. Login: pg_service.verifyUser hace JOIN usuarios + roles, devuelve
+   (role, vendedor_nombre, permisos) en una sola query.
+2. AuthService.login aplica 2 gates:
+   a) permisos['mobile.access'] debe ser true.
+   b) vendedor_nombre debe estar presente (fallback al username durante transición).
+3. Si pasan los gates, Session.set(permisos: ...) carga las keys con
+   value=true en _permissions.
+4. Cualquier widget con sensibilidad de permiso usa Session.current.can(key).
+5. La Edge Function auth-token también lee vendedor_nombre de la DB
+   (no del body) para emitir el token correctamente.
+```
+
+### Por qué
+
+El admin del negocio (Hermes Desktop) gestiona roles centralmente. Mobile debía:
+- Bloquear acceso a usuarios sin permiso (`mobile.access`).
+- Resolver el `vendedor_nombre` real (no asumir `== username`).
+- Mostrar/ocultar features según el rol sin recompilar.
+
+Ver [ADR-008](decisions/ADR-008-roles-permisos-jsonb.md) para razones completas y alternativas descartadas.
+
+### Aplicación
+
+- **Cualquier feature nueva con sensibilidad de permiso** debe envolverse en `if (Session.current.can('mobile.xxx'))`. La key se registra en `permisos_catalog` desde Desktop.
+- **Nunca asumir que `username == vendedor_nombre`**. Para cualquier query que filtre por vendedor, usar `Session.current.vendedorNombre`.
+- **Para revocar acceso a un usuario**: el admin baja el flag en Desktop. La revocación se aplica al próximo login (no instantánea).
+- **Si una key no está en el dict del rol, `can()` devuelve false** (cerrado por defecto). Esto significa que agregar permisos nuevos no rompe roles existentes.
+
+### Anti-patterns para este patrón
+
+- ❌ Usar `Session.current.username` para filtrar queries de datos del vendedor (usar `vendedorNombre`).
+- ❌ Mostrar el botón en gris cuando no hay permiso (mejor: no mostrarlo).
+- ❌ Hardcodear permisos en el código (deben venir del rol, no del username).
+- ❌ Enviar `vendedor_nombre` a la Edge Function desde el cliente (la función debe leerlo de DB).
+- ❌ Cachear `_permissions` fuera de Session (la verdad vive ahí).
+
+---
+
 ## Anti-patterns a evitar
 
 - ❌ Programar notificaciones con IDs random

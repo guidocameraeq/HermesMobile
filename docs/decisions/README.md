@@ -65,3 +65,4 @@ Qué cambia con esto. Qué nos compromete a futuro.
 | [005](ADR-005-postergar-crit3-db-creds.md) | Postergar migración de credenciales DB a Edge Functions (CRIT-3) | Aceptado | 2026-05-06 |
 | [006](ADR-006-release-keystore-propio.md) | Release keystore propio para firmar APKs (CRIT-1 resuelto) | Aceptado | 2026-05-06 |
 | [007](ADR-007-auth-via-vendedor-tokens.md) | Auth via vendedor_tokens y proxy OpenAI vía Edge Functions (CRIT-2 resuelto) | Aceptado | 2026-05-06 |
+| [008](ADR-008-roles-permisos-jsonb.md) | Roles y permisos como JSONB con gates de acceso | Aceptado | 2026-05-15 |

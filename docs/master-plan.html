@@ -81,7 +81,7 @@
 
 <h1>HERMES MOBILE — Plan Maestro de Desarrollo</h1>
 <p style="font-size:14px;color:#64748b;margin-bottom:5px;">App Android para Equipo Comercial — CRM Bidireccional con Asistente IA</p>
-<p style="font-size:11px;color:#94a3b8;">Documento actualizado: <strong>Mayo 2026</strong> · Versión actual: <span class="version-tag">v3.8.0</span> · Repo: github.com/guidocameraeq/HermesMobile</p>
+<p style="font-size:11px;color:#94a3b8;">Documento actualizado: <strong>Mayo 2026</strong> · Versión actual: <span class="version-tag">v3.9.0</span> · Repo: github.com/guidocameraeq/HermesMobile</p>
 
 <!-- Panel de progreso -->
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin:20px 0;justify-content:center;">
@@ -90,7 +90,7 @@
     <span class="stat-label">Bloques completos</span>
   </div>
   <div class="stat-box">
-    <span class="stat-num purple">7</span>
+    <span class="stat-num purple">8</span>
     <span class="stat-label">Extras no planeados</span>
   </div>
   <div class="stat-box">
@@ -98,11 +98,11 @@
     <span class="stat-label">Bloques pendientes</span>
   </div>
   <div class="stat-box">
-    <span class="stat-num">39</span>
+    <span class="stat-num">40</span>
     <span class="stat-label">Releases totales</span>
   </div>
   <div class="stat-box">
-    <span class="stat-num">v3.8</span>
+    <span class="stat-num">v3.9</span>
     <span class="stat-label">Versión actual</span>
   </div>
 </div>
@@ -114,7 +114,7 @@
 <h3 style="margin-bottom:10px;">Tabla de Contenidos</h3>
 <ol>
   <li><a href="#vision">Visión General y Arquitectura</a></li>
-  <li><a href="#historial">Historial de Versiones v1.0 → v3.8</a></li>
+  <li><a href="#historial">Historial de Versiones v1.0 → v3.9</a></li>
   <li><a href="#completado">Fases Completadas</a></li>
   <li><a href="#infraestructura">Infraestructura y Stack Técnico</a></li>
   <li><a href="#tablas">Mapa de Base de Datos</a></li>
@@ -299,7 +299,7 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
   </div>
   <div class="timeline-item done">
     <span class="timeline-version">v3.8.0 — Proxy OpenAI server-side</span>
-    <span class="timeline-date">Mayo 2026 — Actual</span>
+    <span class="timeline-date">Mayo 2026</span>
     <p>
       <strong>Resuelve CRIT-2 del audit</strong>: la API key de OpenAI ya no se compila al APK. Vive solo en <code>Supabase Secrets</code>, accesible desde 3 Edge Functions (Deno).
       <strong>Backend</strong>: <code>auth-token</code> (login → emite token de vendedor), <code>cronos-chat</code> (proxy a OpenAI Chat con rate limit 100/h), <code>cronos-transcribe</code> (proxy a Whisper con rate limit 60/h).
@@ -307,6 +307,18 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
       <strong>Cliente</strong>: <code>auth_token_service.dart</code> nuevo, <code>assistant_service.dart</code> y <code>whisper_service.dart</code> apuntan al proxy. <code>constants.dart</code>: removida <code>openaiApiKey</code>.
       <strong>Verificado</strong>: <code>strings app-release.apk | grep "sk-proj"</code> devuelve 0 resultados.
       <strong>Beneficios</strong>: rate limit por vendedor, revocación granular sin recompilar (DELETE en <code>vendedor_tokens</code>), cambiar key sin tocar app, analytics de costo per-vendedor.
+    </p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v3.9.0 — Roles y permisos JSONB + UI condicional</span>
+    <span class="timeline-date">Mayo 2026 — Actual</span>
+    <p>
+      <strong>Integración del sistema de roles compartido con Hermes Desktop.</strong> El admin gestiona roles centralmente desde Desktop; Mobile honra el contrato.
+      <strong>Auth core</strong>: query de login con JOIN a <code>roles</code> trae permisos jsonb en una sola query. <code>Session</code> expone <code>can(key)</code>. 2 gates obligatorios: <code>mobile.access</code> debe ser true, <code>vendedor_nombre</code> debe estar cargado (con fallback al username durante la transición).
+      <strong>Edge Function</strong>: <code>auth-token</code> también lee <code>vendedor_nombre</code> de la DB (single source of truth) — ya no asume que <code>username == vendedor_nombre</code>. Permite usuarios como <code>Franzo</code> que mapean a <code>FRANZO SERGIO</code> sin pedirle al cliente que mande nada nuevo.
+      <strong>UI condicional</strong>: 9 puntos envueltos en <code>if (Session.current.can('...'))</code>: 4 tabs del bottom nav (Scorecard/Cronos/Clientes/Acciones), botones de actividades (crear/completar/eliminar), registrar visita, micrófono Cronos, feedback, Saldo CxC, facturas pendientes, Calendar sync.
+      <strong>Cambios de rol</strong> en Desktop se aplican al próximo login del usuario.
+      Ver <a href="decisions/ADR-008-roles-permisos-jsonb.md">ADR-008</a>.
     </p>
   </div>
 </div>
@@ -334,6 +346,7 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
 <tr class="done-row"><td><strong>Force Update</strong> (extra)</td><td>Killswitch remoto via <code>app_config</code></td><td><span class="badge badge-done">✅ Completo</span></td><td>v3.7.0</td></tr>
 <tr class="done-row"><td><strong>Identidad visual</strong> (extra)</td><td>Iconos Hermes + Cronos custom</td><td><span class="badge badge-done">✅ Completo</span></td><td>v3.7.0–v3.7.2</td></tr>
 <tr class="done-row"><td><strong>Security hardening</strong> (extra)</td><td>Keystore release, RLS, network_security_config</td><td><span class="badge badge-done">✅ Completo</span></td><td>v3.7.3</td></tr>
+<tr class="done-row"><td><strong>Roles y permisos</strong> (extra)</td><td>Sistema de permisos JSONB + 2 gates de acceso + 9 puntos UI condicional</td><td><span class="badge badge-done">✅ Completo</span></td><td>v3.9.0</td></tr>
 <tr><td><strong>C</strong></td><td>Embudo CRM de Prospectos</td><td><span class="badge badge-pending">⏳ Pendiente</span></td><td>—</td></tr>
 <tr><td><strong>F</strong></td><td>Matriz de Potencial</td><td><span class="badge badge-pending">⏳ Pendiente</span></td><td>—</td></tr>
 <tr><td><strong>D</strong></td><td>Leads desde Google Forms</td><td><span class="badge badge-pending">⏳ Pendiente</span></td><td>—</td></tr>
@@ -406,7 +419,7 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
     <li><strong>Build:</strong> <code>flutter build apk --release</code></li>
     <li><strong>Distribución:</strong> APK sideload + auto-update</li>
     <li><strong>Tamaño APK:</strong> ~58 MB</li>
-    <li><strong>Última versión:</strong> <span class="version-tag">v3.8.0</span></li>
+    <li><strong>Última versión:</strong> <span class="version-tag">v3.9.0</span></li>
   </ul>
 </div>
 <div class="card">
@@ -424,7 +437,7 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
 </div>
 
 <div class="card">
-  <div class="card-header">Paquetes Flutter instalados (v3.8.0)</div>
+  <div class="card-header">Paquetes Flutter instalados (v3.9.0)</div>
   <div class="grid-3">
     <div><code>postgres</code> — Supabase directo</div>
     <div><code>sql_conn</code> — SQL Server (local)</div>
@@ -895,6 +908,27 @@ agent_prompts (
     <li><strong>Tech:</strong> <code>AndroidNotificationAction</code> + background isolate (<code>@pragma('vm:entry-point')</code>)</li>
     <li><strong>Esfuerzo:</strong> ~80 LOC + testing con app totalmente cerrada</li>
     <li><strong>Origen:</strong> plan maestro pendiente desde marzo</li>
+  </ul>
+</div>
+
+<div class="card">
+  <div class="card-header">Quitar fallback de transición <code>vendedor_nombre ?? username</code> <span class="badge badge-media">Media</span></div>
+  <p><strong>Qué:</strong> una vez confirmado que todos los usuarios productivos tienen <code>vendedor_nombre</code> cargado, remover el fallback en <code>auth_service.dart</code> y <code>auth-token/index.ts</code>. Que falle explícito si falta.</p>
+  <ul>
+    <li><strong>Por qué:</strong> el fallback fue para no romper a Leonardo durante la migración. Ya cumplió su rol.</li>
+    <li><strong>Cuándo:</strong> después de 2-4 semanas con v3.9.0 estable.</li>
+    <li><strong>Esfuerzo:</strong> 15 min (2 líneas de código + redeploy de Edge Function)</li>
+    <li><strong>Origen:</strong> <a href="decisions/ADR-008-roles-permisos-jsonb.md">ADR-008</a></li>
+  </ul>
+</div>
+
+<div class="card">
+  <div class="card-header">Limpiar tokens huérfanos en <code>vendedor_tokens</code> <span class="badge badge-media">Media</span></div>
+  <p><strong>Qué:</strong> filas con <code>vendedor_nombre</code> viejo (ej: <code>Franzo</code> en lugar de <code>FRANZO SERGIO</code>) que quedaron al cambiar el binding. Hacer <code>DELETE FROM vendedor_tokens WHERE vendedor_nombre NOT IN (SELECT vendedor_nombre FROM usuarios WHERE vendedor_nombre IS NOT NULL)</code>.</p>
+  <ul>
+    <li><strong>Por qué:</strong> prolijidad. No bloquea nada.</li>
+    <li><strong>Cuándo:</strong> después del rollout v3.9.0.</li>
+    <li><strong>Esfuerzo:</strong> 1 query.</li>
   </ul>
 </div>
 
@@ -1437,6 +1471,12 @@ WHERE key = 'min_version_required';</pre>
   <td><span class="badge badge-done">Aceptado</span></td>
   <td>Resuelve CRIT-2: OpenAI key fuera del APK. Tokens propios (no Supabase Auth) por compatibilidad con auth existente. Rate limit + tracking en <code>uso_llm</code>. Cambio de key sin recompilar.</td>
 </tr>
+<tr>
+  <td><strong><a href="decisions/ADR-008-roles-permisos-jsonb.md">ADR-008</a></strong></td>
+  <td>Roles y permisos como JSONB con gates de acceso</td>
+  <td><span class="badge badge-done">Aceptado</span></td>
+  <td>Mobile lee permisos del rol via JOIN con <code>roles</code>. 2 gates en login: <code>mobile.access</code> + <code>vendedor_nombre</code>. Helper <code>Session.can()</code>. Edge Function resuelve <code>vendedor_nombre</code> server-side (no confía en cliente).</td>
+</tr>
 </table>
 
 <p><strong>Opciones rechazadas:</strong> ver <a href="REJECTED.md"><code>docs/REJECTED.md</code></a> para todas las alternativas que evaluamos y descartamos durante estas decisiones (Play Store, MDM, Shorebird, bcrypt, SSL pinning, migración a Supabase Auth, etc).</p>
@@ -1471,7 +1511,7 @@ WHERE key = 'min_version_required';</pre>
 
 <div class="footer">
 Plan Maestro Hermes Mobile · Dashboard autocontenido · Mayo 2026<br>
-Versión actual del código: <strong>v3.8.0</strong> · Repo: github.com/guidocameraeq/HermesMobile
+Versión actual del código: <strong>v3.9.0</strong> · Repo: github.com/guidocameraeq/HermesMobile
 </div>
 
 </body>

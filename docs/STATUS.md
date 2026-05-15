@@ -4,10 +4,10 @@
 > accionables, fuente única es [`TODO.md`](TODO.md). Este archivo solo
 > resume "qué versión hay y qué bloques completos / en curso".
 
-**Fecha del snapshot:** 2026-05-07
-**Versión actual:** v3.8.0+40 (proxy OpenAI deployado)
-**Último release publicado:** v3.8.0
-**APK URL:** https://github.com/guidocameraeq/HermesMobile/releases/tag/v3.8.0
+**Fecha del snapshot:** 2026-05-15
+**Versión actual:** v3.9.0+41 (roles + permisos JSONB)
+**Último release publicado:** v3.9.0
+**APK URL:** https://github.com/guidocameraeq/HermesMobile/releases/tag/v3.9.0
 
 ---
 
@@ -28,6 +28,7 @@
 | **Force Update** (extra) | Killswitch remoto via `app_config` | ✅ Completo | v3.7.0 |
 | **Identidad visual** (extra) | Iconos Hermes + Cronos custom | ✅ Completo | v3.7.0–v3.7.2 |
 | **Security hardening** (extra) | Keystore release, RLS, network_security_config | ✅ Completo | v3.7.3 |
+| **Roles y permisos** (extra) | Sistema de permisos JSONB + 2 gates + 9 puntos UI condicional | ✅ Completo | v3.9.0 |
 | **C** | Embudo CRM de Prospectos | ⏳ Pendiente | — |
 | **F** | Matriz de Potencial | ⏳ Pendiente | — |
 | **D** | Leads desde Google Forms | ⏳ Pendiente | — |
@@ -39,6 +40,24 @@
 ver [`TODO.md`](TODO.md). Este archivo NO duplica la lista — solo resume bloques.
 
 ---
+
+## v3.9.0 — Roles y permisos JSONB + UI condicional
+
+Integración del sistema de roles compartido con Hermes Desktop.
+
+**Componentes:**
+- Query de login con JOIN a `roles` para traer permisos en jsonb
+- 2 gates: `mobile.access` + `vendedor_nombre` no nulo (con fallback transitorio al username)
+- `Session.can(key)` consultable desde cualquier widget
+- 9 puntos de UI condicionados (4 tabs + crear/completar/eliminar actividad + registrar visita + mic Cronos + feedback + Saldo CxC + facturas + Calendar)
+- Edge Function `auth-token` también lee `vendedor_nombre` de DB (Opción A — single source of truth)
+
+**Verificación:**
+- Login con Franzo (username `Franzo` ≠ vendedor_nombre `FRANZO SERGIO`) entra y carga datos del vendedor real
+- Login con viewer es rechazado con mensaje específico
+- Cambios de permisos en Desktop se aplican al próximo login
+
+Ver [ADR-008](decisions/ADR-008-roles-permisos-jsonb.md).
 
 ## v3.8.0 — Proxy OpenAI server-side (CRIT-2 del audit resuelto)
 

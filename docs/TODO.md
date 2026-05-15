@@ -5,7 +5,7 @@
 > El plan maestro HTML tiene la versión "linda" para humanos; este es el
 > versión accionable que se mantiene siempre actualizado.
 >
-> **Última actualización:** 2026-05-07
+> **Última actualización:** 2026-05-15
 
 ---
 
@@ -91,6 +91,19 @@
 - **Por qué:** permite recuperar accidentes + auditoría
 - **Esfuerzo:** ~30 min (1 query change + filtros en lecturas)
 
+### Quitar fallback de transición `vendedor_nombre ?? username`
+- **Qué:** una vez confirmado que todos los usuarios productivos tienen `vendedor_nombre` cargado, remover el fallback en `auth_service.dart` y `auth-token/index.ts`. Que falle explícito si falta.
+- **Por qué:** el fallback fue para no romper a Leonardo durante la migración. Ya cumplió su rol.
+- **Cuándo:** después de 2-4 semanas con v3.9.0 estable.
+- **Esfuerzo:** 15 min (2 líneas de código + redeploy de Edge Function).
+- **Origen:** ADR-008.
+
+### Limpiar tokens huérfanos en `vendedor_tokens`
+- **Qué:** filas con `vendedor_nombre` viejo (ej: `Franzo` en lugar de `FRANZO SERGIO`) que quedaron al cambiar el binding. Hacer `DELETE FROM vendedor_tokens WHERE vendedor_nombre NOT IN (SELECT vendedor_nombre FROM usuarios WHERE vendedor_nombre IS NOT NULL)`.
+- **Por qué:** prolijidad. No bloquea nada.
+- **Cuándo:** después del rollout v3.9.0.
+- **Esfuerzo:** 1 query.
+
 ---
 
 ## 🟢 Baja — nice to have
@@ -157,6 +170,7 @@ Estos son bloques completos del plan maestro, no items sueltos. Detalle completo
 ## ✅ Completadas recientemente
 
 ### Mayo 2026
+- ✅ **2026-05-15** Sistema de roles + permisos JSONB integrado (v3.9.0). 2 gates de acceso, 9 puntos de UI condicional, ADR-008 creado. Edge Function `auth-token` también lee `vendedor_nombre` de DB.
 - ✅ **2026-05-07** Extracción del protocolo de compactación a archivo dedicado `docs/COMPACTION_PROTOCOL.md` (commit `0dd6bbc`) — alineación con P3 y P4 de los 4 proyectos
 - ✅ **2026-05-07** Primer simulacro real del Pre-Compact Checklist (commit `bd4dc83`) detectó y fixeó 6 inconsistencias HTML que solo conteos no veían
 - ✅ **2026-05-07** Refactor del sistema de docs al modelo de 6 capas + HTML como dashboard maestro completo (commits `85dbb39`, `800e21e`)

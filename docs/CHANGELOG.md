@@ -19,6 +19,29 @@
 
 ---
 
+## [2026-05-15] — Roles + permisos JSONB (v3.9.0)
+**Versión publicada:** v3.9.0
+**Trabajo:**
+- Edge Function `auth-token` ahora lee `vendedor_nombre` de DB (Opción A — single source of truth). Permite que el username y el vendedor_nombre sean distintos (ej: `Franzo` → `FRANZO SERGIO`).
+- `PgService.verifyUser` reescrito: devuelve record `(role, vendedorNombre, permisos)` en una sola query con JOIN a `roles` y `COALESCE` de permisos jsonb.
+- `Session` extendido con `_permissions` (Set<String>) y helper `can(key)`. `set()` acepta el dict `permisos` y filtra las keys con value true.
+- `AuthService.login` aplica 2 gates antes de poblar Session:
+  - `permisos['mobile.access'] == true` — sino "Tu rol no tiene acceso a Hermes Mobile".
+  - `vendedor_nombre` no nulo (con fallback al username durante transición) — sino "Tu usuario no tiene un vendedor asignado".
+- 9 puntos de UI condicionados:
+  - **Tabs (4)**: Scorecard / Cronos / Clientes / Acciones, según `mobile.tab_*`.
+  - **Actividades**: crear (cliente_detail), completar/reabrir y eliminar (actividad_detail).
+  - **Visita**: tile "Registrar visita" en acciones_tab. "Mis visitas" sigue siempre visible (lectura).
+  - **Mic Cronos**: `_InputBar` acepta `canVoice`; si false, siempre Send y hint sin mención al micrófono.
+  - **Feedback**: card en configuración solo si `mobile.action.dar_feedback`.
+  - **Saldo CxC y facturas**: cliente_detail según `mobile.data.*`.
+  - **Calendar sync**: configuración solo si `mobile.google_calendar.sync`.
+- Smoke test post-deploy verificó que Franzo (username) recibe token con `vendedor_nombre = 'FRANZO SERGIO'`.
+**Decisiones:** ADR-008 creado (roles + permisos JSONB con gates de acceso).
+**Próximo paso:** validar 6 casos de prueba en device + activar force update a 3.9.0 cuando OK.
+
+---
+
 ## [2026-05-07] — Refactor completo del sistema de docs (2 bloques)
 **Versión publicada:** ninguna (meta-documentación solamente)
 
