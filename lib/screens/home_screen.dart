@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config/theme.dart';
+import '../models/session.dart';
 import '../services/notification_service.dart';
 import 'scorecard_tab.dart';
 import 'clientes_tab.dart';
@@ -18,18 +19,14 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  final _tabs = const <Widget>[
-    ScorecardTab(),      // 0
-    AssistantScreen(),   // 1 — Cronos
-    ClientesTab(),       // 2
-    AccionesTab(),       // 3
-  ];
+  late final List<_TabSpec> _visibleTabs;
 
   @override
   void initState() {
     super.initState();
+    _visibleTabs = _buildVisibleTabs();
     HomeController.register((i) {
-      if (mounted) setState(() => _currentIndex = i);
+      if (mounted && i < _visibleTabs.length) setState(() => _currentIndex = i);
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -43,6 +40,49 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  List<_TabSpec> _buildVisibleTabs() {
+    final s = Session.current;
+    final tabs = <_TabSpec>[];
+    if (s.can('mobile.tab_scorecard')) {
+      tabs.add(_TabSpec(
+        screen: const ScorecardTab(),
+        item: const BottomNavigationBarItem(
+          icon: Icon(Icons.bar_chart_rounded),
+          label: 'Scorecard',
+        ),
+      ));
+    }
+    if (s.can('mobile.tab_cronos')) {
+      tabs.add(_TabSpec(
+        screen: const AssistantScreen(),
+        item: BottomNavigationBarItem(
+          icon: _cronosNavIcon(AppColors.navUnselected),
+          activeIcon: _cronosNavIcon(AppColors.navSelected),
+          label: 'Cronos',
+        ),
+      ));
+    }
+    if (s.can('mobile.tab_clientes')) {
+      tabs.add(_TabSpec(
+        screen: const ClientesTab(),
+        item: const BottomNavigationBarItem(
+          icon: Icon(Icons.people_outline),
+          label: 'Clientes',
+        ),
+      ));
+    }
+    if (s.can('mobile.tab_acciones')) {
+      tabs.add(_TabSpec(
+        screen: const AccionesTab(),
+        item: const BottomNavigationBarItem(
+          icon: Icon(Icons.apps),
+          label: 'Acciones',
+        ),
+      ));
+    }
+    return tabs;
+  }
+
   @override
   void dispose() {
     HomeController.unregister();
@@ -51,35 +91,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_visibleTabs.isEmpty) {
+      // Edge case: rol con mobile.access pero sin ninguna tab habilitada.
+      return const Scaffold(
+        backgroundColor: AppColors.bg,
+        body: Center(
+          child: Padding(
+            padding: EdgeInsets.all(32),
+            child: Text(
+              'Tu rol no tiene ninguna pantalla habilitada.\nContactá al administrador.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.body,
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: IndexedStack(
         index: _currentIndex,
-        children: _tabs,
+        children: _visibleTabs.map((t) => t.screen).toList(),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (i) => setState(() => _currentIndex = i),
         type: BottomNavigationBarType.fixed,
-        items: [
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart_rounded),
-            label: 'Scorecard',
-          ),
-          BottomNavigationBarItem(
-            icon: _cronosNavIcon(AppColors.navUnselected),
-            activeIcon: _cronosNavIcon(AppColors.navSelected),
-            label: 'Cronos',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            label: 'Clientes',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.apps),
-            label: 'Acciones',
-          ),
-        ],
+        items: _visibleTabs.map((t) => t.item).toList(),
       ),
     );
   }
@@ -96,4 +134,10 @@ class _HomeScreenState extends State<HomeScreen> {
       fit: BoxFit.contain,
     );
   }
+}
+
+class _TabSpec {
+  final Widget screen;
+  final BottomNavigationBarItem item;
+  const _TabSpec({required this.screen, required this.item});
 }
