@@ -81,7 +81,7 @@
 
 <h1>HERMES MOBILE — Plan Maestro de Desarrollo</h1>
 <p style="font-size:14px;color:#64748b;margin-bottom:5px;">App Android para Equipo Comercial — CRM Bidireccional con Asistente IA</p>
-<p style="font-size:11px;color:#94a3b8;">Documento actualizado: <strong>Mayo 2026</strong> · Versión actual: <span class="version-tag">v3.9.0</span> · Repo: github.com/guidocameraeq/HermesMobile</p>
+<p style="font-size:11px;color:#94a3b8;">Documento actualizado: <strong>Mayo 2026</strong> · Versión actual: <span class="version-tag">v3.9.3</span> · Repo: github.com/guidocameraeq/HermesMobile</p>
 
 <!-- Panel de progreso -->
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin:20px 0;justify-content:center;">
@@ -98,7 +98,7 @@
     <span class="stat-label">Bloques pendientes</span>
   </div>
   <div class="stat-box">
-    <span class="stat-num">40</span>
+    <span class="stat-num">43</span>
     <span class="stat-label">Releases totales</span>
   </div>
   <div class="stat-box">
@@ -311,7 +311,7 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
   </div>
   <div class="timeline-item done">
     <span class="timeline-version">v3.9.0 — Roles y permisos JSONB + UI condicional</span>
-    <span class="timeline-date">Mayo 2026 — Actual</span>
+    <span class="timeline-date">Mayo 2026</span>
     <p>
       <strong>Integración del sistema de roles compartido con Hermes Desktop.</strong> El admin gestiona roles centralmente desde Desktop; Mobile honra el contrato.
       <strong>Auth core</strong>: query de login con JOIN a <code>roles</code> trae permisos jsonb en una sola query. <code>Session</code> expone <code>can(key)</code>. 2 gates obligatorios: <code>mobile.access</code> debe ser true, <code>vendedor_nombre</code> debe estar cargado (con fallback al username durante la transición).
@@ -319,6 +319,31 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
       <strong>UI condicional</strong>: 9 puntos envueltos en <code>if (Session.current.can('...'))</code>: 4 tabs del bottom nav (Scorecard/Cronos/Clientes/Acciones), botones de actividades (crear/completar/eliminar), registrar visita, micrófono Cronos, feedback, Saldo CxC, facturas pendientes, Calendar sync.
       <strong>Cambios de rol</strong> en Desktop se aplican al próximo login del usuario.
       Ver <a href="decisions/ADR-008-roles-permisos-jsonb.md">ADR-008</a>.
+    </p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v3.9.1 — Hotfix jsonb parsing + force update pre-login</span>
+    <span class="timeline-date">Mayo 2026</span>
+    <p>
+      <strong>Fix crítico</strong>: el package <code>postgres</code> de Dart devuelve <code>jsonb</code> como <code>String</code>, no como <code>Map</code>. La query del v3.9.0 dejaba <code>permisos</code> vacío → gate <code>mobile.access</code> rechazaba a TODOS los usuarios. Fix: <code>jsonDecode</code> del String (con fallback a Map por defensa).
+      <strong>Force update movido a pre-login</strong>: el check de <code>min_version_required</code> se ejecuta en <code>LoginScreen._bootstrap()</code> antes de mostrar el form. Si la versión local está bloqueada, navega directo a <code>ForceUpdateScreen</code> sin permitir intento de login. Cubre el caso donde el flow de login está roto en una versión y necesitamos forzar el upgrade igual.
+    </p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v3.9.2 — Hotfix COALESCE text/jsonb</span>
+    <span class="timeline-date">Mayo 2026</span>
+    <p>
+      La columna <code>roles.permisos</code> puede quedar como <code>text</code> en lugar de <code>jsonb</code> según cómo Hermes Desktop la regenere al editar roles. La query con <code>COALESCE(r.permisos, '{}'::jsonb)</code> fallaba con error <code>42804: COALESCE types text and jsonb cannot be matched</code>.
+      <strong>Solución agnóstica</strong>: cast a <code>text</code> en la query (<code>COALESCE(r.permisos::text, '{}')</code>). Funciona con ambos tipos: si es text, no-op; si es jsonb, serializa a string. El cliente Dart sigue haciendo <code>jsonDecode</code>.
+    </p>
+  </div>
+  <div class="timeline-item done">
+    <span class="timeline-version">v3.9.3 — Permiso scorecard_drilldown + flow validado end-to-end</span>
+    <span class="timeline-date">Mayo 2026 — Actual</span>
+    <p>
+      <strong>Primera key agregada después del rollout v3.9.</strong> Sirve de plantilla para futuras keys.
+      Nueva key <code>mobile.action.scorecard_drilldown</code> registrada en <code>permisos_catalog</code> (grupo Acciones, orden 260, default false). El <code>onTap</code> del <code>MetricCard</code> en <code>scorecard_tab.dart</code> respeta <code>Session.current.can('mobile.action.scorecard_drilldown')</code>; si no, la card no es clickeable.
+      <strong>Flow end-to-end validado</strong>: registrar key en catalog → Hermes Desktop la muestra automáticamente en el panel de roles sin recompilar Desktop → admin la activa/desactiva por rol → Mobile lo respeta tras re-login. Proceso documentado en <a href="WORKFLOW.md"><code>WORKFLOW.md</code></a> sección "Agregar un permiso nuevo".
     </p>
   </div>
 </div>
@@ -346,7 +371,7 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
 <tr class="done-row"><td><strong>Force Update</strong> (extra)</td><td>Killswitch remoto via <code>app_config</code></td><td><span class="badge badge-done">✅ Completo</span></td><td>v3.7.0</td></tr>
 <tr class="done-row"><td><strong>Identidad visual</strong> (extra)</td><td>Iconos Hermes + Cronos custom</td><td><span class="badge badge-done">✅ Completo</span></td><td>v3.7.0–v3.7.2</td></tr>
 <tr class="done-row"><td><strong>Security hardening</strong> (extra)</td><td>Keystore release, RLS, network_security_config</td><td><span class="badge badge-done">✅ Completo</span></td><td>v3.7.3</td></tr>
-<tr class="done-row"><td><strong>Roles y permisos</strong> (extra)</td><td>Sistema de permisos JSONB + 2 gates de acceso + 9 puntos UI condicional</td><td><span class="badge badge-done">✅ Completo</span></td><td>v3.9.0</td></tr>
+<tr class="done-row"><td><strong>Roles y permisos</strong> (extra)</td><td>Sistema de permisos JSONB + 2 gates de acceso + 10 puntos UI condicional + flow validado end-to-end con catálogo administrable</td><td><span class="badge badge-done">✅ Completo</span></td><td>v3.9.0–v3.9.3</td></tr>
 <tr><td><strong>C</strong></td><td>Embudo CRM de Prospectos</td><td><span class="badge badge-pending">⏳ Pendiente</span></td><td>—</td></tr>
 <tr><td><strong>F</strong></td><td>Matriz de Potencial</td><td><span class="badge badge-pending">⏳ Pendiente</span></td><td>—</td></tr>
 <tr><td><strong>D</strong></td><td>Leads desde Google Forms</td><td><span class="badge badge-pending">⏳ Pendiente</span></td><td>—</td></tr>
@@ -419,7 +444,7 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
     <li><strong>Build:</strong> <code>flutter build apk --release</code></li>
     <li><strong>Distribución:</strong> APK sideload + auto-update</li>
     <li><strong>Tamaño APK:</strong> ~58 MB</li>
-    <li><strong>Última versión:</strong> <span class="version-tag">v3.9.0</span></li>
+    <li><strong>Última versión:</strong> <span class="version-tag">v3.9.3</span></li>
   </ul>
 </div>
 <div class="card">
@@ -437,7 +462,7 @@ VENDEDOR (campo, celular)                  GERENCIA (oficina, desktop)
 </div>
 
 <div class="card">
-  <div class="card-header">Paquetes Flutter instalados (v3.9.0)</div>
+  <div class="card-header">Paquetes Flutter instalados (v3.9.3)</div>
   <div class="grid-3">
     <div><code>postgres</code> — Supabase directo</div>
     <div><code>sql_conn</code> — SQL Server (local)</div>
@@ -819,15 +844,14 @@ agent_prompts (
   </ul>
 </div>
 
-<div class="card" style="border-left:5px solid #ef4444;background:#fef2f2">
-  <div class="card-header">Activar force update a v3.8.0 <span class="badge badge-alta">Crítico</span></div>
-  <p><strong>Qué:</strong> <code>UPDATE app_config SET value='3.8.0' WHERE key='min_version_required';</code></p>
+<div class="card" style="border-left:5px solid #f59e0b;background:#fffbeb">
+  <div class="card-header">Confirmar adopción de v3.9.3 en todos los vendedores <span class="badge badge-alta">Alta</span></div>
+  <p><strong>Qué:</strong> verificar que todos los vendedores activos hicieron login con v3.9.3 (no quedaron en v3.8 o anterior).</p>
   <ul>
-    <li><strong>Impacto si no se hace:</strong> vendedores siguen con APKs viejos que tienen la OpenAI key embebida (CRIT-2 sigue con superficie de exposición hasta que todos actualicen)</li>
-    <li><strong>Pre-requisito:</strong> que el user haya validado v3.8.0 en su device de prueba</li>
-    <li><strong>Quién:</strong> Claude ejecuta cuando el user da OK</li>
-    <li><strong>Esfuerzo:</strong> 30 segundos</li>
-    <li><strong>Origen:</strong> v3.8.0 rollout</li>
+    <li><strong>Por qué:</strong> el force update bloquea a los que tengan &lt; 3.9.3 al loguear, pero si un vendedor no abre la app por días sigue con la versión vieja sin tracking.</li>
+    <li><strong>Cómo:</strong> <code>SELECT vendedor_nombre, last_used_at FROM vendedor_tokens ORDER BY last_used_at NULLS FIRST;</code> — los nulls/viejos son los que no actualizaron.</li>
+    <li><strong>Esfuerzo:</strong> 1 query + chat con quien quedó atrás.</li>
+    <li><strong>Origen:</strong> rollout v3.9.3.</li>
   </ul>
 </div>
 
@@ -1511,7 +1535,7 @@ WHERE key = 'min_version_required';</pre>
 
 <div class="footer">
 Plan Maestro Hermes Mobile · Dashboard autocontenido · Mayo 2026<br>
-Versión actual del código: <strong>v3.9.0</strong> · Repo: github.com/guidocameraeq/HermesMobile
+Versión actual del código: <strong>v3.9.3</strong> · Repo: github.com/guidocameraeq/HermesMobile
 </div>
 
 </body>

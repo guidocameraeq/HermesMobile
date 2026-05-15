@@ -20,13 +20,14 @@
 - **Esfuerzo:** 5 min
 - **Origen:** v3.7.3 (cambio de keystore)
 
-### Activar force update a v3.8.0
-- **Qué:** `UPDATE app_config SET value='3.8.0' WHERE key='min_version_required';`
-- **Impacto si no se hace:** vendedores siguen con APKs viejos que tienen la OpenAI key embebida (CRIT-2 sigue con superficie de exposición hasta que todos actualicen)
-- **Pre-requisito:** que el user haya validado v3.8.0 en su device de prueba
-- **Quién:** Claude ejecuta cuando el user da OK
-- **Esfuerzo:** 30 segundos
-- **Origen:** v3.8.0 rollout
+<!-- Force update activado a 3.9.3 el 2026-05-15 — tarea cumplida y reemplazada por la de v3.9.3 abajo -->
+
+### Confirmar adopción de v3.9.3 en todos los vendedores
+- **Qué:** verificar en `vendedor_tokens.last_used_at` que todos los vendedores activos hicieron login con v3.9.3 (no quedaron en v3.8 o anterior).
+- **Por qué:** el force update bloquea a los que tengan < 3.9.3 al loguear, pero si un vendedor no abre la app por días, sigue con la versión vieja y no hay tracking.
+- **Cómo:** `SELECT vendedor_nombre, last_used_at FROM vendedor_tokens ORDER BY last_used_at NULLS FIRST;` — los nulls/viejos son los que no actualizaron todavía.
+- **Esfuerzo:** 1 query + chat con quien quedó atrás.
+- **Origen:** rollout v3.9.3.
 
 ---
 
@@ -170,7 +171,7 @@ Estos son bloques completos del plan maestro, no items sueltos. Detalle completo
 ## ✅ Completadas recientemente
 
 ### Mayo 2026
-- ✅ **2026-05-15** Sistema de roles + permisos JSONB integrado (v3.9.0). 2 gates de acceso, 9 puntos de UI condicional, ADR-008 creado. Edge Function `auth-token` también lee `vendedor_nombre` de DB.
+- ✅ **2026-05-15** Rollout completo de roles + permisos (v3.9.0 → v3.9.3). 4 releases en una tarde: v3.9.0 (sistema base con 2 gates, 9 puntos UI, ADR-008), v3.9.1 (fix `jsonDecode` para jsonb que viene como String desde Dart `postgres` package + force update pre-login), v3.9.2 (cast `r.permisos::text` agnóstico al tipo de columna), v3.9.3 (primera key agregada post-rollout: `scorecard_drilldown`, flow end-to-end validado con admin Desktop). Force update activo a 3.9.3.
 - ✅ **2026-05-07** Extracción del protocolo de compactación a archivo dedicado `docs/COMPACTION_PROTOCOL.md` (commit `0dd6bbc`) — alineación con P3 y P4 de los 4 proyectos
 - ✅ **2026-05-07** Primer simulacro real del Pre-Compact Checklist (commit `bd4dc83`) detectó y fixeó 6 inconsistencias HTML que solo conteos no veían
 - ✅ **2026-05-07** Refactor del sistema de docs al modelo de 6 capas + HTML como dashboard maestro completo (commits `85dbb39`, `800e21e`)

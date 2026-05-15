@@ -5,9 +5,10 @@
 > resume "qué versión hay y qué bloques completos / en curso".
 
 **Fecha del snapshot:** 2026-05-15
-**Versión actual:** v3.9.0+41 (roles + permisos JSONB)
-**Último release publicado:** v3.9.0
-**APK URL:** https://github.com/guidocameraeq/HermesMobile/releases/tag/v3.9.0
+**Versión actual:** v3.9.3+44 (roles + permisos validado end-to-end)
+**Último release publicado:** v3.9.3
+**APK URL:** https://github.com/guidocameraeq/HermesMobile/releases/tag/v3.9.3
+**Force update activo:** `min_version_required = '3.9.3'`
 
 ---
 
@@ -41,23 +42,29 @@ ver [`TODO.md`](TODO.md). Este archivo NO duplica la lista — solo resume bloqu
 
 ---
 
-## v3.9.0 — Roles y permisos JSONB + UI condicional
+## v3.9.0 → v3.9.3 — Roles y permisos JSONB (rollout completo)
 
-Integración del sistema de roles compartido con Hermes Desktop.
+Integración del sistema de roles compartido con Hermes Desktop, validada end-to-end con catálogo de permisos administrable.
 
-**Componentes:**
-- Query de login con JOIN a `roles` para traer permisos en jsonb
+**Componentes (v3.9.0):**
+- Query de login con JOIN a `roles` para traer permisos en jsonb (con `COALESCE(r.permisos::text, '{}')` — agnóstico al tipo de columna desde v3.9.2)
 - 2 gates: `mobile.access` + `vendedor_nombre` no nulo (con fallback transitorio al username)
 - `Session.can(key)` consultable desde cualquier widget
-- 9 puntos de UI condicionados (4 tabs + crear/completar/eliminar actividad + registrar visita + mic Cronos + feedback + Saldo CxC + facturas + Calendar)
+- 10 puntos de UI condicionados (4 tabs + crear/completar/eliminar actividad + registrar visita + mic Cronos + feedback + Saldo CxC + facturas + Calendar + scorecard drill-down desde v3.9.3)
 - Edge Function `auth-token` también lee `vendedor_nombre` de DB (Opción A — single source of truth)
 
-**Verificación:**
-- Login con Franzo (username `Franzo` ≠ vendedor_nombre `FRANZO SERGIO`) entra y carga datos del vendedor real
-- Login con viewer es rechazado con mensaje específico
-- Cambios de permisos en Desktop se aplican al próximo login
+**Hotfixes en el rollout:**
+- **v3.9.1**: el package `postgres` de Dart devuelve `jsonb` como `String`, no como `Map`. Fix: `jsonDecode` en lugar de `is Map`. Force update movido a pre-login (antes era post-login) para que un device con app rota igual reciba el prompt de upgrade.
+- **v3.9.2**: la columna `roles.permisos` puede ser `text` en vez de `jsonb` según cómo Desktop la haya regenerado. Fix: cast `r.permisos::text` en la query, agnóstico al tipo de columna.
+- **v3.9.3**: agregada key `mobile.action.scorecard_drilldown` en `permisos_catalog`. Validado end-to-end: registro la key en catalog → Desktop la muestra automáticamente en el panel de roles → admin la activa/desactiva por rol → Mobile lo respeta tras re-login.
 
-Ver [ADR-008](decisions/ADR-008-roles-permisos-jsonb.md).
+**Verificación end-to-end:**
+- Login con Franzo (username `Franzo` ≠ vendedor_nombre `FRANZO SERGIO`) entra y carga datos del vendedor real ✅
+- Login con viewer es rechazado con mensaje específico ✅
+- Agregar key nueva en `permisos_catalog` → aparece automática en panel Desktop sin recompilar Desktop ✅
+- Toggle de permiso en Desktop → se ve reflejado en Mobile tras re-login ✅
+
+Ver [ADR-008](decisions/ADR-008-roles-permisos-jsonb.md) y [ARCHITECTURE.md §12](ARCHITECTURE.md).
 
 ## v3.8.0 — Proxy OpenAI server-side (CRIT-2 del audit resuelto)
 

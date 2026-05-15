@@ -227,6 +227,61 @@ Es reversible al instante. La app re-chequea Supabase en cada login.
 
 Independiente del force update: cuando el vendedor hace login y hay un release nuevo en GitHub (aunque no sea forzado), la app **descarga el APK en background**. Después, cuando toca "Actualizar" en Configuración, el instalador abre instantáneo (no espera el minuto de descarga). El APK queda en `getTemporaryDirectory()` cacheado por tag.
 
+## Agregar un permiso nuevo (mobile.* o shared.*)
+
+Desde v3.9.0 las features sensibles se condicionan con `Session.current.can('mobile.xxx')`. Agregar una key nueva es un proceso de 2 pasos coordinado entre Mobile (este repo) y Hermes Desktop (admin).
+
+### Paso 1 — registrar la key en `permisos_catalog`
+
+```sql
+INSERT INTO permisos_catalog (key, app, scope, descripcion, grupo, default_value, orden, deprecated)
+VALUES (
+    'mobile.action.NOMBRE',          -- key única, usar prefijos: mobile.access | mobile.tab_X | mobile.action.X | mobile.data.X | mobile.SERVICIO.X
+    'mobile',                         -- 'mobile', 'desktop' o 'shared'
+    'accion',                         -- 'access', 'modulo', 'accion', 'datos'
+    'Texto en español que ve el admin en el panel de Desktop',
+    'Acciones',                       -- agrupación visual en el panel
+    false,                            -- valor por defecto al crear roles nuevos
+    260,                              -- orden de aparición. Convención actual:
+                                      --   100s: tabs       200s: acciones
+                                      --   300s: datos      400s: integraciones
+    false                             -- deprecated
+)
+ON CONFLICT (key) DO NOTHING;
+```
+
+Apenas se inserta, **Hermes Desktop la muestra automáticamente** en el panel de roles (no requiere recompilar Desktop). El admin la activa por rol desde la UI.
+
+### Paso 2 — envolver el widget en Mobile
+
+```dart
+import '../models/session.dart';
+
+if (Session.current.can('mobile.action.NOMBRE')) {
+  MyButton(...)
+}
+```
+
+Si la key no está en el dict del rol, `can()` devuelve `false` (cerrado por defecto). Roles existentes no la van a tener hasta que el admin la active.
+
+### Paso 3 — release
+
+Bump de versión, build, tag, GitHub release (flujo normal). Si la key oculta una feature crítica, activar force update apenas se publique.
+
+### Validación end-to-end
+
+1. **Desktop**: la key aparece en el panel del rol con el toggle apagado (default false).
+2. **Mobile** sin la key activa: la feature condicionada no se ve.
+3. **Desktop**: activá la key para el rol y guardá.
+4. **Mobile**: cerrar sesión y volver a entrar (los permisos se cachean al login). La feature aparece.
+5. **Desktop**: desactivá → re-login en Mobile → desaparece de nuevo.
+
+### Notas operativas
+
+- **Cambios de permisos no se aplican en caliente.** Siempre requieren re-login del usuario en Mobile. Documentado en ADR-008.
+- **El cambio se guarda en `roles.permisos`** (jsonb o text — Mobile maneja ambos con `::text` cast en la query).
+- **Hay un campo `roles.updated_at` que se actualiza automáticamente** cuando un rol se edita. Podemos usarlo a futuro para invalidar cache sin re-login si hace falta (ver ADR-008, sección "Alternativas consideradas").
+
 ## Google Cloud — OAuth setup
 
 **Estado:** proyecto creado, falta agregar test users.

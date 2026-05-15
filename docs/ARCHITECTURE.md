@@ -277,6 +277,13 @@ Ver [ADR-008](decisions/ADR-008-roles-permisos-jsonb.md) para razones completas 
 - ❌ Enviar `vendedor_nombre` a la Edge Function desde el cliente (la función debe leerlo de DB).
 - ❌ Cachear `_permissions` fuera de Session (la verdad vive ahí).
 
+### Notas operativas descubiertas en el rollout (v3.9.0 → v3.9.3)
+
+- **El package `postgres` de Dart devuelve `jsonb` como `String`, no como `Map`.** El cliente Dart hace `jsonDecode` del valor. Defensivamente también soporta `Map` por si el driver cambia comportamiento en el futuro.
+- **La columna `roles.permisos` puede ser `text` o `jsonb`** según cómo Hermes Desktop la haya regenerado. La query usa `COALESCE(r.permisos::text, '{}')` — el cast funciona con ambos tipos (no-op si es text, serializa si es jsonb). Esto desacopla a Mobile del schema exacto que mantenga Desktop.
+- **El check de force update se ejecuta pre-login**, no post-login. Si el flow de auth se rompe en una versión, el device igual recibe el prompt de upgrade al abrir la app. Implementación en `LoginScreen._bootstrap()` antes de mostrar el form.
+- **Agregar una key nueva en `permisos_catalog`** la hace aparecer automáticamente en el panel de roles de Hermes Desktop sin recompilar Desktop. Validado con `mobile.action.scorecard_drilldown` (v3.9.3) — proceso completo en `WORKFLOW.md` sección "Agregar un permiso nuevo".
+
 ---
 
 ## Anti-patterns a evitar
