@@ -19,6 +19,15 @@
 
 ---
 
+## [2026-05-15] — v3.9.3 — Permiso scorecard_drilldown
+**Versión publicada:** v3.9.3
+**Trabajo:**
+- Nueva key `mobile.action.scorecard_drilldown` registrada en `permisos_catalog` (grupo Acciones, orden 260, default false).
+- `scorecard_tab.dart`: el `onTap` del `MetricCard` ahora respeta `Session.current.can('mobile.action.scorecard_drilldown')`. Si no, la card no es clickeable (sin animación de tap).
+- Primera key agregada después del rollout v3.9 — sirve de plantilla para futuras keys.
+
+---
+
 ## [2026-05-15] — Hotfix v3.9.2 (COALESCE text/jsonb)
 **Versión publicada:** v3.9.2
 **Trabajo:**

@@ -310,11 +310,16 @@ class _ScorecardTabState extends State<ScorecardTab>
       child: ListView(
         children: [
           _RitmoBar(ritmo: _ritmo),
-          ..._items.map((item) => MetricCard(
-                item: item,
-                ritmo: _ritmo,
-                onTap: item.cargado && !item.error ? () => _openDrilldown(item) : null,
-              )),
+          ..._items.map((item) {
+            final canDrill = Session.current.can('mobile.action.scorecard_drilldown');
+            return MetricCard(
+              item: item,
+              ritmo: _ritmo,
+              onTap: (canDrill && item.cargado && !item.error)
+                  ? () => _openDrilldown(item)
+                  : null,
+            );
+          }),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
