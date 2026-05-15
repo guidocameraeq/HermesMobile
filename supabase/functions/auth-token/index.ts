@@ -59,7 +59,7 @@ Deno.serve(async (req: Request) => {
   // mismo patrón que pg_service.dart:verifyUser)
   const { data: usuario, error } = await sb
     .from('usuarios')
-    .select('username, role')
+    .select('username, role, vendedor_nombre')
     .ilike('username', username)
     .eq('password_hash', passwordHash)
     .maybeSingle();
@@ -74,7 +74,12 @@ Deno.serve(async (req: Request) => {
   // Generar nuevo token y upsert (1 token vivo por vendedor; tokens viejos
   // del mismo vendedor se sobreescriben).
   const token = generateToken();
-  const vendedorNombre = (usuario.username as string).trim();
+  // Single source of truth: usar vendedor_nombre de la DB.
+  // Fallback al username durante la transición (usuarios sin vendedor_nombre cargado).
+  const vendedorFromDb = (usuario.vendedor_nombre as string | null)?.trim();
+  const vendedorNombre = (vendedorFromDb && vendedorFromDb.length > 0)
+    ? vendedorFromDb
+    : (usuario.username as string).trim();
 
   const { error: upsertError } = await sb
     .from('vendedor_tokens')
