@@ -110,17 +110,19 @@ class _AccionesTabState extends State<AccionesTab> with AutomaticKeepAliveClient
 
             _section('Campo'),
             Row(children: [
-              Expanded(child: _Tile(
-                icon: Icons.add_location_alt,
-                label: 'Registrar visita',
-                color: AppColors.success,
-                onTap: () async {
-                  await Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => const VisitaClientePickerScreen()));
-                  _loadVisitasHoy();
-                },
-              )),
-              const SizedBox(width: 8),
+              if (Session.current.can('mobile.action.registrar_visita')) ...[
+                Expanded(child: _Tile(
+                  icon: Icons.add_location_alt,
+                  label: 'Registrar visita',
+                  color: AppColors.success,
+                  onTap: () async {
+                    await Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => const VisitaClientePickerScreen()));
+                    _loadVisitasHoy();
+                  },
+                )),
+                const SizedBox(width: 8),
+              ],
               Expanded(child: _Tile(
                 icon: Icons.location_on,
                 label: 'Mis visitas',

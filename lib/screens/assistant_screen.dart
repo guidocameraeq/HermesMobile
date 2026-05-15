@@ -375,6 +375,7 @@ class _AssistantState extends State<AssistantScreen>
             controller: _textCtrl,
             hasText: _hasText,
             disabled: _sending || _transcribing,
+            canVoice: Session.current.can('mobile.action.cronos_voice'),
             onSend: _send,
             onMic: _recordAndTranscribe,
           ),
@@ -1224,10 +1225,13 @@ class _TypingBubbleState extends State<_TypingBubble>
 }
 
 /// Barra de input que alterna entre mic (sin texto) y send (con texto).
+/// Si `canVoice` es false, siempre muestra el botón Send (deshabilitado si no hay texto)
+/// y el hint cambia para no mencionar el micrófono.
 class _InputBar extends StatelessWidget {
   final TextEditingController controller;
   final bool hasText;
   final bool disabled;
+  final bool canVoice;
   final VoidCallback onSend;
   final VoidCallback onMic;
 
@@ -1235,12 +1239,16 @@ class _InputBar extends StatelessWidget {
     required this.controller,
     required this.hasText,
     required this.disabled,
+    required this.canVoice,
     required this.onSend,
     required this.onMic,
   });
 
   @override
   Widget build(BuildContext context) {
+    final hintText = canVoice
+        ? (hasText ? 'Escribí tu mensaje...' : 'Escribí o tocá el micrófono')
+        : 'Escribí tu mensaje...';
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
       decoration: const BoxDecoration(
@@ -1261,7 +1269,7 @@ class _InputBar extends StatelessWidget {
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => onSend(),
                 decoration: InputDecoration(
-                  hintText: hasText ? 'Escribí tu mensaje...' : 'Escribí o tocá el micrófono',
+                  hintText: hintText,
                   hintStyle: AppTextStyles.muted,
                   filled: true,
                   fillColor: AppColors.bgCard,
@@ -1274,14 +1282,18 @@ class _InputBar extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            // Botón que alterna entre Mic y Send
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              transitionBuilder: (w, a) => ScaleTransition(scale: a, child: w),
-              child: hasText
-                  ? _SendBtn(onTap: disabled ? null : onSend, key: const ValueKey('send'))
-                  : _MicBtn(onTap: disabled ? null : onMic, key: const ValueKey('mic')),
-            ),
+            // Si no puede usar voz, siempre Send (disabled si no hay texto).
+            // Si puede usar voz, alterna entre Mic y Send según haya texto.
+            if (!canVoice)
+              _SendBtn(onTap: (disabled || !hasText) ? null : onSend)
+            else
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                transitionBuilder: (w, a) => ScaleTransition(scale: a, child: w),
+                child: hasText
+                    ? _SendBtn(onTap: disabled ? null : onSend, key: const ValueKey('send'))
+                    : _MicBtn(onTap: disabled ? null : onMic, key: const ValueKey('mic')),
+              ),
           ],
         ),
       ),

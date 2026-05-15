@@ -236,10 +236,11 @@ class _ConfiguracionState extends State<ConfiguracionScreen> {
               ),
             ),
 
-          const SizedBox(height: 14),
-
-          // ── Google Calendar ──────────────────────────────
-          _buildCalendarCard(),
+          if (Session.current.can('mobile.google_calendar.sync')) ...[
+            const SizedBox(height: 14),
+            // ── Google Calendar ──────────────────────────────
+            _buildCalendarCard(),
+          ],
 
           const SizedBox(height: 14),
 
@@ -283,10 +284,11 @@ class _ConfiguracionState extends State<ConfiguracionScreen> {
             ),
           ),
 
-          const SizedBox(height: 14),
-
-          // ── Feedback ────────────────────────────────────
-          _expandable('Enviar feedback', Icons.chat_bubble_outline, _buildFeedbackBody()),
+          if (Session.current.can('mobile.action.dar_feedback')) ...[
+            const SizedBox(height: 14),
+            // ── Feedback ────────────────────────────────────
+            _expandable('Enviar feedback', Icons.chat_bubble_outline, _buildFeedbackBody()),
+          ],
 
           // ── Errores recientes ───────────────────────────
           if (ErrorLogger.recent.isNotEmpty) ...[
