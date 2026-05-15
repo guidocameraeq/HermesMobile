@@ -32,18 +32,34 @@ class PgService {
     return _conn!;
   }
 
-  /// Verifica credenciales: retorna el role si OK, null si falla.
-  static Future<String?> verifyUser(String username, String hash) async {
+  /// Verifica credenciales y devuelve role + vendedor_nombre + permisos del rol.
+  /// Retorna null si las credenciales son inválidas.
+  ///
+  /// `permisos` es un Map con todas las keys del rol; el caller decide cuáles
+  /// considerar "habilitadas" (típicamente las que tienen value true).
+  static Future<({String role, String? vendedorNombre, Map<String, dynamic> permisos})?>
+      verifyUser(String username, String hash) async {
     final conn = await _getConn();
     final result = await conn.execute(
       Sql.named(
-        'SELECT role FROM usuarios '
-        'WHERE LOWER(username) = LOWER(@user) AND password_hash = @hash',
+        'SELECT u.role, u.vendedor_nombre, COALESCE(r.permisos, \'{}\'::jsonb) AS permisos '
+        'FROM usuarios u '
+        'LEFT JOIN roles r ON r.nombre = u.role '
+        'WHERE LOWER(u.username) = LOWER(@user) AND u.password_hash = @hash',
       ),
       parameters: {'user': username.trim(), 'hash': hash},
     );
     if (result.isEmpty) return null;
-    return result.first[0] as String?;
+    final row = result.first.toColumnMap();
+    final permisosRaw = row['permisos'];
+    final Map<String, dynamic> permisos = permisosRaw is Map
+        ? Map<String, dynamic>.from(permisosRaw)
+        : <String, dynamic>{};
+    return (
+      role: (row['role'] as String?) ?? '',
+      vendedorNombre: row['vendedor_nombre'] as String?,
+      permisos: permisos,
+    );
   }
 
   /// Trae las asignaciones del vendedor para el mes/año dado,

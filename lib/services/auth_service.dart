@@ -24,18 +24,40 @@ class AuthService {
 
     try {
       final hash = hashPassword(password);
-      final role = await PgService.verifyUser(username, hash);
+      final auth = await PgService.verifyUser(username, hash);
 
-      if (role == null) {
+      if (auth == null) {
         return (ok: false, errorMsg: 'Usuario o contraseña incorrectos.');
       }
 
-      // El username en Supabase es igual al vendedor_nombre para los vendedores.
-      // Para el admin, se usa el username directamente.
+      // Gate 1: el rol debe tener mobile.access habilitado.
+      final permisos = auth.permisos;
+      if (permisos['mobile.access'] != true) {
+        return (
+          ok: false,
+          errorMsg: 'Tu rol no tiene acceso a Hermes Mobile.\nContactá al administrador.',
+        );
+      }
+
+      // Gate 2: debe haber un vendedor asignado.
+      // Fallback al username durante la transición (usuarios viejos sin vendedor_nombre).
+      final vnDb = auth.vendedorNombre?.trim();
+      final vendedorEfectivo = (vnDb != null && vnDb.isNotEmpty)
+          ? vnDb
+          : username.trim();
+
+      if (vendedorEfectivo.isEmpty) {
+        return (
+          ok: false,
+          errorMsg: 'Tu usuario no tiene un vendedor asignado.\nContactá al administrador.',
+        );
+      }
+
       Session.current.set(
         username: username.trim(),
-        vendedorNombre: username.trim(),
-        role: role,
+        vendedorNombre: vendedorEfectivo,
+        role: auth.role,
+        permisos: permisos,
       );
 
       // Pedir un token de proxy al server. Si falla, no rompemos el login —
